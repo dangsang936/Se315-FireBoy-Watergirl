@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://bqsf2kiop6jvq"]
+
+[ext_resource type="Script" uid="uid://l8owj8q5fm8a" path="res://network_manager.gd" id="1_v3k62"]
+
+[node name="NetworkManager" type="Node" unique_id=1534664240]
+script = ExtResource("1_v3k62")
+
+[node name="FusionSpawner" type="FusionSpawner" parent="." unique_id=574348827]
