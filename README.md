@@ -21,6 +21,3 @@ Online co-op puzzle platformer inspired by Fireboy and Watergirl.
 - tools/: internal level, validation, replay, and automation tools
 - deployment/: build, CI, Docker, and server deployment assets
 - prototypes/: isolated movement, networking, physics, and puzzle experiments
-
-## Project Rules
-See `docs/GDD/project_rules.md` for gameplay, networking, code, folder, and safety rules derived from the GDD and structure document.
