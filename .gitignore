@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/client/addons/godotiq
+/docs/GDD/project_rules.md

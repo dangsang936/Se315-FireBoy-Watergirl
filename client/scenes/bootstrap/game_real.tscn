@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://drgo34byv82l8"]
+
+[ext_resource type="Script" uid="uid://l5jrvc7f52j2" path="res://scripts/core/game_manager/game_manager.gd" id="1_game"]
+[ext_resource type="PackedScene" path="res://scenes/levels/real_level_blank.tscn" id="2_level"]
+[ext_resource type="PackedScene" uid="uid://ba5pkadh2vkec" path="res://scenes/players/fireboy.tscn" id="3_player"]
+[ext_resource type="PackedScene" uid="uid://bggypmshg45hf" path="res://scenes/ui/hud.tscn" id="4_hud"]
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_game")
+level_scene = ExtResource("2_level")
+player_scene = ExtResource("3_player")
+
+[node name="LevelRoot" type="Node2D" parent="."]
+
+[node name="HUD" parent="." instance=ExtResource("4_hud")]

@@ -1,0 +1,112 @@
+[gd_scene format=3 uid="uid://bfpkwqm0ob8qb"]
+
+[ext_resource type="Script" uid="uid://djlocvaesyt4h" path="res://scripts/player/movement/player.gd" id="1_ofyfj"]
+[ext_resource type="Texture2D" uid="uid://b8d0gefs183bx" path="res://assets/sprites/characters/watergirl/source/watergirl_idle.png" id="2_ofyfj"]
+[ext_resource type="Texture2D" uid="uid://85mu740smfl6" path="res://assets/sprites/characters/watergirl/source/watergirl_run.png" id="3_xshxf"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kqu6x"]
+size = Vector2(9, 18)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_74ifq"]
+atlas = ExtResource("2_ofyfj")
+region = Rect2(0, 0, 16, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ny7ty"]
+atlas = ExtResource("2_ofyfj")
+region = Rect2(16, 0, 16, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5580d"]
+atlas = ExtResource("3_xshxf")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_vlnfy"]
+atlas = ExtResource("3_xshxf")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ed2eq"]
+atlas = ExtResource("3_xshxf")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_e2h6t"]
+atlas = ExtResource("3_xshxf")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v5l2p"]
+atlas = ExtResource("3_xshxf")
+region = Rect2(128, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v4fxy"]
+atlas = ExtResource("3_xshxf")
+region = Rect2(160, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fbbep"]
+atlas = ExtResource("3_xshxf")
+region = Rect2(192, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gi3p4"]
+atlas = ExtResource("3_xshxf")
+region = Rect2(224, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_oul6g"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_74ifq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ny7ty")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5580d")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_vlnfy")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ed2eq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_e2h6t")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_v5l2p")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_v4fxy")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_fbbep")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gi3p4")
+}],
+"loop": true,
+"name": &"running",
+"speed": 10.0
+}]
+
+[node name="watergirl" type="CharacterBody2D" unique_id=645414832]
+script = ExtResource("1_ofyfj")
+element = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1230306273]
+position = Vector2(6, -9)
+shape = SubResource("RectangleShape2D_kqu6x")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=843880387]
+position = Vector2(6, -9)
+scale = Vector2(0.5625, 0.5625)
+sprite_frames = SubResource("SpriteFrames_oul6g")
+animation = &"idle"
+frame_progress = 0.6280049
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=190597262]
+position = Vector2(6, -11)
+zoom = Vector2(4, 4)
+position_smoothing_enabled = true
+position_smoothing_speed = 6.0
