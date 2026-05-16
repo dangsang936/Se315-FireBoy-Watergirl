@@ -11,14 +11,9 @@ config_version=5
 [application]
 
 config/name="server"
+run/main_scene="res://network_manager.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
-
-[fusion]
-
-connection/app_id="861e85a7-24dc-4b22-b409-755b8fcd6a50"
-connection/default_region="asia"
-simulation/app_id="861e85a7-24dc-4b22-b409-755b8fcd6a50"
 
 [physics]
 
