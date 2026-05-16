@@ -5,6 +5,7 @@ const REAL_GAME_SCENE: PackedScene = preload("res://scenes/bootstrap/game_real.t
 const PLAYER_SCENE: PackedScene = preload("res://scenes/players/fireboy.tscn")
 const WATERGIRL_SCENE: PackedScene = preload("res://scenes/players/watergirl.tscn")
 const PUSH_BLOCK_SCENE: PackedScene = preload("res://scenes/gameplay/objects/push_block.tscn")
+const GEM_SCENE: PackedScene = preload("res://scenes/gameplay/collectibles/collectible_gem.tscn")
 const HAZARD_SCRIPT: Script = preload("res://scripts/gameplay/hazards/hazard_zone.gd")
 
 class PushProbePlayer:
@@ -28,6 +29,9 @@ func _run() -> void:
 	await _verify_player_can_jump_over_hazard()
 	await _verify_jump_is_lower_and_floaty()
 	await _verify_elemental_pool_rules()
+	await _verify_gem_manager_gates_exit_for_fireboy()
+	await _verify_wrong_element_gem_stays_available()
+	await _verify_level_without_collectibles_keeps_exit_unlocked()
 	await _verify_player_motion_and_animation()
 	await _verify_player_animation_uses_move_intent_when_blocked()
 	await _verify_real_player_pushes_block_from_side()
@@ -595,6 +599,90 @@ func _verify_elemental_pool_rules() -> void:
 	await _verify_pool_rule(WATERGIRL_SCENE, 0, true, "Watergirl should fail in lava.")
 	await _verify_pool_rule(WATERGIRL_SCENE, 1, false, "Watergirl should survive water.")
 	await _verify_pool_rule(WATERGIRL_SCENE, 2, true, "Watergirl should fail in poison.")
+
+func _verify_gem_manager_gates_exit_for_fireboy() -> void:
+	var level := preload("res://scenes/levels/prototype_level.tscn").instantiate() as PrototypeLevel
+	root.add_child(level)
+	await process_frame
+
+	var player := PLAYER_SCENE.instantiate() as PrototypePlayer
+	level.attach_player(player)
+	await process_frame
+
+	var manager := level.get_node("Collectibles") as GemManager
+	_require(manager.get_remaining_count() > 0, "Prototype level should require matching fire gems for Fireboy.")
+	_require(not manager.is_unlocked(), "Gem manager should keep exit locked before required gems are collected.")
+
+	var completed: Array[bool] = [false]
+	var locked: Array[bool] = [false]
+	level.level_completed.connect(func() -> void:
+		completed[0] = true
+	)
+	level.exit_locked.connect(func(_remaining: int, _gem_element: int) -> void:
+		locked[0] = true
+	)
+
+	level.call("_on_exit_door_player_entered", player)
+	_require(locked[0], "Level should emit exit_locked when Fireboy reaches the door before collecting required gems.")
+	_require(not completed[0], "Level should not complete before required gems are collected.")
+
+	for child: Node in manager.get_children():
+		var gem := child as CollectibleGem
+		if gem != null and gem.gem_element == CollectibleGem.GemElement.FIRE:
+			gem.call("_on_body_entered", player)
+
+	_require(manager.is_unlocked(), "Gem manager should unlock after all matching fire gems are collected.")
+	level.call("_on_exit_door_player_entered", player)
+	_require(completed[0], "Level should complete after Fireboy collects all matching gems.")
+
+	level.queue_free()
+	await process_frame
+
+func _verify_wrong_element_gem_stays_available() -> void:
+	var gem := GEM_SCENE.instantiate() as CollectibleGem
+	gem.gem_element = CollectibleGem.GemElement.WATER
+	root.add_child(gem)
+
+	var player := PLAYER_SCENE.instantiate() as PrototypePlayer
+	root.add_child(player)
+	await process_frame
+
+	var wrong_touch: Array[bool] = [false]
+	var collected: Array[bool] = [false]
+	gem.wrong_element_touched.connect(func(_gem: CollectibleGem, _player: PrototypePlayer) -> void:
+		wrong_touch[0] = true
+	)
+	gem.collected.connect(func(_gem: CollectibleGem, _player: PrototypePlayer) -> void:
+		collected[0] = true
+	)
+	gem.call("_on_body_entered", player)
+
+	_require(wrong_touch[0], "Wrong element gem touch should emit wrong_element_touched.")
+	_require(not collected[0], "Wrong element gem touch should not collect the gem.")
+	_require(gem.monitoring, "Wrong element gem should remain available after touch.")
+
+	player.queue_free()
+	gem.queue_free()
+	await process_frame
+
+func _verify_level_without_collectibles_keeps_exit_unlocked() -> void:
+	var level := preload("res://scenes/levels/real_level_blank.tscn").instantiate() as PrototypeLevel
+	root.add_child(level)
+	await process_frame
+
+	var player := PLAYER_SCENE.instantiate() as PrototypePlayer
+	level.attach_player(player)
+	await process_frame
+
+	var completed: Array[bool] = [false]
+	level.level_completed.connect(func() -> void:
+		completed[0] = true
+	)
+	level.call("_on_exit_door_player_entered", player)
+	_require(completed[0], "Level without Collectibles should keep old immediate exit behavior.")
+
+	level.queue_free()
+	await process_frame
 
 func _verify_level_connects_all_hazards() -> void:
 	var level := preload("res://scenes/levels/prototype_level.tscn").instantiate() as PrototypeLevel

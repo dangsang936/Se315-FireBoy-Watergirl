@@ -38,6 +38,11 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = "Loading prototype..."
 
+[node name="GemLabel" type="Label" parent="Root/MarginContainer/VBoxContainer"]
+visible = false
+layout_mode = 2
+text = "Gems: 0/0"
+
 [node name="HintLabel" type="Label" parent="Root/MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Move: A/D  Jump: W  Pause: Esc"

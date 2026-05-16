@@ -227,8 +227,8 @@ func _ensure_key_action(action: StringName, physical_key: Key) -> void:
 		InputMap.add_action(action)
 
 	for event: InputEvent in InputMap.action_get_events(action):
-		var key_event: InputEventKey = event as InputEventKey
-		if key_event != null and key_event.physical_keycode == physical_key:
+		var existing_key_event: InputEventKey = event as InputEventKey
+		if existing_key_event != null and existing_key_event.physical_keycode == physical_key:
 			return
 
 	var key_event := InputEventKey.new()

@@ -16,13 +16,11 @@ var _is_reloading: bool = false
 @onready var _level_root: Node2D = get_node(level_root_path) as Node2D
 @onready var _hud: PrototypeHUD = get_node(hud_path) as PrototypeHUD
 
-
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_hud.restart_requested.connect(_restart_level)
 	_hud.resume_requested.connect(_resume_game)
 	_load_level()
-
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
@@ -31,7 +29,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("restart"):
 		_restart_level()
 		get_viewport().set_input_as_handled()
-
 
 func _load_level() -> void:
 	if not level_scene or not player_scene:
@@ -52,10 +49,11 @@ func _load_level() -> void:
 	_level_root.add_child(_current_level)
 	_current_level.level_completed.connect(_on_level_completed)
 	_current_level.player_failed.connect(_on_player_failed)
+	_current_level.exit_locked.connect(_on_exit_locked)
+	_current_level.gem_progress_changed.connect(_on_gem_progress_changed)
 	_spawn_player()
 	_is_reloading = false
 	_set_state(GameState.PLAYING)
-
 
 func _spawn_player() -> void:
 	_player = player_scene.instantiate() as CharacterBody2D
@@ -63,18 +61,15 @@ func _spawn_player() -> void:
 	if _player.has_method("reset_to_spawn"):
 		_player.call("reset_to_spawn", _current_level.get_spawn_position())
 
-
 func _toggle_pause() -> void:
 	if _state == GameState.PLAYING:
 		_set_state(GameState.PAUSED)
 	elif _state == GameState.PAUSED:
 		_set_state(GameState.PLAYING)
 
-
 func _resume_game() -> void:
 	if _state == GameState.PAUSED:
 		_set_state(GameState.PLAYING)
-
 
 func _restart_level() -> void:
 	if _state == GameState.LOADING_LEVEL or _is_reloading:
@@ -84,13 +79,11 @@ func _restart_level() -> void:
 	_set_state(GameState.RESTARTING)
 	call_deferred("_load_level")
 
-
 func _on_level_completed() -> void:
 	if _state != GameState.PLAYING:
 		return
 	_set_player_control_enabled(false)
 	_set_state(GameState.WON)
-
 
 func _on_player_failed(_player_node: Node2D) -> void:
 	if _state != GameState.PLAYING:
@@ -98,6 +91,13 @@ func _on_player_failed(_player_node: Node2D) -> void:
 	_set_player_control_enabled(false)
 	_set_state(GameState.LOST)
 
+func _on_exit_locked(remaining: int, _gem_element: int) -> void:
+	if _state != GameState.PLAYING:
+		return
+	_hud.show_status("Gate locked. Gems remaining: %s" % remaining, false)
+
+func _on_gem_progress_changed(collected: int, required: int) -> void:
+	_hud.set_gem_progress(collected, required)
 
 func _set_player_control_enabled(is_enabled: bool) -> void:
 	if is_instance_valid(_player):
@@ -106,7 +106,6 @@ func _set_player_control_enabled(is_enabled: bool) -> void:
 		else:
 			_player.set_physics_process(is_enabled)
 
-
 func _set_state(next_state: GameState) -> void:
 	_state = next_state
 	match _state:
@@ -114,12 +113,13 @@ func _set_state(next_state: GameState) -> void:
 			get_tree().paused = false
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
+			_hud.set_gem_progress(0, 0)
 			_hud.show_status("Loading prototype...", false)
 		GameState.PLAYING:
 			get_tree().paused = false
 			_set_player_control_enabled(true)
 			_hud.set_paused(false)
-			_hud.show_status("Reach the exit. Avoid the hazard.", false)
+			_hud.show_status("Reach the exit. Collect matching gems.", false)
 		GameState.PAUSED:
 			_hud.show_status("Paused", false)
 			_hud.set_paused(true)

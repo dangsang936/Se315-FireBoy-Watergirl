@@ -23,9 +23,12 @@ REQUIRED_FILES = [
 	"scripts/gameplay/levels/prototype_level.gd",
 	"scripts/gameplay/hazards/hazard_zone.gd",
 	"scripts/gameplay/doors/exit_door.gd",
+	"scripts/gameplay/collectibles/collectible_gem.gd",
+	"scripts/gameplay/collectibles/gem_manager.gd",
 	"scripts/gameplay/objects/push_block.gd",
 	"scripts/ui/hud/hud.gd",
 	"scripts/ui/menus/pause_menu.gd",
+	"scenes/gameplay/collectibles/collectible_gem.tscn",
 	"scenes/gameplay/objects/push_block.tscn",
 	"docs/level_workflow.md",
 ]
@@ -99,7 +102,7 @@ def check_scene_contracts(failures: list[str]) -> None:
 	require("res://scripts/player/movement/player.gd" in player_text, "Player scene missing movement script", failures)
 
 	level_text = read(CLIENT_ROOT / "scenes" / "levels" / "prototype_level.tscn")
-	for node_name in ["Players", "PlayerSpawn", "Terrain", "Hazards", "Goals", "ExitDoor", "HazardZone", "LavaPool", "PoisonPool"]:
+	for node_name in ["Players", "PlayerSpawn", "Terrain", "Objects", "Collectibles", "Hazards", "Goals", "ExitDoor", "HazardZone", "LavaPool", "PoisonPool"]:
 		require(f'name="{node_name}"' in level_text, f"Level missing {node_name}", failures)
 	real_level_text = read(CLIENT_ROOT / "scenes" / "levels" / "real_level_blank.tscn")
 	for node_name in ["Players", "PlayerSpawn", "Terrain", "Objects", "Hazards", "Goals", "ExitDoor", "HazardZone", "LavaPool", "PoisonPool"]:
@@ -115,12 +118,14 @@ def check_scene_contracts(failures: list[str]) -> None:
 	hud_text = read(CLIENT_ROOT / "scenes" / "ui" / "hud.tscn")
 	require('type="CanvasLayer"' in hud_text, "HUD root is not CanvasLayer", failures)
 	require("res://scenes/menus/pause_menu.tscn" in hud_text, "HUD missing pause menu", failures)
+	require('name="GemLabel"' in hud_text, "HUD missing persistent gem count label", failures)
 
 
 def check_scripts(failures: list[str]) -> None:
 	player_text = read(CLIENT_ROOT / "scripts" / "player" / "movement" / "player.gd")
 	for snippet in ["@export var speed: float", "@export var jump_velocity: float", 'Input.get_axis("move_left", "move_right")', 'is_action_just_pressed("jump")', "reset_to_spawn"]:
 		require(snippet in player_text, f"Player script missing {snippet}", failures)
+	require("var existing_key_event: InputEventKey" in player_text, "Player input setup should avoid key_event shadow warning", failures)
 	for snippet in ["@export var air_acceleration: float", "@export var air_deceleration: float", "@export var run_jump_height_multiplier: float", "_get_run_jump_velocity", "clampf(absf(velocity.x) / speed"]:
 		require(snippet in player_text, f"Player momentum jump missing {snippet}", failures)
 	for snippet in ["@export var camera_path: NodePath", "make_current()", "reset_smoothing()"]:
@@ -136,6 +141,8 @@ def check_scripts(failures: list[str]) -> None:
 		"scripts/gameplay/levels/prototype_level.gd",
 		"scripts/gameplay/hazards/hazard_zone.gd",
 		"scripts/gameplay/doors/exit_door.gd",
+		"scripts/gameplay/collectibles/collectible_gem.gd",
+		"scripts/gameplay/collectibles/gem_manager.gd",
 		"scripts/gameplay/objects/push_block.gd",
 		"scripts/ui/hud/hud.gd",
 		"scripts/ui/menus/pause_menu.gd",
@@ -145,6 +152,61 @@ def check_scripts(failures: list[str]) -> None:
 
 	hazard_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "hazards" / "hazard_zone.gd")
 	require("POISON" in hazard_text, "Hazard zone missing poison pool type", failures)
+
+	collectible_gem_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "collectibles" / "collectible_gem.gd")
+	for snippet in [
+		"class_name CollectibleGem",
+		"extends Area2D",
+		"enum GemElement { FIRE, WATER }",
+		"signal collected(gem: CollectibleGem, player: PrototypePlayer)",
+		"signal wrong_element_touched(gem: CollectibleGem, player: PrototypePlayer)",
+		"func can_collect(player: PrototypePlayer) -> bool:",
+		'set_deferred("monitoring", false)',
+		'set_deferred("monitorable", false)',
+	]:
+		require(snippet in collectible_gem_text, f"Collectible gem missing {snippet}", failures)
+
+	gem_manager_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "collectibles" / "gem_manager.gd")
+	for snippet in [
+		"class_name GemManager",
+		"extends Node2D",
+		"signal gem_progress_changed(collected: int, required: int)",
+		"func configure_for_player(player: PrototypePlayer) -> void:",
+		"func is_unlocked() -> bool:",
+		"func get_remaining_count() -> int:",
+		"required_count == 0",
+	]:
+		require(snippet in gem_manager_text, f"Gem manager missing {snippet}", failures)
+
+	level_script_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "levels" / "prototype_level.gd")
+	for snippet in [
+		"signal exit_locked(remaining: int, gem_element: int)",
+		"@export var collectibles_path: NodePath = ^\"Collectibles\"",
+		"_gem_manager.configure_for_player",
+		"_gem_manager.is_unlocked()",
+	]:
+		require(snippet in level_script_text, f"Level gem gate missing {snippet}", failures)
+
+	hud_script_text = read(CLIENT_ROOT / "scripts" / "ui" / "hud" / "hud.gd")
+	for snippet in [
+		"func set_gem_progress(collected: int, required: int) -> void:",
+		"_gem_label.text",
+		"Gems: %s/%s",
+	]:
+		require(snippet in hud_script_text, f"HUD gem progress missing {snippet}", failures)
+
+	pause_menu_text = read(CLIENT_ROOT / "scripts" / "ui" / "menus" / "pause_menu.gd")
+	require("func set_paused_view(should_show: bool) -> void:" in pause_menu_text, "Pause menu should avoid is_visible shadow warning", failures)
+
+	gem_scene_text = read(CLIENT_ROOT / "scenes" / "gameplay" / "collectibles" / "collectible_gem.tscn")
+	for snippet in [
+		'type="Area2D"',
+		'name="Visual"',
+		'type="Polygon2D"',
+		'name="CollisionShape2D"',
+		"res://scripts/gameplay/collectibles/collectible_gem.gd",
+	]:
+		require(snippet in gem_scene_text, f"Collectible gem scene missing {snippet}", failures)
 
 	push_block_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "objects" / "push_block.gd")
 	for snippet in [

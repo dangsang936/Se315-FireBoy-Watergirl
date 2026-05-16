@@ -15,9 +15,9 @@ func _ready() -> void:
 	hide()
 
 
-func set_paused_view(is_visible: bool) -> void:
-	visible = is_visible
-	if is_visible:
+func set_paused_view(should_show: bool) -> void:
+	visible = should_show
+	if should_show:
 		_resume_button.grab_focus()
 
 

@@ -17,13 +17,14 @@ LevelRoot (PrototypeLevel script)
 │   └── PlayerSpawn
 ├── Terrain
 ├── Objects
+├── Collectibles (optional)
 ├── Hazards
 │   └── HazardZone
 └── Goals
     └── ExitDoor
 ```
 
-`PrototypeLevel` wires `HazardZone.player_entered` to lose, `ExitDoor.player_entered` to win, and spawns the player at `Players/PlayerSpawn`.
+`PrototypeLevel` wires `HazardZone.player_entered` to lose, `ExitDoor.player_entered` to win, and spawns the player at `Players/PlayerSpawn`. If a level has a `Collectibles` node with the `GemManager` script, the exit stays locked until the active player collects every matching-element gem.
 
 ## Creating A New Level
 
@@ -32,9 +33,10 @@ LevelRoot (PrototypeLevel script)
 3. Keep the contract node names unchanged.
 4. Build terrain under `Terrain`.
 5. Add push blocks, doors, plates, and puzzle objects under `Objects`.
-6. Add lava, water, or poison hazard areas under `Hazards`.
-7. Move `Goals/ExitDoor` to the finish.
-8. Move `Players/PlayerSpawn` to the start.
+6. Add optional fire/water gems under `Collectibles`.
+7. Add lava, water, or poison hazard areas under `Hazards`.
+8. Move `Goals/ExitDoor` to the finish.
+9. Move `Players/PlayerSpawn` to the start.
 
 ## Hazard Pool Types
 
@@ -45,6 +47,14 @@ LevelRoot (PrototypeLevel script)
 - `POISON`: Fireboy and Watergirl both fail.
 
 Any `HazardZone` child under `Hazards` is wired automatically by the level script.
+
+## Gem Gate
+
+- `Collectibles` is optional. Without it, the exit works immediately.
+- Attach `GemManager` to `Collectibles`.
+- Add `CollectibleGem` children under `Collectibles`.
+- Fireboy must collect every fire gem. Watergirl must collect every water gem.
+- Nonmatching gems do not block the exit.
 
 ## Switching Test Scenes
 
