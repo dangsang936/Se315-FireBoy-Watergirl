@@ -14,6 +14,10 @@ Online co-op puzzle platformer inspired by Fireboy and Watergirl.
 - ENet multiplayer
 
 ## Structure
-- client/: game project
-- server/: dedicated server
-- shared/: networking protocol
+- docs/: GDD, structure docs, network/API notes, diagrams, meeting notes
+- shared/: constants, enums, packets, events, models, config, reusable utilities
+- client/: Godot client project
+- server/: dedicated authoritative server project
+- tools/: internal level, validation, replay, and automation tools
+- deployment/: build, CI, Docker, and server deployment assets
+- prototypes/: isolated movement, networking, physics, and puzzle experiments
