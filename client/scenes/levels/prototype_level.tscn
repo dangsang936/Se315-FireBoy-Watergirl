@@ -30,6 +30,9 @@ script = ExtResource("1_level")
 [node name="PlayerSpawn" type="Marker2D" parent="Players" unique_id=924233638]
 position = Vector2(-218, -31)
 
+[node name="PlayerSpawn2" type="Marker2D" parent="Players" unique_id=123000000]
+position = Vector2(-168, -31)
+
 [node name="Terrain" type="Node2D" parent="." unique_id=1911548412]
 
 [node name="Floor" type="StaticBody2D" parent="Terrain" unique_id=1859052529]

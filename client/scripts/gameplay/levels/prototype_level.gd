@@ -8,6 +8,7 @@ signal gem_progress_changed(collected: int, required: int)
 
 @export var players_path: NodePath = ^"Players"
 @export var player_spawn_path: NodePath = ^"Players/PlayerSpawn"
+@export var player_spawn_2_path: NodePath = ^"Players/PlayerSpawn2"
 @export var collectibles_path: NodePath = ^"Collectibles"
 @export var hazards_path: NodePath = ^"Hazards"
 @export var hazard_zone_path: NodePath = ^"Hazards/HazardZone"
@@ -15,6 +16,7 @@ signal gem_progress_changed(collected: int, required: int)
 
 @onready var _players: Node2D = get_node(players_path) as Node2D
 @onready var _player_spawn: Marker2D = get_node(player_spawn_path) as Marker2D
+@onready var _player_spawn_2: Marker2D = get_node_or_null(player_spawn_2_path) as Marker2D
 @onready var _gem_manager: GemManager = get_node_or_null(collectibles_path) as GemManager
 @onready var _hazards: Node2D = get_node_or_null(hazards_path) as Node2D
 @onready var _hazard_zone: HazardZone = get_node_or_null(hazard_zone_path) as HazardZone
@@ -25,8 +27,8 @@ func _ready() -> void:
 	_connect_collectibles()
 	_exit_door.player_entered.connect(_on_exit_door_player_entered)
 
-func attach_player(player: Node2D) -> void:
-	var spawn_position: Vector2 = get_spawn_position()
+func attach_player(player: Node2D, spawn_idx: int = 1) -> void:
+	var spawn_position: Vector2 = get_spawn_position() if spawn_idx == 1 else get_spawn_position_2()
 	player.position = _players.to_local(spawn_position)
 	_players.add_child(player)
 	player.global_position = spawn_position
@@ -36,6 +38,11 @@ func attach_player(player: Node2D) -> void:
 
 func get_spawn_position() -> Vector2:
 	return _player_spawn.global_position
+
+func get_spawn_position_2() -> Vector2:
+	if _player_spawn_2:
+		return _player_spawn_2.global_position
+	return get_spawn_position() + Vector2(50, 0)
 
 func _connect_hazards() -> void:
 	if _hazards == null:

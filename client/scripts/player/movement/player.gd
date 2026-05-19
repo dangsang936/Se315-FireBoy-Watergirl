@@ -24,6 +24,9 @@ enum Element { FIRE, WATER }
 @export var push_probe_vertical_padding: float = 2.0
 @export var element: Element = Element.FIRE
 
+var is_local: bool = true
+var player_id: int = 1
+
 var player_state: PlayerState = PlayerState.IDLE
 var _gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 var _control_enabled: bool = true
@@ -42,12 +45,16 @@ func _ready() -> void:
 	call_deferred("_refresh_camera")
 
 func _physics_process(delta: float) -> void:
+	if not is_local:
+		return
+
 	_update_jump_buffer(delta)
 	_update_vertical_velocity(delta)
 	_update_horizontal_velocity(delta)
 	move_and_slide()
 	_register_push_block_contacts()
 	_update_player_state()
+	_send_network_state()
 
 func reset_to_spawn(spawn_position: Vector2) -> void:
 	global_position = spawn_position
@@ -117,6 +124,15 @@ func _update_player_state() -> void:
 	var is_moving: bool = absf(velocity.x) > animation_move_threshold
 	var next_state: PlayerState = PlayerState.RUNNING if has_move_intent or is_moving else PlayerState.IDLE
 	_set_player_state(next_state)
+
+func _send_network_state() -> void:
+	if NetworkManager.is_connected_to_server():
+		NetworkManager.send_position(global_position)
+		var state_dict = {
+			"anim": _animated_sprite.animation if _animated_sprite else "idle",
+			"flip_h": _animated_sprite.flip_h if _animated_sprite else false
+		}
+		NetworkManager.send_state(state_dict)
 
 func _register_push_block_contacts() -> void:
 	var push_direction: float = get_push_direction()

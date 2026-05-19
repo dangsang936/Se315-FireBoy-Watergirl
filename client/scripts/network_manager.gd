@@ -11,11 +11,16 @@ signal role_assigned(role: int)
 signal player_list_updated(players: Array[int])
 signal remote_player_position_received(player_id: int, position: Vector2)
 signal remote_player_state_received(player_id: int, state: Dictionary)
+signal game_started
+signal peer_disconnected(peer_id: int)
 
 var peer: ENetMultiplayerPeer = null
 var my_role: int = -1
 var server_ip: String = DEFAULT_SERVER_IP
 var server_port: int = DEFAULT_PORT
+
+var connected_players: Array[int] = []
+var player_roles: Dictionary = {}
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_args():
@@ -50,6 +55,8 @@ func disconnect_from_server() -> void:
 		peer = null
 	multiplayer.multiplayer_peer = null
 	my_role = -1
+	connected_players.clear()
+	player_roles.clear()
 	disconnected_from_server.emit()
 
 func is_connected_to_server() -> bool:
@@ -78,7 +85,27 @@ func receive_player_list(players: Array) -> void:
 	var typed: Array[int] = []
 	for p in players:
 		typed.append(p as int)
+	connected_players = typed
 	player_list_updated.emit(typed)
+
+@rpc("authority", "call_remote", "reliable")
+func receive_all_roles(roles: Dictionary) -> void:
+	player_roles = roles
+	player_list_updated.emit(connected_players)
+
+@rpc("authority", "call_remote", "reliable")
+func notify_game_start() -> void:
+	print("[Client] Game starting!")
+	game_started.emit()
+
+@rpc("authority", "call_remote", "reliable")
+func notify_peer_disconnected(peer_id: int) -> void:
+	print("[Client] Peer disconnected: %d" % peer_id)
+	if peer_id in connected_players:
+		connected_players.erase(peer_id)
+	player_roles.erase(peer_id)
+	peer_disconnected.emit(peer_id)
+	player_list_updated.emit(connected_players)
 
 @rpc("authority", "call_remote", "unreliable_ordered")
 func receive_player_position(player_id: int, position: Vector2) -> void:
