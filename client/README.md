@@ -86,13 +86,13 @@ Create `.mcp.json` in your Godot project root:
 ```json
 {
   "mcpServers": {
-    "godotiq": {
-      "command": "uvx",
-      "args": ["godotiq"],
-      "env": {
-        "GODOTIQ_PROJECT_ROOT": "/path/to/your/godot/project"
-      }
-    }
+	"godotiq": {
+	  "command": "uvx",
+	  "args": ["godotiq"],
+	  "env": {
+		"GODOTIQ_PROJECT_ROOT": "/path/to/your/godot/project"
+	  }
+	}
   }
 }
 ```
@@ -114,26 +114,26 @@ Create `.godotiq.json` in your Godot project root for project-specific settings:
 {
   "version": 2,
   "project": {
-    "name": "My Game",
-    "engine": "godot_4",
-    "type": "3d"
+	"name": "My Game",
+	"engine": "godot_4",
+	"type": "3d"
   },
   "disabled_tools": [],
   "protected_files": ["project.godot", ".godot/**", "*.import"],
   "conventions": {
-    "class_name_suffix": "Class",
-    "signal_bus": "Events",
-    "require_type_hints": true
+	"class_name_suffix": "Class",
+	"signal_bus": "Events",
+	"require_type_hints": true
   },
   "asset_origins": {
-    "meshy": {
-      "path_patterns": ["assets/models/printers/**"],
-      "default_scale": [0.3, 0.3, 0.3]
-    }
+	"meshy": {
+	  "path_patterns": ["assets/models/printers/**"],
+	  "default_scale": [0.3, 0.3, 0.3]
+	}
   },
   "server": {
-    "default_detail": "normal",
-    "screenshot_default_scale": 0.25
+	"default_detail": "normal",
+	"screenshot_default_scale": 0.25
   }
 }
 ```
@@ -181,11 +181,11 @@ godotiq/
 
 ```
 AI Agent ←(stdio)→ Python MCP Server ←(WebSocket:6007)→ GDScript Addon in Godot Editor
-                   (intelligence layer)                    (runtime bridge)
-                                                              ↕
-                                                    EngineDebugger (IPC)
-                                                              ↕
-                                                    Running Game (autoload)
+				   (intelligence layer)                    (runtime bridge)
+															  ↕
+													EngineDebugger (IPC)
+															  ↕
+													Running Game (autoload)
 ```
 
 - **Python → Editor**: WebSocket for bidirectional real-time communication

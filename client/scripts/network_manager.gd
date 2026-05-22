@@ -72,6 +72,7 @@ func _on_disconnected() -> void:
 
 func _on_connection_failed() -> void:
 	printerr("[Client] Connection failed")
+	connection_failed.emit()
 	disconnected_from_server.emit()
 
 @rpc("authority", "call_remote", "reliable")

@@ -253,7 +253,7 @@ func _ensure_key_action(action: StringName, physical_key: Key) -> void:
 	InputMap.action_add_event(action, key_event)
 
 func _refresh_camera() -> void:
-	if _camera == null:
+	if _camera == null or not is_local:
 		return
 	_camera.make_current()
 	if _camera.position_smoothing_enabled:
