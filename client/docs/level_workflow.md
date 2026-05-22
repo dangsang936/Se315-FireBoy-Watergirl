@@ -21,7 +21,7 @@ LevelRoot (PrototypeLevel script)
 ├── Hazards
 │   └── HazardZone
 └── Goals
-    └── ExitDoor
+	└── ExitDoor
 ```
 
 `PrototypeLevel` wires `HazardZone.player_entered` to lose, `ExitDoor.player_entered` to win, and spawns the player at `Players/PlayerSpawn`. If a level has a `Collectibles` node with the `GemManager` script, the exit stays locked until the active player collects every matching-element gem.
