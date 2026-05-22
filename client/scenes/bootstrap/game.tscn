@@ -12,6 +12,6 @@ level_scene = ExtResource("2_level")
 fireboy_scene = ExtResource("3_player")
 watergirl_scene = ExtResource("watergirl_res")
 
-[node name="LevelRoot" type="Node2D" parent="."]
+[node name="LevelRoot" type="Node2D" parent="." unique_id=926247827]
 
-[node name="HUD" parent="." instance=ExtResource("4_hud")]
+[node name="HUD" parent="." unique_id=2141874919 instance=ExtResource("4_hud")]
