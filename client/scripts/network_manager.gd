@@ -6,6 +6,7 @@ const DEFAULT_SERVER_IP: String = "127.0.0.1"
 const DEFAULT_PORT: int = 9999
 
 signal connected_to_server
+signal connection_failed
 signal disconnected_from_server
 signal role_assigned(role: int)
 signal player_list_updated(players: Array[int])
