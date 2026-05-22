@@ -3,6 +3,7 @@ extends Node2D
 
 enum GameState { BOOT, LOADING_LEVEL, PLAYING, PAUSED, WON, LOST, RESTARTING, DISCONNECTED }
 
+@export var level_scene: PackedScene
 @export var fireboy_scene: PackedScene
 @export var watergirl_scene: PackedScene
 @export var level_root_path: NodePath = ^"LevelRoot"
@@ -28,7 +29,55 @@ func _ready() -> void:
 	NetworkManager.remote_player_position_received.connect(_on_remote_position_received)
 	NetworkManager.remote_player_state_received.connect(_on_remote_state_received)
 
+	NetworkManager.role_assigned.connect(_on_role_assigned)
+	NetworkManager.player_list_updated.connect(_on_player_list_updated)
+	
+	_show_connect_ui()
+
+var _connect_ui_layer: CanvasLayer
+
+func _show_connect_ui() -> void:
+	_connect_ui_layer = CanvasLayer.new()
+	var bg = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0, 0, 0, 0.7)
+	
+	var vbox = VBoxContainer.new()
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	bg.add_child(vbox)
+	
+	var lbl = Label.new()
+	lbl.name = "StatusLabel"
+	lbl.text = "Waiting for players..."
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(lbl)
+	
+	var btn = Button.new()
+	btn.name = "ConnectBtn"
+	btn.text = "Connect to Server"
+	btn.pressed.connect(_on_connect_button_pressed)
+	vbox.add_child(btn)
+	
+	_connect_ui_layer.add_child(bg)
+	add_child(_connect_ui_layer)
+
+func _on_connect_button_pressed() -> void:
+	if _connect_ui_layer.has_node("ColorRect/VBoxContainer/ConnectBtn"):
+		var btn = _connect_ui_layer.get_node("ColorRect/VBoxContainer/ConnectBtn") as Button
+		btn.disabled = true
+	if _connect_ui_layer.has_node("ColorRect/VBoxContainer/StatusLabel"):
+		var lbl = _connect_ui_layer.get_node("ColorRect/VBoxContainer/StatusLabel") as Label
+		lbl.text = "Connecting..."
+	NetworkManager.connect_to_server()
+
+func _on_role_assigned(role: int) -> void:
+	if is_instance_valid(_connect_ui_layer):
+		_connect_ui_layer.queue_free()
 	_load_level()
+
+func _on_player_list_updated(players: Array) -> void:
+	if _state == GameState.PLAYING and players.size() > 1 and not is_instance_valid(_remote_player):
+		_spawn_remote_player()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
@@ -71,28 +120,39 @@ func _spawn_players() -> void:
 	var local_scene = fireboy_scene if is_fireboy else watergirl_scene
 	var remote_scene = watergirl_scene if is_fireboy else fireboy_scene
 	
-	# Spawn Local Player
-	_player = local_scene.instantiate() as CharacterBody2D
-	_current_level.attach_player(_player, 1 if is_fireboy else 2)
-	if _player.has_method("reset_to_spawn"):
-		_player.call("reset_to_spawn", _current_level.get_spawn_position() if is_fireboy else _current_level.get_spawn_position_2())
+	# Spawn Local Player (chỉ spawn 1 lần)
+	if not is_instance_valid(_player):
+		_player = local_scene.instantiate() as CharacterBody2D
+		_current_level.attach_player(_player, 1 if is_fireboy else 2)
+		if _player.has_method("reset_to_spawn"):
+			_player.call("reset_to_spawn", _current_level.get_spawn_position() if is_fireboy else _current_level.get_spawn_position_2())
 	
-	# Spawn Remote Player if online
-	if NetworkManager.is_connected_to_server():
-		_remote_player = remote_scene.instantiate() as CharacterBody2D
-		if _remote_player.get("is_local") != null:
-			_remote_player.set("is_local", false)
+	_spawn_remote_player()
+
+func _spawn_remote_player() -> void:
+	if not NetworkManager.is_connected_to_server() or is_instance_valid(_remote_player):
+		return
+	if NetworkManager.connected_players.size() < 2:
+		return
 		
-		# Attach RemotePlayer logic component
-		var remote_comp = RemotePlayer.new()
-		remote_comp.name = "RemotePlayer"
-		_remote_player.add_child(remote_comp)
-		
-		_current_level.attach_player(_remote_player, 2 if is_fireboy else 1)
-		
-		var spawn_pos = _current_level.get_spawn_position_2() if is_fireboy else _current_level.get_spawn_position()
-		_remote_player.global_position = spawn_pos
-		remote_comp.target_position = spawn_pos
+	var my_role = NetworkManager.my_role
+	var is_fireboy = (my_role == 0)
+	var remote_scene = watergirl_scene if is_fireboy else fireboy_scene
+	
+	_remote_player = remote_scene.instantiate() as CharacterBody2D
+	if _remote_player.get("is_local") != null:
+		_remote_player.set("is_local", false)
+	
+	# Attach RemotePlayer logic component
+	var remote_comp = RemotePlayer.new()
+	remote_comp.name = "RemotePlayer"
+	_remote_player.add_child(remote_comp)
+	
+	_current_level.attach_player(_remote_player, 2 if is_fireboy else 1)
+	
+	var spawn_pos = _current_level.get_spawn_position_2() if is_fireboy else _current_level.get_spawn_position()
+	_remote_player.global_position = spawn_pos
+	remote_comp.target_position = spawn_pos
 
 func _toggle_pause() -> void:
 	if _state == GameState.PLAYING:
