@@ -127,12 +127,12 @@ func _update_player_state() -> void:
 
 func _send_network_state() -> void:
 	if NetworkManager.is_connected_to_server():
-		NetworkManager.send_position(global_position)
+		NetworkManager.send_position(global_position, NetworkManager.current_tick)
 		var state_dict = {
 			"anim": _animated_sprite.animation if _animated_sprite else "idle",
 			"flip_h": _animated_sprite.flip_h if _animated_sprite else false
 		}
-		NetworkManager.send_state(state_dict)
+		NetworkManager.send_state(state_dict, NetworkManager.current_tick)
 
 func _register_push_block_contacts() -> void:
 	var push_direction: float = get_push_direction()

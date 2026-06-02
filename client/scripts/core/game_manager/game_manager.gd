@@ -14,13 +14,14 @@ var _current_level: PrototypeLevel
 var _player: CharacterBody2D
 var _remote_player: CharacterBody2D
 var _is_reloading: bool = false
+var player_nodes: Dictionary = {}
 
 @onready var _level_root: Node2D = get_node(level_root_path) as Node2D
 @onready var _hud: PrototypeHUD = get_node(hud_path) as PrototypeHUD
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_hud.restart_requested.connect(_restart_level)
+	_hud.restart_requested.connect(_on_restart_requested)
 	_hud.resume_requested.connect(_resume_game)
 
 	# Listen to network manager
@@ -29,10 +30,19 @@ func _ready() -> void:
 	NetworkManager.remote_player_position_received.connect(_on_remote_position_received)
 	NetworkManager.remote_player_state_received.connect(_on_remote_state_received)
 
+	# Listen to reliable gameplay RPC signals
+	NetworkManager.gem_collected_received.connect(_on_gem_collected_received)
+	NetworkManager.player_failed_received.connect(_on_player_failed_received)
+	NetworkManager.level_completed_received.connect(_on_level_completed_received)
+	NetworkManager.restart_level_received.connect(_on_restart_level_received)
+
 	NetworkManager.role_assigned.connect(_on_role_assigned)
 	NetworkManager.player_list_updated.connect(_on_player_list_updated)
 	
-	_show_connect_ui()
+	if NetworkManager.is_connected_to_server() and NetworkManager.my_role != -1:
+		_load_level()
+	else:
+		_show_connect_ui()
 
 var _connect_ui_layer: CanvasLayer
 
@@ -84,8 +94,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_pause()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("restart"):
-		_restart_level()
+		_on_restart_requested()
 		get_viewport().set_input_as_handled()
+
+func _on_restart_requested() -> void:
+	if NetworkManager.is_connected_to_server():
+		NetworkManager.send_restart_level()
+	else:
+		_restart_level()
 
 func _load_level() -> void:
 	if not level_scene or not fireboy_scene or not watergirl_scene:
@@ -102,12 +118,16 @@ func _load_level() -> void:
 
 	await get_tree().process_frame
 
+	player_nodes.clear()
+	_player = null
+	_remote_player = null
+
 	_current_level = level_scene.instantiate() as PrototypeLevel
-	_level_root.add_child(_current_level)
 	_current_level.level_completed.connect(_on_level_completed)
 	_current_level.player_failed.connect(_on_player_failed)
 	_current_level.exit_locked.connect(_on_exit_locked)
 	_current_level.gem_progress_changed.connect(_on_gem_progress_changed)
+	_level_root.add_child(_current_level)
 	_spawn_players()
 	_is_reloading = false
 	_set_state(GameState.PLAYING)
@@ -118,7 +138,6 @@ func _spawn_players() -> void:
 
 	var is_fireboy = (my_role == 0)
 	var local_scene = fireboy_scene if is_fireboy else watergirl_scene
-	var remote_scene = watergirl_scene if is_fireboy else fireboy_scene
 	
 	# Spawn Local Player (chỉ spawn 1 lần)
 	if not is_instance_valid(_player):
@@ -126,6 +145,11 @@ func _spawn_players() -> void:
 		_current_level.attach_player(_player, 1 if is_fireboy else 2)
 		if _player.has_method("reset_to_spawn"):
 			_player.call("reset_to_spawn", _current_level.get_spawn_position() if is_fireboy else _current_level.get_spawn_position_2())
+		
+		if _player.get("is_local") != null:
+			_player.set("is_local", true)
+		var my_id = multiplayer.get_unique_id() if NetworkManager.is_connected_to_server() else 1
+		player_nodes[my_id] = _player
 	
 	_spawn_remote_player()
 
@@ -153,6 +177,14 @@ func _spawn_remote_player() -> void:
 	var spawn_pos = _current_level.get_spawn_position_2() if is_fireboy else _current_level.get_spawn_position()
 	_remote_player.global_position = spawn_pos
 	remote_comp.target_position = spawn_pos
+
+	var remote_id = -1
+	for pid in NetworkManager.connected_players:
+		if pid != multiplayer.get_unique_id():
+			remote_id = pid
+			break
+	if remote_id != -1:
+		player_nodes[remote_id] = _remote_player
 
 func _toggle_pause() -> void:
 	if _state == GameState.PLAYING:
@@ -199,17 +231,43 @@ func _on_peer_disconnected(peer_id: int) -> void:
 func _on_disconnected_from_server() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
 
-func _on_remote_position_received(player_id: int, pos: Vector2) -> void:
-	if _remote_player and _remote_player.has_node("RemotePlayer"):
-		var rp = _remote_player.get_node("RemotePlayer")
-		if rp.has_method("update_position"):
-			rp.update_position(pos)
+func _on_remote_position_received(player_id: int, pos: Vector2, tick: int) -> void:
+	if player_nodes.has(player_id):
+		var p_node = player_nodes[player_id]
+		if is_instance_valid(p_node) and p_node.has_node("RemotePlayer"):
+			var rp = p_node.get_node("RemotePlayer")
+			if rp.has_method("update_position"):
+				rp.update_position(pos, tick)
 
-func _on_remote_state_received(player_id: int, state: Dictionary) -> void:
-	if _remote_player and _remote_player.has_node("RemotePlayer"):
-		var rp = _remote_player.get_node("RemotePlayer")
-		if rp.has_method("update_state"):
-			rp.update_state(state)
+func _on_remote_state_received(player_id: int, state: Dictionary, tick: int) -> void:
+	if player_nodes.has(player_id):
+		var p_node = player_nodes[player_id]
+		if is_instance_valid(p_node) and p_node.has_node("RemotePlayer"):
+			var rp = p_node.get_node("RemotePlayer")
+			if rp.has_method("update_state"):
+				rp.update_state(state, tick)
+
+# --- Reliable Gameplay Event RPC Listeners ---
+
+func _on_gem_collected_received(gem_path: String) -> void:
+	var gem_node = get_node_or_null(gem_path)
+	if gem_node and gem_node.has_method("collect_remotely"):
+		gem_node.collect_remotely()
+
+func _on_player_failed_received() -> void:
+	if _state != GameState.PLAYING:
+		return
+	_set_player_control_enabled(false)
+	_set_state(GameState.LOST)
+
+func _on_level_completed_received() -> void:
+	if _state != GameState.PLAYING:
+		return
+	_set_player_control_enabled(false)
+	_set_state(GameState.WON)
+
+func _on_restart_level_received() -> void:
+	_restart_level()
 
 func _set_player_control_enabled(is_enabled: bool) -> void:
 	if is_instance_valid(_player):

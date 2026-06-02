@@ -6,6 +6,9 @@ var current_velocity: Vector2
 var parent_body: CharacterBody2D
 var _animated_sprite: AnimatedSprite2D
 
+var last_processed_position_tick: int = -1
+var last_processed_state_tick: int = -1
+
 func _ready() -> void:
 	parent_body = get_parent() as CharacterBody2D
 	if parent_body:
@@ -18,10 +21,16 @@ func _physics_process(delta: float) -> void:
 	# Interpolate position
 	parent_body.global_position = parent_body.global_position.lerp(target_position, 15.0 * delta)
 
-func update_position(pos: Vector2) -> void:
+func update_position(pos: Vector2, tick: int) -> void:
+	if tick < last_processed_position_tick:
+		return
+	last_processed_position_tick = tick
 	target_position = pos
 
-func update_state(state: Dictionary) -> void:
+func update_state(state: Dictionary, tick: int) -> void:
+	if tick < last_processed_state_tick:
+		return
+	last_processed_state_tick = tick
 	if _animated_sprite:
 		if state.has("flip_h"):
 			_animated_sprite.flip_h = state["flip_h"]
