@@ -286,6 +286,7 @@ FakesAssemblies/
 node_modules/
 
 # AI / agent generated artifacts
+**/AGENTS.md
 CLAUDE.md
 **/.agents/
 **/.specify/
