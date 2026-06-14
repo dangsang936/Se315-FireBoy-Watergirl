@@ -23,3 +23,7 @@ Godot 4.x game project.
 - Before large changes, explain intended files.
 - After changes, run a parse/check step when available.
 - Never delete assets or scenes without explicit instruction.
+
+<!-- SPECKIT START -->
+Current Speckit plan: `specs/003-precision-player-movement/plan.md`
+<!-- SPECKIT END -->

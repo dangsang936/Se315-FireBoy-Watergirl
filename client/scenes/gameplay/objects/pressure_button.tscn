@@ -1,0 +1,53 @@
+[gd_scene format=3 uid="uid://dqlxrcj1uh05n"]
+
+[ext_resource type="Script" uid="uid://5m8bnqvfvu35" path="res://scripts/gameplay/objects/pressure_button.gd" id="1_pressure_button"]
+[ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="2_f0ng8"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(16, 7)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_trigger"]
+size = Vector2(16, 18)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2d7fl"]
+atlas = ExtResource("2_f0ng8")
+region = Rect2(288, 208, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sws26"]
+atlas = ExtResource("2_f0ng8")
+region = Rect2(304, 208, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_ur47c"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2d7fl")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_sws26")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="PressureButton" type="StaticBody2D" unique_id=859789714]
+z_index = 12
+collision_mask = 6
+script = ExtResource("1_pressure_button")
+
+[node name="BodyCollisionShape2D" type="CollisionShape2D" parent="." unique_id=2014390337]
+position = Vector2(0, -3.5)
+shape = SubResource("RectangleShape2D_body")
+
+[node name="TriggerArea" type="Area2D" parent="." unique_id=2014390338]
+collision_layer = 128
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TriggerArea" unique_id=2014390339]
+position = Vector2(0, -9)
+shape = SubResource("RectangleShape2D_trigger")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1698078537]
+position = Vector2(0, -8)
+sprite_frames = SubResource("SpriteFrames_ur47c")
