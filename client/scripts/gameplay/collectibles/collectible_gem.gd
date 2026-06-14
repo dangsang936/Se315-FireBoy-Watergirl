@@ -29,15 +29,30 @@ func _on_body_entered(body: Node2D) -> void:
 	if player == null or not player.is_in_group("player"):
 		return
 
+	if not player.is_local:
+		return
+
 	if not can_collect(player):
 		wrong_element_touched.emit(self, player)
 		_play_wrong_element_feedback()
 		return
 
+	if NetworkManager.is_connected_to_server():
+		NetworkManager.send_collect_gem(get_path())
+	else:
+		collect_remotely()
+
+func collect_remotely() -> void:
+	if _is_collected:
+		return
 	_is_collected = true
 	set_deferred("monitoring", false)
 	set_deferred("monitorable", false)
 	visible = false
+	var player: PrototypePlayer = null
+	var players = get_tree().get_nodes_in_group("player")
+	if players.size() > 0:
+		player = players[0] as PrototypePlayer
 	collected.emit(self, player)
 
 func _apply_element_color() -> void:

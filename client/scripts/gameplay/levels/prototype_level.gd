@@ -63,13 +63,35 @@ func _connect_collectibles() -> void:
 		_gem_manager.gem_progress_changed.connect(_on_gem_progress_changed)
 
 func _on_hazard_zone_player_entered(player: Node2D) -> void:
-	player_failed.emit(player)
+	var prototype_player := player as PrototypePlayer
+	if prototype_player and prototype_player.is_local:
+		if NetworkManager.is_connected_to_server():
+			NetworkManager.send_player_failed()
+		else:
+			player_failed.emit(player)
 
-func _on_exit_door_player_entered(_player: Node2D) -> void:
-	if _gem_manager != null and not _gem_manager.is_unlocked():
-		exit_locked.emit(_gem_manager.get_remaining_count(), _gem_manager.get_active_gem_element())
-		return
-	level_completed.emit()
+func _on_exit_door_player_entered(player: Node2D) -> void:
+	if NetworkManager.is_connected_to_server():
+		var players_inside = _exit_door.get_overlapping_bodies().filter(func(body): return body.is_in_group("player"))
+		if players_inside.size() == 2:
+			if not are_all_level_gems_collected():
+				exit_locked.emit(1, 0)
+				return
+			NetworkManager.send_level_completed()
+	else:
+		if _gem_manager != null and not _gem_manager.is_unlocked():
+			exit_locked.emit(_gem_manager.get_remaining_count(), _gem_manager.get_active_gem_element())
+			return
+		level_completed.emit()
+
+func are_all_level_gems_collected() -> bool:
+	if _gem_manager == null:
+		return true
+	for child in _gem_manager.get_children():
+		var gem = child as CollectibleGem
+		if gem and not gem._is_collected:
+			return false
+	return true
 
 func _on_gem_progress_changed(collected: int, required: int) -> void:
 	gem_progress_changed.emit(collected, required)

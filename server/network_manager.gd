@@ -90,22 +90,56 @@ func notify_peer_disconnected(_peer_id: int) -> void:
 # ------------------------------------------------------------------
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func relay_player_position(player_id: int, position: Vector2) -> void:
+func relay_player_position(player_id: int, position: Vector2, tick: int) -> void:
 	# Forward to all OTHER clients
 	for pid in connected_players:
 		if pid != multiplayer.get_remote_sender_id():
-			rpc_id(pid, "receive_player_position", player_id, position)
+			rpc_id(pid, "receive_player_position", player_id, position, tick)
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func relay_player_state(player_id: int, state: Dictionary) -> void:
+func relay_player_state(player_id: int, state: Dictionary, tick: int) -> void:
 	for pid in connected_players:
 		if pid != multiplayer.get_remote_sender_id():
-			rpc_id(pid, "receive_player_state", player_id, state)
+			rpc_id(pid, "receive_player_state", player_id, state, tick)
 
 @rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_position(_player_id: int, _position: Vector2) -> void:
+func receive_player_position(_player_id: int, _position: Vector2, _tick: int) -> void:
 	pass  # Implemented on clients
 
 @rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_state(_player_id: int, _state: Dictionary) -> void:
+func receive_player_state(_player_id: int, _state: Dictionary, _tick: int) -> void:
 	pass  # Implemented on clients
+
+# --- Gameplay Event Relays ---
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_collect_gem(gem_path: String) -> void:
+	rpc("sync_collect_gem", gem_path)
+
+@rpc("authority", "call_local", "reliable")
+func sync_collect_gem(_gem_path: String) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_player_failed() -> void:
+	rpc("sync_player_failed")
+
+@rpc("authority", "call_local", "reliable")
+func sync_player_failed() -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_level_completed() -> void:
+	rpc("sync_level_completed")
+
+@rpc("authority", "call_local", "reliable")
+func sync_level_completed() -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_restart_level() -> void:
+	rpc("sync_restart_level")
+
+@rpc("authority", "call_local", "reliable")
+func sync_restart_level() -> void:
+	pass
