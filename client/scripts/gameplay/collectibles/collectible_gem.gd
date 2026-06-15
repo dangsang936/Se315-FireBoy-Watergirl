@@ -3,20 +3,26 @@ extends Area2D
 
 enum GemElement { FIRE, WATER }
 
+const GEM_COLLISION_LAYER: int = 32
+const GEM_COLLISION_MASK: int = 2
+
 signal collected(gem: CollectibleGem, player: PrototypePlayer)
 signal wrong_element_touched(gem: CollectibleGem, player: PrototypePlayer)
 
 @export var gem_element: GemElement = GemElement.FIRE
-@export var visual_path: NodePath = ^"Visual"
+@export var visual_path: NodePath = ^"AnimatedSprite2D"
 
 var _is_collected: bool = false
-var _base_color: Color = Color.WHITE
+var _base_modulate: Color = Color.WHITE
 
-@onready var _visual: Polygon2D = get_node_or_null(visual_path) as Polygon2D
+@onready var _visual: CanvasItem = get_node_or_null(visual_path) as CanvasItem
 
 func _ready() -> void:
-	body_entered.connect(_on_body_entered)
-	_apply_element_color()
+	collision_layer = GEM_COLLISION_LAYER
+	collision_mask = GEM_COLLISION_MASK
+	if not body_entered.is_connected(_on_body_entered):
+		body_entered.connect(_on_body_entered)
+	_cache_visual_state()
 
 func can_collect(player: PrototypePlayer) -> bool:
 	return int(player.get_element()) == int(gem_element)
@@ -55,20 +61,14 @@ func collect_remotely() -> void:
 		player = players[0] as PrototypePlayer
 	collected.emit(self, player)
 
-func _apply_element_color() -> void:
+func _cache_visual_state() -> void:
 	if _visual == null:
 		return
-	match gem_element:
-		GemElement.WATER:
-			_base_color = Color(0.18, 0.62, 1.0, 0.95)
-		_:
-			_base_color = Color(1.0, 0.2, 0.08, 0.95)
-	_visual.color = _base_color
-	_visual.modulate = Color.WHITE
+	_base_modulate = _visual.modulate
 
 func _play_wrong_element_feedback() -> void:
 	if _visual == null:
 		return
 	var tween := create_tween()
 	tween.tween_property(_visual, "modulate", Color(1.0, 1.0, 1.0, 0.35), 0.05)
-	tween.tween_property(_visual, "modulate", Color.WHITE, 0.12)
+	tween.tween_property(_visual, "modulate", _base_modulate, 0.12)

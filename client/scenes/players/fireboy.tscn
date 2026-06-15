@@ -3,9 +3,21 @@
 [ext_resource type="Script" uid="uid://djlocvaesyt4h" path="res://scripts/player/movement/player.gd" id="1_oh4dd"]
 [ext_resource type="Texture2D" uid="uid://byinj5byda1ao" path="res://assets/sprites/characters/fireboy/fireboy_idle.png" id="2_hjhj2"]
 [ext_resource type="Texture2D" uid="uid://bt1fxptcvlh8o" path="res://assets/sprites/characters/fireboy/fireboy_run.png" id="3_r5f0q"]
+[ext_resource type="Script" uid="uid://cjjadpg8o0vbr" path="res://scripts/player/state_machine/player_state_machine.gd" id="4_psm"]
+[ext_resource type="Script" uid="uid://g3tbgmbi1iwx" path="res://scripts/player/input/player_input_reader.gd" id="5_input"]
+[ext_resource type="Script" uid="uid://c5xfkb5rnrtpg" path="res://scripts/player/motor/player_motor.gd" id="6_motor"]
+[ext_resource type="Script" uid="uid://ccql83ed0nliq" path="res://scripts/player/animation/player_animation_controller.gd" id="7_anim"]
+[ext_resource type="Script" uid="uid://b2v7wp4f851b0" path="res://scripts/player/interaction/push_interactor.gd" id="8_push"]
+[ext_resource type="Script" uid="uid://bfwl812gd3l2u" path="res://scripts/player/states/idle_state.gd" id="9_idle"]
+[ext_resource type="Script" uid="uid://dl68y3b470wgi" path="res://scripts/player/states/run_state.gd" id="10_run"]
+[ext_resource type="Script" uid="uid://d2dqe8atepyj0" path="res://scripts/player/states/airborne_state.gd" id="11_air"]
+[ext_resource type="Script" uid="uid://dg4ju6br24kkk" path="res://scripts/player/states/push_state.gd" id="12_pushstate"]
+[ext_resource type="Script" uid="uid://dvh1ip8bmse2f" path="res://scripts/player/states/disabled_state.gd" id="13_disabled"]
+[ext_resource type="Script" uid="uid://cip5uaevrvt1a" path="res://scripts/player/interaction/ladder_detector.gd" id="14_ladder"]
+[ext_resource type="Script" uid="uid://dundritudicio" path="res://scripts/player/states/climb_state.gd" id="15_climb"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_kqu6x"]
-size = Vector2(9, 18)
+size = Vector2(6, 18)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_yw30f"]
 atlas = ExtResource("2_hjhj2")
@@ -90,9 +102,20 @@ animations = [{
 "speed": 10.0
 }]
 
+[sub_resource type="Gradient" id="Gradient_3c34y"]
+offsets = PackedFloat32Array(0, 0.41105768)
+colors = PackedColorArray(0.9115656, 0.15422693, 0, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_gtvc2"]
+gradient = SubResource("Gradient_3c34y")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+
 [node name="fireboy" type="CharacterBody2D" unique_id=645414832]
+z_index = 15
+collision_layer = 2
+collision_mask = 5
 script = ExtResource("1_oh4dd")
-element = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1230306273]
 position = Vector2(6, -9)
@@ -103,11 +126,55 @@ position = Vector2(6, -9)
 scale = Vector2(0.5625, 0.5625)
 sprite_frames = SubResource("SpriteFrames_oul6g")
 animation = &"idle"
-frame = 1
-frame_progress = 0.39793456
+frame_progress = 0.6658943
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=190597262]
 position = Vector2(6, -11)
 zoom = Vector2(4, 4)
 position_smoothing_enabled = true
 position_smoothing_speed = 6.0
+
+[node name="PlayerInputReader" type="Node" parent="." unique_id=1571547093]
+script = ExtResource("5_input")
+
+[node name="PlayerMotor" type="Node" parent="." unique_id=1900770549]
+script = ExtResource("6_motor")
+
+[node name="PlayerAnimationController" type="Node" parent="." unique_id=1411956769]
+script = ExtResource("7_anim")
+
+[node name="PushInteractor" type="Node" parent="." unique_id=1764955759]
+script = ExtResource("8_push")
+
+[node name="LadderDetector" type="Area2D" parent="." unique_id=1897509515]
+collision_layer = 0
+collision_mask = 8
+monitorable = false
+script = ExtResource("14_ladder")
+
+[node name="PlayerStateMachine" type="Node" parent="." unique_id=1696814979]
+script = ExtResource("4_psm")
+
+[node name="IdleState" type="Node" parent="PlayerStateMachine" unique_id=1688437686]
+script = ExtResource("9_idle")
+
+[node name="RunState" type="Node" parent="PlayerStateMachine" unique_id=1417329005]
+script = ExtResource("10_run")
+
+[node name="AirborneState" type="Node" parent="PlayerStateMachine" unique_id=1153785159]
+script = ExtResource("11_air")
+
+[node name="PushState" type="Node" parent="PlayerStateMachine" unique_id=1494199688]
+script = ExtResource("12_pushstate")
+
+[node name="ClimbState" type="Node" parent="PlayerStateMachine" unique_id=838981463]
+script = ExtResource("15_climb")
+
+[node name="DisabledState" type="Node" parent="PlayerStateMachine" unique_id=1504633489]
+script = ExtResource("13_disabled")
+
+[node name="PointLight2D" type="PointLight2D" parent="." unique_id=1989652471]
+position = Vector2(5.9999995, -9)
+scale = Vector2(0.18750001, 0.28125)
+energy = 2.5
+texture = SubResource("GradientTexture2D_gtvc2")

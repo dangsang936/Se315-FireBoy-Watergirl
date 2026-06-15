@@ -5,7 +5,9 @@
 [ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://scripts/gameplay/doors/exit_door.gd" id="3_exit"]
 [ext_resource type="PackedScene" uid="uid://brer2pc214ft8" path="res://scenes/gameplay/objects/push_block.tscn" id="4_push_block"]
 [ext_resource type="Script" uid="uid://d0g6k1xxrbf0y" path="res://scripts/gameplay/collectibles/gem_manager.gd" id="5_gem_manager"]
-[ext_resource type="PackedScene" uid="uid://b1l8rha1m7g4p" path="res://scenes/gameplay/collectibles/collectible_gem.tscn" id="6_gem"]
+[ext_resource type="PackedScene" uid="uid://cft0awxeimp16" path="res://scenes/gameplay/collectibles/fire_gem.tscn" id="6_fire_gem"]
+[ext_resource type="PackedScene" uid="uid://b8604dgbnwhir" path="res://scenes/gameplay/objects/ladder.tscn" id="7_js2ys"]
+[ext_resource type="PackedScene" uid="uid://dkg4y5xxe05qk" path="res://scenes/gameplay/collectibles/water_gem.tscn" id="7_water_gem"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(560, 24)
@@ -36,6 +38,8 @@ position = Vector2(-168, -31)
 [node name="Terrain" type="Node2D" parent="." unique_id=1911548412]
 
 [node name="Floor" type="StaticBody2D" parent="Terrain" unique_id=1859052529]
+collision_layer = 1
+collision_mask = 6
 
 [node name="FloorVisual" type="Polygon2D" parent="Terrain/Floor" unique_id=1237097263]
 color = Color(0.28, 0.22, 0.16, 1)
@@ -46,6 +50,8 @@ shape = SubResource("RectangleShape2D_floor")
 
 [node name="UpperPlatform" type="StaticBody2D" parent="Terrain" unique_id=856803837]
 position = Vector2(96, -74)
+collision_layer = 1
+collision_mask = 6
 
 [node name="PlatformVisual" type="Polygon2D" parent="Terrain/UpperPlatform" unique_id=1511477448]
 position = Vector2(0, 21)
@@ -57,6 +63,8 @@ position = Vector2(0, 21)
 shape = SubResource("RectangleShape2D_platform")
 
 [node name="FallBoundary" type="StaticBody2D" parent="Terrain" unique_id=414370523]
+collision_layer = 1
+collision_mask = 6
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/FallBoundary" unique_id=1390256954]
 position = Vector2(-3, 85)
@@ -70,17 +78,18 @@ position = Vector2(129, -85)
 [node name="Collectibles" type="Node2D" parent="." unique_id=1424662954]
 script = ExtResource("5_gem_manager")
 
-[node name="FireGem" parent="Collectibles" unique_id=1572504637 instance=ExtResource("6_gem")]
+[node name="FireGem" parent="Collectibles" unique_id=1572504637 instance=ExtResource("6_fire_gem")]
 position = Vector2(-70, -36)
 
-[node name="WaterGemPreview" parent="Collectibles" unique_id=661875831 instance=ExtResource("6_gem")]
+[node name="WaterGemPreview" parent="Collectibles" unique_id=661875831 instance=ExtResource("7_water_gem")]
 position = Vector2(21, -40)
-gem_element = 1
 
 [node name="Hazards" type="Node2D" parent="." unique_id=371541910]
 
 [node name="LavaPool" type="Area2D" parent="Hazards" unique_id=2051729706]
 position = Vector2(-116, -18)
+collision_layer = 16
+collision_mask = 2
 script = ExtResource("2_hazard")
 pool_type = 0
 
@@ -93,6 +102,8 @@ shape = SubResource("RectangleShape2D_hazard")
 
 [node name="HazardZone" type="Area2D" parent="Hazards" unique_id=401490981]
 position = Vector2(-12, -18)
+collision_layer = 16
+collision_mask = 2
 script = ExtResource("2_hazard")
 
 [node name="HazardVisual" type="Polygon2D" parent="Hazards/HazardZone" unique_id=1161565923]
@@ -104,6 +115,8 @@ shape = SubResource("RectangleShape2D_hazard")
 
 [node name="PoisonPool" type="Area2D" parent="Hazards" unique_id=1586743828]
 position = Vector2(160, 40)
+collision_layer = 16
+collision_mask = 2
 script = ExtResource("2_hazard")
 pool_type = 2
 
@@ -116,10 +129,15 @@ polygon = PackedVector2Array(-20, -9, 20, -9, 20, 9, -20, 9)
 position = Vector2(-102, -58)
 shape = SubResource("RectangleShape2D_hazard")
 
+[node name="Ladder" parent="Hazards/PoisonPool" unique_id=966620398 instance=ExtResource("7_js2ys")]
+position = Vector2(-3, -103)
+
 [node name="Goals" type="Node2D" parent="." unique_id=1914281459]
 
 [node name="ExitDoor" type="Area2D" parent="Goals" unique_id=1943215706]
 position = Vector2(238, -42)
+collision_layer = 64
+collision_mask = 2
 script = ExtResource("3_exit")
 
 [node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor" unique_id=311899270]
