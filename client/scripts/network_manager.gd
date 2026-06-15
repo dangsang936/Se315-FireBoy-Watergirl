@@ -6,16 +6,31 @@ const DEFAULT_SERVER_IP: String = "127.0.0.1"
 const DEFAULT_PORT: int = 9999
 
 signal connected_to_server
+signal connection_failed
 signal disconnected_from_server
 signal role_assigned(role: int)
 signal player_list_updated(players: Array[int])
-signal remote_player_position_received(player_id: int, position: Vector2)
-signal remote_player_state_received(player_id: int, state: Dictionary)
+signal remote_player_position_received(player_id: int, position: Vector2, tick: int)
+signal remote_player_state_received(player_id: int, state: Dictionary, tick: int)
+signal game_started
+signal peer_disconnected(peer_id: int)
+signal gem_collected_received(gem_path: String)
+signal player_failed_received
+signal level_completed_received
+signal restart_level_received
 
 var peer: ENetMultiplayerPeer = null
 var my_role: int = -1
 var server_ip: String = DEFAULT_SERVER_IP
 var server_port: int = DEFAULT_PORT
+
+var connected_players: Array[int] = []
+var player_roles: Dictionary = {}
+var current_tick: int = 0
+
+func _physics_process(_delta: float) -> void:
+	if is_connected_to_server():
+		current_tick += 1
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_args():
@@ -37,9 +52,12 @@ func connect_to_server(ip: String = "", port: int = 0) -> Error:
 		return error
 
 	multiplayer.multiplayer_peer = peer
-	multiplayer.connected_to_server.connect(_on_connected)
-	multiplayer.server_disconnected.connect(_on_disconnected)
-	multiplayer.connection_failed.connect(_on_connection_failed)
+	if not multiplayer.connected_to_server.is_connected(_on_connected):
+		multiplayer.connected_to_server.connect(_on_connected)
+	if not multiplayer.server_disconnected.is_connected(_on_disconnected):
+		multiplayer.server_disconnected.connect(_on_disconnected)
+	if not multiplayer.connection_failed.is_connected(_on_connection_failed):
+		multiplayer.connection_failed.connect(_on_connection_failed)
 
 	print("[Client] Connecting to %s:%d …" % [server_ip, server_port])
 	return OK
@@ -50,6 +68,8 @@ func disconnect_from_server() -> void:
 		peer = null
 	multiplayer.multiplayer_peer = null
 	my_role = -1
+	connected_players.clear()
+	player_roles.clear()
 	disconnected_from_server.emit()
 
 func is_connected_to_server() -> bool:
@@ -64,6 +84,7 @@ func _on_disconnected() -> void:
 
 func _on_connection_failed() -> void:
 	printerr("[Client] Connection failed")
+	connection_failed.emit()
 	disconnected_from_server.emit()
 
 @rpc("authority", "call_remote", "reliable")
@@ -78,30 +99,104 @@ func receive_player_list(players: Array) -> void:
 	var typed: Array[int] = []
 	for p in players:
 		typed.append(p as int)
+	connected_players = typed
 	player_list_updated.emit(typed)
 
-@rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_position(player_id: int, position: Vector2) -> void:
-	remote_player_position_received.emit(player_id, position)
+@rpc("authority", "call_remote", "reliable")
+func receive_all_roles(roles: Dictionary) -> void:
+	player_roles = roles
+	player_list_updated.emit(connected_players)
+
+@rpc("authority", "call_remote", "reliable")
+func notify_game_start() -> void:
+	print("[Client] Game starting!")
+	game_started.emit()
+
+@rpc("authority", "call_remote", "reliable")
+func notify_peer_disconnected(peer_id: int) -> void:
+	print("[Client] Peer disconnected: %d" % peer_id)
+	if peer_id in connected_players:
+		connected_players.erase(peer_id)
+	player_roles.erase(peer_id)
+	peer_disconnected.emit(peer_id)
+	player_list_updated.emit(connected_players)
 
 @rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_state(player_id: int, state: Dictionary) -> void:
-	remote_player_state_received.emit(player_id, state)
+func receive_player_position(player_id: int, position: Vector2, tick: int) -> void:
+	remote_player_position_received.emit(player_id, position, tick)
 
-func send_position(position: Vector2) -> void:
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_state(player_id: int, state: Dictionary, tick: int) -> void:
+	remote_player_state_received.emit(player_id, state, tick)
+
+func send_position(position: Vector2, tick: int) -> void:
 	if not is_connected_to_server():
 		return
-	rpc_id(1, "relay_player_position", multiplayer.get_unique_id(), position)
+	rpc_id(1, "relay_player_position", multiplayer.get_unique_id(), position, tick)
 
-func send_state(state: Dictionary) -> void:
+func send_state(state: Dictionary, tick: int) -> void:
 	if not is_connected_to_server():
 		return
-	rpc_id(1, "relay_player_state", multiplayer.get_unique_id(), state)
+	rpc_id(1, "relay_player_state", multiplayer.get_unique_id(), state, tick)
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func relay_player_position(_player_id: int, _position: Vector2) -> void:
+func relay_player_position(_player_id: int, _position: Vector2, _tick: int) -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func relay_player_state(_player_id: int, _state: Dictionary) -> void:
+func relay_player_state(_player_id: int, _state: Dictionary, _tick: int) -> void:
 	pass
+
+# --- Reliable Gameplay Event RPCs ---
+
+func send_collect_gem(gem_path: String) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "rpc_request_collect_gem", gem_path)
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_collect_gem(_gem_path: String) -> void:
+	pass  # Server stub
+
+@rpc("authority", "call_local", "reliable")
+func sync_collect_gem(gem_path: String) -> void:
+	gem_collected_received.emit(gem_path)
+
+func send_player_failed() -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "rpc_request_player_failed")
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_player_failed() -> void:
+	pass  # Server stub
+
+@rpc("authority", "call_local", "reliable")
+func sync_player_failed() -> void:
+	player_failed_received.emit()
+
+func send_level_completed() -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "rpc_request_level_completed")
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_level_completed() -> void:
+	pass  # Server stub
+
+@rpc("authority", "call_local", "reliable")
+func sync_level_completed() -> void:
+	level_completed_received.emit()
+
+func send_restart_level() -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "rpc_request_restart_level")
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_restart_level() -> void:
+	pass  # Server stub
+
+@rpc("authority", "call_local", "reliable")
+func sync_restart_level() -> void:
+	restart_level_received.emit()

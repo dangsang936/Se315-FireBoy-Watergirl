@@ -50,6 +50,9 @@ enum Element { FIRE, WATER }
 @export var ladder_climb_speed: float = 75.0
 @export var element: Element = Element.FIRE
 
+var is_local: bool = true
+var player_id: int = 1
+
 var player_state: PlayerState = PlayerState.IDLE
 
 var _control_enabled: bool = true
@@ -75,6 +78,12 @@ func _ready() -> void:
 	call_deferred("_refresh_camera")
 
 func _physics_process(delta: float) -> void:
+	if not is_local:
+		return
+
+	_update_jump_buffer(delta)
+	_update_vertical_velocity(delta)
+	_update_horizontal_velocity(delta)
 	if _state_machine == null or _input_reader == null:
 		return
 
@@ -83,6 +92,8 @@ func _physics_process(delta: float) -> void:
 	_state_machine.physics_update(delta)
 	move_and_slide()
 	_register_push_block_contacts()
+	_update_player_state()
+	_send_network_state()
 	_state_machine.transition_from_player_context()
 
 func reset_to_spawn(spawn_position: Vector2) -> void:
@@ -201,6 +212,19 @@ func play_motion_animation() -> void:
 
 func set_player_state_from_state_name(state_name: StringName) -> void:
 	_set_player_state(_enum_for_state_name(state_name))
+func _send_network_state() -> void:
+	if NetworkManager.is_connected_to_server():
+		NetworkManager.send_position(global_position, NetworkManager.current_tick)
+		var state_dict = {
+			"anim": _animated_sprite.animation if _animated_sprite else "idle",
+			"flip_h": _animated_sprite.flip_h if _animated_sprite else false
+		}
+		NetworkManager.send_state(state_dict, NetworkManager.current_tick)
+
+func _register_push_block_contacts() -> void:
+	var push_direction: float = get_push_direction()
+	if push_direction == 0.0:
+		return
 
 func _resolve_components() -> void:
 	_input_reader = get_node_or_null(input_reader_path) as PlayerInputReader
@@ -366,7 +390,7 @@ func _ensure_key_action(action: StringName, physical_key: Key) -> void:
 	InputMap.action_add_event(action, key_event)
 
 func _refresh_camera() -> void:
-	if _camera == null:
+	if _camera == null or not is_local:
 		return
 	_camera.make_current()
 	if _camera.position_smoothing_enabled:
