@@ -12,16 +12,13 @@ config_version=5
 
 config/name="client"
 run/main_scene="res://scenes/ui/lobby.tscn"
+run/main_scene="uid://drgo34byv82l8"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
 NetworkManager="*res://scripts/network_manager.gd"
-
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/godotiq/plugin.cfg")
 
 [input]
 
@@ -51,6 +48,17 @@ restart={
 ]
 }
 
+[layer_names]
+
+2d_physics/layer_1="World"
+2d_physics/layer_2="Player"
+2d_physics/layer_3="PushBlock"
+2d_physics/layer_4="Ladder"
+2d_physics/layer_5="Hazard"
+2d_physics/layer_6="Collectible"
+2d_physics/layer_7="Exit"
+2d_physics/layer_8="PressureButton"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
@@ -59,5 +67,4 @@ restart={
 
 textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
-renderer/rendering_method="gl_compatibility"
-renderer/rendering_method.mobile="gl_compatibility"
+viewport/hdr_2d=true
