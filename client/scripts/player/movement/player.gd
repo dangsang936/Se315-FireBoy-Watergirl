@@ -81,9 +81,6 @@ func _physics_process(delta: float) -> void:
 	if not is_local:
 		return
 
-	_update_jump_buffer(delta)
-	_update_vertical_velocity(delta)
-	_update_horizontal_velocity(delta)
 	if _state_machine == null or _input_reader == null:
 		return
 
@@ -220,11 +217,6 @@ func _send_network_state() -> void:
 			"flip_h": _animated_sprite.flip_h if _animated_sprite else false
 		}
 		NetworkManager.send_state(state_dict, NetworkManager.current_tick)
-
-func _register_push_block_contacts() -> void:
-	var push_direction: float = get_push_direction()
-	if push_direction == 0.0:
-		return
 
 func _resolve_components() -> void:
 	_input_reader = get_node_or_null(input_reader_path) as PlayerInputReader
