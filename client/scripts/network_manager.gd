@@ -40,6 +40,9 @@ func _ready() -> void:
 			server_port = int(arg.split("=")[1])
 
 func connect_to_server(ip: String = "", port: int = 0) -> Error:
+	if peer:
+		_reset_connection_state(true)
+
 	if ip != "":
 		server_ip = ip
 	if port > 0:
@@ -49,6 +52,7 @@ func connect_to_server(ip: String = "", port: int = 0) -> Error:
 	var error := peer.create_client(server_ip, server_port)
 	if error != OK:
 		printerr("[Client] Failed to connect to %s:%d – %s" % [server_ip, server_port, error_string(error)])
+		_reset_connection_state(false)
 		return error
 
 	multiplayer.multiplayer_peer = peer
@@ -63,14 +67,19 @@ func connect_to_server(ip: String = "", port: int = 0) -> Error:
 	return OK
 
 func disconnect_from_server() -> void:
+	_reset_connection_state(true)
+	disconnected_from_server.emit()
+
+func _reset_connection_state(close_peer: bool = true) -> void:
 	if peer:
-		peer.close()
+		if close_peer:
+			peer.close()
 		peer = null
 	multiplayer.multiplayer_peer = null
 	my_role = -1
 	connected_players.clear()
 	player_roles.clear()
-	disconnected_from_server.emit()
+	current_tick = 0
 
 func is_connected_to_server() -> bool:
 	return peer != null and multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
@@ -80,12 +89,14 @@ func _on_connected() -> void:
 	connected_to_server.emit()
 
 func _on_disconnected() -> void:
+	print("[Client] Disconnected from server")
+	_reset_connection_state(false)
 	disconnected_from_server.emit()
 
 func _on_connection_failed() -> void:
 	printerr("[Client] Connection failed")
+	_reset_connection_state(false)
 	connection_failed.emit()
-	disconnected_from_server.emit()
 
 @rpc("authority", "call_remote", "reliable")
 func receive_role_assignment(role: int) -> void:
