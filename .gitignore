@@ -364,3 +364,6 @@ FodyWeavers.xsd
 /client/addons/godotiq
 /docs/GDD/project_rules.md
 /README.md
+
+#toll 
+.codegraph/
