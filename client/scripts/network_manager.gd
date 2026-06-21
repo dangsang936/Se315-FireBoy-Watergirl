@@ -75,6 +75,22 @@ func _on_connection_failed() -> void:
 	connection_failed.emit()
 	disconnected_from_server.emit()
 
+signal level_restart_requested
+
+func request_level_restart() -> void:
+	if is_connected_to_server():
+		rpc_id(1, "server_request_restart")
+	else:
+		level_restart_requested.emit()
+
+@rpc("any_peer", "call_remote", "reliable")
+func server_request_restart() -> void:
+	pass
+
+@rpc("authority", "call_remote", "reliable")
+func receive_level_restart() -> void:
+	level_restart_requested.emit()
+
 @rpc("authority", "call_remote", "reliable")
 func receive_role_assignment(role: int) -> void:
 	my_role = role

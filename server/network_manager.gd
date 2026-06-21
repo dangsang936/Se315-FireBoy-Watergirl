@@ -64,6 +64,16 @@ func _broadcast_player_list() -> void:
 # but the real implementation lives in the client's network_manager).
 # ------------------------------------------------------------------
 
+@rpc("any_peer", "call_remote", "reliable")
+func server_request_restart() -> void:
+	print("[Server] Restart requested by peer.")
+	for pid in connected_players:
+		rpc_id(pid, "receive_level_restart")
+
+@rpc("authority", "call_remote", "reliable")
+func receive_level_restart() -> void:
+	pass
+
 @rpc("authority", "call_remote", "reliable")
 func receive_role_assignment(_role: int) -> void:
 	pass  # Implemented on clients

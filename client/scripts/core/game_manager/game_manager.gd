@@ -1,7 +1,7 @@
 class_name GameManager
 extends Node2D
 
-enum GameState { BOOT, LOADING_LEVEL, PLAYING, PAUSED, WON, LOST, RESTARTING, DISCONNECTED }
+enum ManagerState { BOOT, LOADING_LEVEL, PLAYING, PAUSED, WON, LOST, RESTARTING, DISCONNECTED }
 
 @export var level_scene: PackedScene
 @export var fireboy_scene: PackedScene
@@ -9,7 +9,7 @@ enum GameState { BOOT, LOADING_LEVEL, PLAYING, PAUSED, WON, LOST, RESTARTING, DI
 @export var level_root_path: NodePath = ^"LevelRoot"
 @export var hud_path: NodePath = ^"HUD"
 
-var _state: GameState = GameState.BOOT
+var _state: ManagerState = ManagerState.BOOT
 var _current_level: PrototypeLevel
 var _player: CharacterBody2D
 var _remote_player: CharacterBody2D
@@ -20,7 +20,7 @@ var _is_reloading: bool = false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_hud.restart_requested.connect(_restart_level)
+	_hud.restart_requested.connect(_request_restart) # Changed this line
 	_hud.resume_requested.connect(_resume_game)
 
 	# Listen to network manager
@@ -31,6 +31,7 @@ func _ready() -> void:
 
 	NetworkManager.role_assigned.connect(_on_role_assigned)
 	NetworkManager.player_list_updated.connect(_on_player_list_updated)
+	NetworkManager.level_restart_requested.connect(_on_network_restart) # Added this line
 	
 	_show_connect_ui()
 
@@ -76,7 +77,7 @@ func _on_role_assigned(role: int) -> void:
 	_load_level()
 
 func _on_player_list_updated(players: Array) -> void:
-	if _state == GameState.PLAYING and players.size() > 1 and not is_instance_valid(_remote_player):
+	if _state == ManagerState.PLAYING and players.size() > 1 and not is_instance_valid(_remote_player):
 		_spawn_remote_player()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -84,7 +85,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_pause()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("restart"):
-		_restart_level()
+		_request_restart() # Changed this line
 		get_viewport().set_input_as_handled()
 
 func _load_level() -> void:
@@ -96,7 +97,7 @@ func _load_level() -> void:
 
 	_is_reloading = true
 	get_tree().paused = false
-	_set_state(GameState.LOADING_LEVEL)
+	_set_state(ManagerState.LOADING_LEVEL)
 	for child in _level_root.get_children():
 		child.queue_free()
 
@@ -110,7 +111,7 @@ func _load_level() -> void:
 	_current_level.gem_progress_changed.connect(_on_gem_progress_changed)
 	_spawn_players()
 	_is_reloading = false
-	_set_state(GameState.PLAYING)
+	_set_state(ManagerState.PLAYING)
 
 func _spawn_players() -> void:
 	var my_role = NetworkManager.my_role
@@ -155,37 +156,45 @@ func _spawn_remote_player() -> void:
 	remote_comp.target_position = spawn_pos
 
 func _toggle_pause() -> void:
-	if _state == GameState.PLAYING:
-		_set_state(GameState.PAUSED)
-	elif _state == GameState.PAUSED:
-		_set_state(GameState.PLAYING)
+	if _state == ManagerState.PLAYING:
+		_set_state(ManagerState.PAUSED)
+	elif _state == ManagerState.PAUSED:
+		_set_state(ManagerState.PLAYING)
 
 func _resume_game() -> void:
-	if _state == GameState.PAUSED:
-		_set_state(GameState.PLAYING)
+	if _state == ManagerState.PAUSED:
+		_set_state(ManagerState.PLAYING)
+
+func _request_restart() -> void:
+	NetworkManager.request_level_restart()
+
+func _on_network_restart() -> void:
+	_restart_level()
+
 
 func _restart_level() -> void:
-	if _state == GameState.LOADING_LEVEL or _is_reloading:
+	if _state == ManagerState.LOADING_LEVEL or _is_reloading:
 		return
 	get_tree().paused = false
 	_set_player_control_enabled(false)
-	_set_state(GameState.RESTARTING)
+	_set_state(ManagerState.RESTARTING)
 	call_deferred("_load_level")
 
+
 func _on_level_completed() -> void:
-	if _state != GameState.PLAYING:
+	if _state != ManagerState.PLAYING:
 		return
 	_set_player_control_enabled(false)
-	_set_state(GameState.WON)
+	_set_state(ManagerState.WON)
 
 func _on_player_failed(_player_node: Node2D) -> void:
-	if _state != GameState.PLAYING:
+	if _state != ManagerState.PLAYING:
 		return
 	_set_player_control_enabled(false)
-	_set_state(GameState.LOST)
+	_set_state(ManagerState.LOST)
 
 func _on_exit_locked(remaining: int, _gem_element: int) -> void:
-	if _state != GameState.PLAYING:
+	if _state != ManagerState.PLAYING:
 		return
 	_hud.show_status("Gate locked. Gems remaining: %s" % remaining, false)
 
@@ -193,8 +202,8 @@ func _on_gem_progress_changed(collected: int, required: int) -> void:
 	_hud.set_gem_progress(collected, required)
 
 func _on_peer_disconnected(peer_id: int) -> void:
-	if _state == GameState.PLAYING:
-		_set_state(GameState.DISCONNECTED)
+	if _state == ManagerState.PLAYING:
+		_set_state(ManagerState.DISCONNECTED)
 
 func _on_disconnected_from_server() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
@@ -218,40 +227,40 @@ func _set_player_control_enabled(is_enabled: bool) -> void:
 		else:
 			_player.set_physics_process(is_enabled)
 
-func _set_state(next_state: GameState) -> void:
+func _set_state(next_state: ManagerState) -> void:
 	_state = next_state
 	match _state:
-		GameState.LOADING_LEVEL:
+		ManagerState.LOADING_LEVEL:
 			get_tree().paused = false
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
 			_hud.set_gem_progress(0, 0)
 			_hud.show_status("Loading prototype...", false)
-		GameState.PLAYING:
+		ManagerState.PLAYING:
 			get_tree().paused = false
 			_set_player_control_enabled(true)
 			_hud.set_paused(false)
 			_hud.show_status("Reach the exit. Collect matching gems.", false)
-		GameState.PAUSED:
+		ManagerState.PAUSED:
 			_hud.show_status("Paused", false)
 			_hud.set_paused(true)
 			get_tree().paused = true
-		GameState.WON:
+		ManagerState.WON:
 			get_tree().paused = false
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
 			_hud.show_status("Level complete! Press R to restart.", true)
-		GameState.LOST:
+		ManagerState.LOST:
 			get_tree().paused = false
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
 			_hud.show_status("You fell into danger. Press R to restart.", true)
-		GameState.RESTARTING:
+		ManagerState.RESTARTING:
 			get_tree().paused = false
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
 			_hud.show_status("Restarting...", false)
-		GameState.DISCONNECTED:
+		ManagerState.DISCONNECTED:
 			get_tree().paused = true
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)

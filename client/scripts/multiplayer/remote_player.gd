@@ -15,8 +15,16 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not parent_body:
 		return
-	# Interpolate position
-	parent_body.global_position = parent_body.global_position.lerp(target_position, 15.0 * delta)
+		
+	var diff: Vector2 = target_position - parent_body.global_position
+	
+	# If too far, snap position (fixes restart lag)
+	if diff.length() > 200.0:
+		parent_body.global_position = target_position
+	else:
+		# Use velocity. Physics engine happy. No bounce.
+		parent_body.velocity = diff * 15.0
+		parent_body.move_and_slide()
 
 func update_position(pos: Vector2) -> void:
 	target_position = pos

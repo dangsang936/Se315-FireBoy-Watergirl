@@ -1,0 +1,130 @@
+[gd_scene format=3 uid="uid://cflyv3jd36jau"]
+
+[ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://scripts/gameplay/levels/prototype_level.gd" id="1_level"]
+[ext_resource type="Script" uid="uid://f726xissaotg" path="res://scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
+[ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://scripts/gameplay/doors/exit_door.gd" id="3_exit"]
+[ext_resource type="PackedScene" uid="uid://brer2pc214ft8" path="res://scenes/gameplay/objects/push_block.tscn" id="4_push_block"]
+[ext_resource type="Script" uid="uid://d0g6k1xxrbf0y" path="res://scripts/gameplay/collectibles/gem_manager.gd" id="5_gem_manager"]
+[ext_resource type="PackedScene" uid="uid://b1l8rha1m7g4p" path="res://scenes/gameplay/collectibles/collectible_gem.tscn" id="6_gem"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(560, 24)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_platform"]
+size = Vector2(96, 18)
+
+[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_fall"]
+distance = 96.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hazard"]
+size = Vector2(40, 18)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
+size = Vector2(34, 62)
+
+[node name="PrototypeLevel" type="Node2D" unique_id=1687172808]
+script = ExtResource("1_level")
+
+[node name="Players" type="Node2D" parent="." unique_id=475002500]
+
+[node name="PlayerSpawn" type="Marker2D" parent="Players" unique_id=924233638]
+position = Vector2(-218, -31)
+
+[node name="PlayerSpawn2" type="Marker2D" parent="Players" unique_id=123000000]
+position = Vector2(-168, -31)
+
+[node name="Terrain" type="Node2D" parent="." unique_id=1911548412]
+
+[node name="Floor" type="StaticBody2D" parent="Terrain" unique_id=1859052529]
+
+[node name="FloorVisual" type="Polygon2D" parent="Terrain/Floor" unique_id=1237097263]
+color = Color(0.28, 0.22, 0.16, 1)
+polygon = PackedVector2Array(-280, -12, 280, -12, 280, 12, -280, 12)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/Floor" unique_id=1167824918]
+shape = SubResource("RectangleShape2D_floor")
+
+[node name="UpperPlatform" type="StaticBody2D" parent="Terrain" unique_id=856803837]
+position = Vector2(96, -74)
+
+[node name="PlatformVisual" type="Polygon2D" parent="Terrain/UpperPlatform" unique_id=1511477448]
+position = Vector2(0, 21)
+color = Color(0.33, 0.27, 0.2, 1)
+polygon = PackedVector2Array(-48, -9, 48, -9, 48, 9, -48, 9)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/UpperPlatform" unique_id=765391039]
+position = Vector2(0, 21)
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="FallBoundary" type="StaticBody2D" parent="Terrain" unique_id=414370523]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/FallBoundary" unique_id=1390256954]
+position = Vector2(-3, 85)
+shape = SubResource("WorldBoundaryShape2D_fall")
+
+[node name="Objects" type="Node2D" parent="." unique_id=133271101]
+
+[node name="PushBlock" parent="Objects" unique_id=933246357 instance=ExtResource("4_push_block")]
+position = Vector2(129, -85)
+
+[node name="Collectibles" type="Node2D" parent="." unique_id=1424662954]
+script = ExtResource("5_gem_manager")
+
+[node name="FireGem" parent="Collectibles" unique_id=1572504637 instance=ExtResource("6_gem")]
+position = Vector2(-70, -36)
+
+[node name="WaterGemPreview" parent="Collectibles" unique_id=661875831 instance=ExtResource("6_gem")]
+position = Vector2(21, -40)
+gem_element = 1
+
+[node name="Hazards" type="Node2D" parent="." unique_id=371541910]
+
+[node name="LavaPool" type="Area2D" parent="Hazards" unique_id=2051729706]
+position = Vector2(-116, -18)
+script = ExtResource("2_hazard")
+pool_type = 0
+
+[node name="LavaVisual" type="Polygon2D" parent="Hazards/LavaPool" unique_id=265281158]
+color = Color(0.95, 0.28, 0.08, 0.78)
+polygon = PackedVector2Array(-20, -9, 20, -9, 20, 9, -20, 9)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=10429731]
+shape = SubResource("RectangleShape2D_hazard")
+
+[node name="HazardZone" type="Area2D" parent="Hazards" unique_id=401490981]
+position = Vector2(-12, -18)
+script = ExtResource("2_hazard")
+
+[node name="HazardVisual" type="Polygon2D" parent="Hazards/HazardZone" unique_id=1161565923]
+color = Color(0.1, 0.48, 0.95, 0.75)
+polygon = PackedVector2Array(-20, -9, 20, -9, 20, 9, -20, 9)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/HazardZone" unique_id=628719350]
+shape = SubResource("RectangleShape2D_hazard")
+
+[node name="PoisonPool" type="Area2D" parent="Hazards" unique_id=1586743828]
+position = Vector2(160, 40)
+script = ExtResource("2_hazard")
+pool_type = 2
+
+[node name="PoisonVisual" type="Polygon2D" parent="Hazards/PoisonPool" unique_id=1250217956]
+position = Vector2(-102, -58)
+color = Color(0.32, 0.85, 0.18, 0.78)
+polygon = PackedVector2Array(-20, -9, 20, -9, 20, 9, -20, 9)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/PoisonPool" unique_id=1485897730]
+position = Vector2(-102, -58)
+shape = SubResource("RectangleShape2D_hazard")
+
+[node name="Goals" type="Node2D" parent="." unique_id=1914281459]
+
+[node name="ExitDoor" type="Area2D" parent="Goals" unique_id=1943215706]
+position = Vector2(238, -42)
+script = ExtResource("3_exit")
+
+[node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor" unique_id=311899270]
+color = Color(0.95, 0.72, 0.18, 0.85)
+polygon = PackedVector2Array(-17, -31, 17, -31, 17, 31, -17, 31)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Goals/ExitDoor" unique_id=1022199119]
+shape = SubResource("RectangleShape2D_exit")

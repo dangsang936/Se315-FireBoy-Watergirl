@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://c6f2a7db04s1x"]
 
-[ext_resource type="Script" path="res://scripts/ui/lobby_ui.gd" id="1_lobby"]
+[ext_resource type="Script" uid="uid://lt66vji72kow" path="res://scripts/ui/lobby_ui.gd" id="1_lobby"]
 
-[node name="Lobby" type="Control"]
+[node name="Lobby" type="Control" unique_id=419162863]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,7 +11,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lobby")
 
-[node name="ColorRect" type="ColorRect" parent="."]
+[node name="ColorRect" type="ColorRect" parent="." unique_id=752879941]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -20,7 +20,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.12549, 0.12549, 0.12549, 1)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=945083534]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -35,47 +35,47 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="VBoxContainer"]
+[node name="Title" type="Label" parent="VBoxContainer" unique_id=1707833047]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "FireBoy & WaterGirl
 Multiplayer Lobby"
 horizontal_alignment = 1
 
-[node name="IPContainer" type="HBoxContainer" parent="VBoxContainer"]
+[node name="IPContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=918626496]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="VBoxContainer/IPContainer"]
+[node name="Label" type="Label" parent="VBoxContainer/IPContainer" unique_id=807313939]
 layout_mode = 2
 text = "IP Address:"
 
-[node name="IPInput" type="LineEdit" parent="VBoxContainer/IPContainer"]
+[node name="IPInput" type="LineEdit" parent="VBoxContainer/IPContainer" unique_id=618203863]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "127.0.0.1"
 
-[node name="PortContainer" type="HBoxContainer" parent="VBoxContainer"]
+[node name="PortContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=1599316076]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="VBoxContainer/PortContainer"]
+[node name="Label" type="Label" parent="VBoxContainer/PortContainer" unique_id=994000741]
 layout_mode = 2
 text = "Port:            "
 
-[node name="PortInput" type="LineEdit" parent="VBoxContainer/PortContainer"]
+[node name="PortInput" type="LineEdit" parent="VBoxContainer/PortContainer" unique_id=1638471438]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "9999"
 
-[node name="ConnectButton" type="Button" parent="VBoxContainer"]
+[node name="ConnectButton" type="Button" parent="VBoxContainer" unique_id=456562733]
 layout_mode = 2
 text = "Connect"
 
-[node name="StatusLabel" type="Label" parent="VBoxContainer"]
+[node name="StatusLabel" type="Label" parent="VBoxContainer" unique_id=1844907076]
 layout_mode = 2
 text = "Not connected"
 horizontal_alignment = 1
 
-[node name="PlayerList" type="Label" parent="VBoxContainer"]
+[node name="PlayerList" type="Label" parent="VBoxContainer" unique_id=1854641930]
 layout_mode = 2
 text = "
 "
