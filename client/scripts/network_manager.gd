@@ -12,6 +12,7 @@ signal role_assigned(role: int)
 signal player_list_updated(players: Array[int])
 signal remote_player_position_received(player_id: int, position: Vector2, tick: int)
 signal remote_player_state_received(player_id: int, state: Dictionary, tick: int)
+signal remote_player_snapshot_received(player_id: int, snapshot: Dictionary, tick: int)
 signal game_started
 signal peer_disconnected(peer_id: int)
 signal gem_collected_received(gem_path: String)
@@ -129,6 +130,10 @@ func receive_player_position(player_id: int, position: Vector2, tick: int) -> vo
 func receive_player_state(player_id: int, state: Dictionary, tick: int) -> void:
 	remote_player_state_received.emit(player_id, state, tick)
 
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_snapshot(player_id: int, snapshot: Dictionary, tick: int) -> void:
+	remote_player_snapshot_received.emit(player_id, snapshot, tick)
+
 func send_position(position: Vector2, tick: int) -> void:
 	if not is_connected_to_server():
 		return
@@ -139,12 +144,21 @@ func send_state(state: Dictionary, tick: int) -> void:
 		return
 	rpc_id(1, "relay_player_state", multiplayer.get_unique_id(), state, tick)
 
+func send_snapshot(snapshot: Dictionary, tick: int) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "relay_player_snapshot", multiplayer.get_unique_id(), snapshot, tick)
+
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_position(_player_id: int, _position: Vector2, _tick: int) -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_state(_player_id: int, _state: Dictionary, _tick: int) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
 	pass
 
 # --- Reliable Gameplay Event RPCs ---

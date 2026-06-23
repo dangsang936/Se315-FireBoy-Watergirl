@@ -29,6 +29,7 @@ func _ready() -> void:
 	NetworkManager.disconnected_from_server.connect(_on_disconnected_from_server)
 	NetworkManager.remote_player_position_received.connect(_on_remote_position_received)
 	NetworkManager.remote_player_state_received.connect(_on_remote_state_received)
+	NetworkManager.remote_player_snapshot_received.connect(_on_remote_snapshot_received)
 
 	# Listen to reliable gameplay RPC signals
 	NetworkManager.gem_collected_received.connect(_on_gem_collected_received)
@@ -246,6 +247,14 @@ func _on_remote_state_received(player_id: int, state: Dictionary, tick: int) -> 
 			var rp = p_node.get_node("RemotePlayer")
 			if rp.has_method("update_state"):
 				rp.update_state(state, tick)
+
+func _on_remote_snapshot_received(player_id: int, snapshot: Dictionary, tick: int) -> void:
+	if player_nodes.has(player_id):
+		var p_node = player_nodes[player_id]
+		if is_instance_valid(p_node) and p_node.has_node("RemotePlayer"):
+			var rp = p_node.get_node("RemotePlayer")
+			if rp.has_method("push_snapshot"):
+				rp.push_snapshot(snapshot, tick)
 
 # --- Reliable Gameplay Event RPC Listeners ---
 
