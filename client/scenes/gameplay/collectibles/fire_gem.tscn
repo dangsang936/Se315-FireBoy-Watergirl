@@ -1,0 +1,120 @@
+[gd_scene format=3 uid="uid://cft0awxeimp16"]
+
+[ext_resource type="PackedScene" uid="uid://b1l8rha1m7g4p" path="res://scenes/gameplay/collectibles/collectible_gem.tscn" id="1_base"]
+[ext_resource type="Script" uid="uid://b63n7jh0jn8d1" path="res://scripts/gameplay/collectibles/fire_gem.gd" id="2_fire"]
+[ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="3_uj5ed"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_uj5ed"]
+size = Vector2(14, 14)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2d2l5"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(0, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5rpxv"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(16, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mfehw"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(32, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_yi2co"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(48, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3g3bq"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(64, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8doci"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(80, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_yukjn"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(96, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0xr4d"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(112, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0f1tk"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(128, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qp2c0"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(144, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_1s02y"]
+atlas = ExtResource("3_uj5ed")
+region = Rect2(160, 240, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_gv77h"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2d2l5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5rpxv")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mfehw")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_yi2co")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3g3bq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8doci")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_yukjn")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0xr4d")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0f1tk")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qp2c0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_1s02y")
+}],
+"loop": true,
+"name": &"default",
+"speed": 10.0
+}]
+
+[sub_resource type="Gradient" id="Gradient_uj5ed"]
+offsets = PackedFloat32Array(0.24278846, 0.5889423)
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_2d2l5"]
+gradient = SubResource("Gradient_uj5ed")
+use_hdr = true
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+
+[node name="FireGem" unique_id=1474778255 instance=ExtResource("1_base")]
+script = ExtResource("2_fire")
+
+[node name="CollisionShape2D" parent="." index="0" unique_id=1723701317]
+shape = SubResource("RectangleShape2D_uj5ed")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." index="1" unique_id=1460990169]
+sprite_frames = SubResource("SpriteFrames_gv77h")
+autoplay = "default"
+frame = 4
+frame_progress = 0.25325677
+
+[node name="PointLight2D" type="PointLight2D" parent="." index="2" unique_id=1984506665]
+color = Color(0.8156863, 0.09411765, 0.22352941, 1)
+energy = 2.0
+texture = SubResource("GradientTexture2D_2d2l5")

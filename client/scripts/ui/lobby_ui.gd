@@ -42,6 +42,7 @@ func _on_connected() -> void:
 func _on_connection_failed() -> void:
 	status_label.text = "Connection failed."
 	connect_button.disabled = false
+	player_list_label.text = ""
 
 func _on_disconnected() -> void:
 	status_label.text = "Disconnected from server."

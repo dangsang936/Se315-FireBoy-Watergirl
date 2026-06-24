@@ -226,11 +226,27 @@ func _on_gem_progress_changed(collected: int, required: int) -> void:
 	_hud.set_gem_progress(collected, required)
 
 func _on_peer_disconnected(peer_id: int) -> void:
+	_clear_remote_player(peer_id)
 	if _state == GameState.PLAYING:
 		_set_state(GameState.DISCONNECTED)
 
 func _on_disconnected_from_server() -> void:
+	_clear_multiplayer_players()
 	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
+
+func _clear_remote_player(peer_id: int = -1) -> void:
+	if peer_id != -1:
+		player_nodes.erase(peer_id)
+	if is_instance_valid(_remote_player):
+		_remote_player.queue_free()
+	_remote_player = null
+
+func _clear_multiplayer_players() -> void:
+	_clear_remote_player()
+	player_nodes.clear()
+	if is_instance_valid(_player):
+		_player.queue_free()
+	_player = null
 
 func _on_remote_position_received(player_id: int, pos: Vector2, tick: int) -> void:
 	if player_nodes.has(player_id):
