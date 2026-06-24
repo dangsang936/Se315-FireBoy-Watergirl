@@ -191,16 +191,6 @@ func clear_ladder_vertical_motion() -> void:
 func clear_player_motion() -> void:
 	_clear_transient_state()
 
-	velocity.y = get_ladder_climb_direction() * _get_active_ladder_climb_speed()
-	if _animation_controller != null:
-		_animation_controller.face_direction(direction)
-
-func clear_ladder_vertical_motion() -> void:
-	velocity.y = 0.0
-
-func clear_player_motion() -> void:
-	_clear_transient_state()
-
 func clear_precision_timers() -> void:
 	if _player_motor != null:
 		_player_motor.clear_transient_buffers()
