@@ -1,0 +1,113 @@
+[gd_scene format=3 uid="uid://bmf4aisxn37lg"]
+
+[ext_resource type="Script" path="res://scripts/gameplay/collectibles/water_gem.gd" id="1_water"]
+[ext_resource type="Texture2D" path="res://assets/tilesets/tilesets.png" id="2_fai4k"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6p8f3"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(192, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kr8vn"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(208, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jn6nr"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(224, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xkclq"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(240, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_32j0j"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(256, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_80w3n"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(272, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tssnq"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(288, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7q7rf"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(304, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_uf7b2"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(320, 240, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_poe5v"]
+atlas = ExtResource("2_fai4k")
+region = Rect2(336, 240, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_water"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6p8f3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_kr8vn")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_jn6nr")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_xkclq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_32j0j")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_80w3n")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tssnq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7q7rf")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_uf7b2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_poe5v")
+}],
+"loop": true,
+"name": &"default",
+"speed": 10.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gem"]
+size = Vector2(14, 14)
+
+[sub_resource type="Gradient" id="Gradient_fai4k"]
+offsets = PackedFloat32Array(0.2235577, 0.6081731)
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_6p8f3"]
+gradient = SubResource("Gradient_fai4k")
+use_hdr = true
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+
+[node name="WaterGem" type="Area2D" unique_id=1535103908]
+collision_layer = 32
+collision_mask = 2
+script = ExtResource("1_water")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1122177175]
+sprite_frames = SubResource("SpriteFrames_water")
+autoplay = "default"
+frame = 6
+frame_progress = 0.036711667
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=646787637]
+shape = SubResource("RectangleShape2D_gem")
+
+[node name="PointLight2D" type="PointLight2D" parent="." unique_id=1806150330]
+color = Color(0.40564805, 0.636366, 0.7652487, 1)
+texture = SubResource("GradientTexture2D_6p8f3")

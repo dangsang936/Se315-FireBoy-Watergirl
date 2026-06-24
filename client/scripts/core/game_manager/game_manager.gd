@@ -28,6 +28,7 @@ func _ready() -> void:
 	NetworkManager.disconnected_from_server.connect(_on_disconnected_from_server)
 	NetworkManager.remote_player_position_received.connect(_on_remote_position_received)
 	NetworkManager.remote_player_state_received.connect(_on_remote_state_received)
+	NetworkManager.player_sync_received.connect(_on_player_sync_received)
 
 	NetworkManager.role_assigned.connect(_on_role_assigned)
 	NetworkManager.player_list_updated.connect(_on_player_list_updated)
@@ -127,6 +128,8 @@ func _spawn_players() -> void:
 		_current_level.attach_player(_player, 1 if is_fireboy else 2)
 		if _player.has_method("reset_to_spawn"):
 			_player.call("reset_to_spawn", _current_level.get_spawn_position() if is_fireboy else _current_level.get_spawn_position_2())
+		if _player.get("is_local") != null:
+			_player.set("is_local", true)
 	
 	_spawn_remote_player()
 
@@ -143,7 +146,9 @@ func _spawn_remote_player() -> void:
 	_remote_player = remote_scene.instantiate() as CharacterBody2D
 	if _remote_player.get("is_local") != null:
 		_remote_player.set("is_local", false)
-	
+	if _remote_player.has_method("configure_remote_visual"):
+		_remote_player.call("configure_remote_visual")
+
 	# Attach RemotePlayer logic component
 	var remote_comp = RemotePlayer.new()
 	remote_comp.name = "RemotePlayer"
@@ -207,6 +212,22 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 func _on_disconnected_from_server() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
+
+func _on_player_sync_received(packet: Dictionary) -> void:
+	var sync_player_id := int(packet.get("id", 0))
+	if sync_player_id == multiplayer.get_unique_id():
+		if is_instance_valid(_player) and _player.has_method("apply_authoritative_sync"):
+			_player.call("apply_authoritative_sync", packet)
+		return
+
+	var position: Vector2 = packet.get("p", Vector2.ZERO)
+	var velocity: Vector2 = packet.get("v", Vector2.ZERO)
+	var state := {
+		"anim": str(packet.get("a", "idle")),
+		"flip_h": velocity.x < 0.0
+	}
+	_on_remote_position_received(sync_player_id, position)
+	_on_remote_state_received(sync_player_id, state)
 
 func _on_remote_position_received(player_id: int, pos: Vector2) -> void:
 	if _remote_player and _remote_player.has_node("RemotePlayer"):

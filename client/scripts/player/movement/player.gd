@@ -3,6 +3,7 @@ extends CharacterBody2D
 
 enum PlayerState { IDLE, RUNNING }
 enum Element { FIRE, WATER }
+enum MovementAuthority { CLIENT_LOCAL, CLIENT_INPUT_ONLY, SERVER_AUTHORITY, REMOTE_VISUAL }
 
 @export var speed: float = 105.0
 @export var jump_velocity: float = -220.0
@@ -26,6 +27,7 @@ enum Element { FIRE, WATER }
 
 var is_local: bool = true
 var player_id: int = 1
+var movement_authority: MovementAuthority = MovementAuthority.CLIENT_LOCAL
 
 var player_state: PlayerState = PlayerState.IDLE
 var _gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
@@ -33,6 +35,11 @@ var _control_enabled: bool = true
 var _coyote_timer: float = 0.0
 var _jump_buffer_timer: float = 0.0
 var _jump_key_was_pressed: bool = false
+var _movement_input_dir: float = 0.0
+var _movement_jump_pressed: bool = false
+var _movement_down_pressed: bool = false
+var _movement_tick: int = 0
+var _use_injected_input: bool = false
 
 @onready var _animated_sprite: AnimatedSprite2D = get_node_or_null(animated_sprite_path) as AnimatedSprite2D
 @onready var _camera: Camera2D = get_node_or_null(camera_path) as Camera2D
@@ -45,16 +52,74 @@ func _ready() -> void:
 	call_deferred("_refresh_camera")
 
 func _physics_process(delta: float) -> void:
-	if not is_local:
+	if movement_authority == MovementAuthority.SERVER_AUTHORITY or not is_local:
 		return
 
+	if _is_connected_to_server():
+		movement_authority = MovementAuthority.CLIENT_INPUT_ONLY
+		_send_movement_input()
+		return
+
+	movement_authority = MovementAuthority.CLIENT_LOCAL
+	_use_injected_input = false
+	_simulate_movement(delta, true)
+
+func collect_movement_input() -> Dictionary:
+	_movement_tick += 1
+	return {
+		"t": _movement_tick,
+		"x": _read_input_direction(),
+		"j": _read_jump_just_pressed(),
+		"d": _read_move_down_pressed()
+	}
+
+func set_authoritative_input(packet: Dictionary) -> void:
+	_movement_tick = int(packet.get("t", _movement_tick))
+	_movement_input_dir = clampf(float(packet.get("x", 0.0)), -1.0, 1.0)
+	_movement_jump_pressed = bool(packet.get("j", false))
+	_movement_down_pressed = bool(packet.get("d", false))
+	_use_injected_input = true
+
+func server_simulate_movement(delta: float) -> void:
+	movement_authority = MovementAuthority.SERVER_AUTHORITY
+	_simulate_movement(delta, false)
+	_movement_jump_pressed = false
+
+func apply_authoritative_sync(packet: Dictionary) -> void:
+	global_position = packet.get("p", global_position)
+	velocity = packet.get("v", velocity)
+	var anim_name := StringName(str(packet.get("a", get_current_animation_name())))
+	_play_animation(anim_name)
+	if _animated_sprite != null and absf(velocity.x) > animation_move_threshold:
+		_animated_sprite.flip_h = velocity.x < 0.0
+
+func get_current_animation_name() -> String:
+	if _animated_sprite == null:
+		return "idle"
+	return String(_animated_sprite.animation)
+
+func configure_server_authority() -> void:
+	movement_authority = MovementAuthority.SERVER_AUTHORITY
+	is_local = false
+	set_physics_process(false)
+	if _camera != null:
+		_camera.enabled = false
+
+func configure_remote_visual() -> void:
+	movement_authority = MovementAuthority.REMOTE_VISUAL
+	is_local = false
+	set_physics_process(false)
+	if _camera != null:
+		_camera.enabled = false
+
+func _simulate_movement(delta: float, register_push_blocks: bool) -> void:
 	_update_jump_buffer(delta)
 	_update_vertical_velocity(delta)
 	_update_horizontal_velocity(delta)
 	move_and_slide()
-	_register_push_block_contacts()
+	if register_push_blocks:
+		_register_push_block_contacts()
 	_update_player_state()
-	_send_network_state()
 
 func reset_to_spawn(spawn_position: Vector2) -> void:
 	global_position = spawn_position
@@ -133,6 +198,14 @@ func _send_network_state() -> void:
 			"flip_h": _animated_sprite.flip_h if _animated_sprite else false
 		}
 		NetworkManager.send_state(state_dict)
+
+func _send_movement_input() -> void:
+	if not _is_connected_to_server():
+		return
+	NetworkManager.send_movement_input(collect_movement_input())
+
+func _is_connected_to_server() -> bool:
+	return has_node("/root/NetworkManager") and NetworkManager.is_connected_to_server()
 
 func _register_push_block_contacts() -> void:
 	var push_direction: float = get_push_direction()
@@ -216,6 +289,15 @@ func _get_run_jump_velocity() -> float:
 	return jump_velocity * lerpf(1.0, run_jump_height_multiplier, run_factor)
 
 func _get_input_direction() -> float:
+	return _movement_input_dir if _use_injected_input else _read_input_direction()
+
+func _is_jump_just_pressed() -> bool:
+	return _movement_jump_pressed if _use_injected_input else _read_jump_just_pressed()
+
+func _is_move_down_pressed() -> bool:
+	return _movement_down_pressed if _use_injected_input else _read_move_down_pressed()
+
+func _read_input_direction() -> float:
 	var direction: float = Input.get_axis("move_left", "move_right")
 	if Input.is_physical_key_pressed(KEY_A):
 		direction -= 1.0
@@ -223,13 +305,13 @@ func _get_input_direction() -> float:
 		direction += 1.0
 	return clampf(direction, -1.0, 1.0)
 
-func _is_jump_just_pressed() -> bool:
+func _read_jump_just_pressed() -> bool:
 	var jump_key_pressed: bool = Input.is_physical_key_pressed(KEY_W)
 	var jump_just_pressed: bool = Input.is_action_just_pressed("jump") or (jump_key_pressed and not _jump_key_was_pressed)
 	_jump_key_was_pressed = jump_key_pressed
 	return jump_just_pressed
 
-func _is_move_down_pressed() -> bool:
+func _read_move_down_pressed() -> bool:
 	return Input.is_action_pressed("move_down") or Input.is_physical_key_pressed(KEY_S)
 
 func _ensure_wasd_input() -> void:

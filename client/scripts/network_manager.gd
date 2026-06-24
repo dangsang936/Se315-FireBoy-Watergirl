@@ -12,6 +12,7 @@ signal role_assigned(role: int)
 signal player_list_updated(players: Array[int])
 signal remote_player_position_received(player_id: int, position: Vector2)
 signal remote_player_state_received(player_id: int, state: Dictionary)
+signal player_sync_received(packet: Dictionary)
 signal game_started
 signal peer_disconnected(peer_id: int)
 
@@ -133,6 +134,15 @@ func receive_player_position(player_id: int, position: Vector2) -> void:
 func receive_player_state(player_id: int, state: Dictionary) -> void:
 	remote_player_state_received.emit(player_id, state)
 
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_sync(packet: Dictionary) -> void:
+	player_sync_received.emit(packet)
+
+func send_movement_input(packet: Dictionary) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "server_receive_movement_input", packet)
+
 func send_position(position: Vector2) -> void:
 	if not is_connected_to_server():
 		return
@@ -142,6 +152,10 @@ func send_state(state: Dictionary) -> void:
 	if not is_connected_to_server():
 		return
 	rpc_id(1, "relay_player_state", multiplayer.get_unique_id(), state)
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func server_receive_movement_input(_packet: Dictionary) -> void:
+	pass
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_position(_player_id: int, _position: Vector2) -> void:
