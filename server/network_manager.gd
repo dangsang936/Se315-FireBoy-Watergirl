@@ -102,12 +102,22 @@ func relay_player_state(player_id: int, state: Dictionary, tick: int) -> void:
 		if pid != multiplayer.get_remote_sender_id():
 			rpc_id(pid, "receive_player_state", player_id, state, tick)
 
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func relay_player_snapshot(player_id: int, snapshot: Dictionary, tick: int) -> void:
+	for pid in connected_players:
+		if pid != multiplayer.get_remote_sender_id():
+			rpc_id(pid, "receive_player_snapshot", player_id, snapshot, tick)
+
 @rpc("authority", "call_remote", "unreliable_ordered")
 func receive_player_position(_player_id: int, _position: Vector2, _tick: int) -> void:
 	pass  # Implemented on clients
 
 @rpc("authority", "call_remote", "unreliable_ordered")
 func receive_player_state(_player_id: int, _state: Dictionary, _tick: int) -> void:
+	pass  # Implemented on clients
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
 	pass  # Implemented on clients
 
 # --- Gameplay Event Relays ---
