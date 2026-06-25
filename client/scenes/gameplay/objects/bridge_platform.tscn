@@ -1,7 +1,7 @@
-[gd_scene format=4 uid="uid://d2ucswgqexi72"]
+[gd_scene format=4 uid="uid://dna1u41hm35q5"]
 
-[ext_resource type="Script" path="res://scripts/gameplay/objects/bridge_platform.gd" id="1_bridge_platform"]
-[ext_resource type="Texture2D" path="res://assets/tilesets/tilesets.png" id="2_4ewbo"]
+[ext_resource type="Script" uid="uid://d4ixieo4p55jg" path="res://scripts/gameplay/objects/bridge_platform.gd" id="1_bridge_platform"]
+[ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="2_4ewbo"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_i7isn"]
 size = Vector2(182, 14)
@@ -211,17 +211,15 @@ sources/0 = SubResource("TileSetAtlasSource_i7isn")
 
 [node name="BridgePlatform" type="StaticBody2D" unique_id=596965902]
 z_index = 12
+collision_layer = 1
 collision_mask = 6
 script = ExtResource("1_bridge_platform")
+visual_layer_path = null
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2002463769]
 position = Vector2(-34, 7)
 shape = SubResource("RectangleShape2D_i7isn")
-disabled = true
 
 [node name="Visual" type="TileMapLayer" parent="." unique_id=754855294]
-modulate = Color(1, 1, 1, 0.24)
 tile_map_data = PackedByteArray("AAABAAAAAAACAAcAAAAAAAAAAAACAAcAAAD//wAAAAACAAcAAAD+/wAAAAACAAcAAAD9/wAAAAACAAcAAAD8/wAAAAACAAcAAAA=")
 tile_set = SubResource("TileSet_lh8hs")
-collision_enabled = false
-navigation_enabled = false

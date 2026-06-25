@@ -1,8 +1,12 @@
 class_name PushBlock
 extends RigidBody2D
 
-# Collision layers/masks: V1 uses the project default layer so it collides with players and terrain.
-# Future pressure plates should detect this body through the "push_block" group.
+const PUSH_BLOCK_COLLISION_LAYER: int = 4
+const PUSH_BLOCK_COLLISION_MASK: int = 3
+const PUSH_DETECTOR_COLLISION_LAYER: int = 0
+const PUSH_DETECTOR_COLLISION_MASK: int = 2
+const GROUND_DETECTOR_COLLISION_MASK: int = 1
+
 @export var max_push_force: float = 700.0
 @export var push_ramp_time: float = 0.6
 @export var two_player_boost_multiplier: float = 1.55
@@ -36,6 +40,8 @@ var _was_grounded: bool = false
 @onready var _ground_detector: RayCast2D = get_node_or_null(ground_detector_path) as RayCast2D
 
 func _ready() -> void:
+	collision_layer = PUSH_BLOCK_COLLISION_LAYER
+	collision_mask = PUSH_BLOCK_COLLISION_MASK
 	add_to_group("push_block")
 	lock_rotation = false
 	can_sleep = true
@@ -45,10 +51,13 @@ func _ready() -> void:
 	angular_damp = idle_damping
 
 	if _push_detector != null:
+		_push_detector.collision_layer = PUSH_DETECTOR_COLLISION_LAYER
+		_push_detector.collision_mask = PUSH_DETECTOR_COLLISION_MASK
 		_push_detector.body_entered.connect(_on_push_detector_body_entered)
 		_push_detector.body_exited.connect(_on_push_detector_body_exited)
 
 	if _ground_detector != null:
+		_ground_detector.collision_mask = GROUND_DETECTOR_COLLISION_MASK
 		_ground_detector.top_level = true
 		_ground_detector.enabled = true
 

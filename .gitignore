@@ -285,6 +285,19 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# AI / agent generated artifacts
+**/AGENTS.md
+CLAUDE.md
+**/.agents/
+**/.specify/
+client/docs/
+client/specs/
+**/graphify-out/
+**/.graphify_*
+**/*.graphify_*
+**/.validate_chunks.py
+**/.merge_chunks.py
+
 # Visual Studio 6 build log
 *.plg
 
@@ -361,6 +374,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/client/addons/godotiq
-/docs/GDD/project_rules.md
 /README.md
+
+#toll 
+.codegraph/
