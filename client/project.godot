@@ -21,7 +21,7 @@ NetworkManager="*res://scripts/network_manager.gd"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godotiq/plugin.cfg")
+enabled=PackedStringArray()
 
 [input]
 

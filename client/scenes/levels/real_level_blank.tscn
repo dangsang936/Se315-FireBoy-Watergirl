@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://bnfjogf41hh0d"]
 
-[ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://scripts/gameplay/levels/prototype_level.gd" id="1_level"]
-[ext_resource type="Script" uid="uid://f726xissaotg" path="res://scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
-[ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://scripts/gameplay/doors/exit_door.gd" id="3_exit"]
+[ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://shared/scripts/gameplay/levels/prototype_level.gd" id="1_level"]
+[ext_resource type="Script" uid="uid://f726xissaotg" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
+[ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://shared/scripts/gameplay/doors/exit_door.gd" id="3_exit"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(240, 24)

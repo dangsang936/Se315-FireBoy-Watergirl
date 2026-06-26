@@ -1,6 +1,8 @@
 class_name PrototypePlayer
 extends CharacterBody2D
 
+signal input_collected(input_dict: Dictionary)
+
 enum PlayerState { IDLE, RUNNING }
 enum Element { FIRE, WATER }
 enum MovementAuthority { CLIENT_LOCAL, CLIENT_INPUT_ONLY, SERVER_AUTHORITY, REMOTE_VISUAL }
@@ -60,10 +62,16 @@ func _physics_process(delta: float) -> void:
 		_send_movement_input()
 		return
 
-	movement_authority = MovementAuthority.CLIENT_LOCAL
 	_use_injected_input = false
 	_simulate_movement(delta, true)
 
+func _is_connected_to_server() -> bool:
+	if has_node("/root/NetworkManager"):
+		var nm = get_node("/root/NetworkManager")
+		if nm.has_method("is_connected_to_server"):
+			return nm.is_connected_to_server()
+	return false
+	
 func collect_movement_input() -> Dictionary:
 	_movement_tick += 1
 	return {
@@ -105,6 +113,13 @@ func configure_server_authority() -> void:
 	if _camera != null:
 		_camera.enabled = false
 
+func configure_client_input_only() -> void:
+	movement_authority = MovementAuthority.CLIENT_INPUT_ONLY
+	is_local = true
+	set_physics_process(true)
+	if _camera != null:
+		_camera.enabled = true
+
 func configure_remote_visual() -> void:
 	movement_authority = MovementAuthority.REMOTE_VISUAL
 	is_local = false
@@ -127,6 +142,12 @@ func reset_to_spawn(spawn_position: Vector2) -> void:
 	_coyote_timer = 0.0
 	_jump_buffer_timer = 0.0
 	_jump_key_was_pressed = false
+	
+	if _is_connected_to_server() and has_node("/root/NetworkManager"):
+		var nm = get_node("/root/NetworkManager")
+		if nm.has_method("rpc_id"):
+			nm.rpc_id(1, "server_teleport_player", spawn_position)
+			
 	set_control_enabled(true)
 	_set_player_state(PlayerState.IDLE)
 	call_deferred("_refresh_camera")
@@ -190,22 +211,14 @@ func _update_player_state() -> void:
 	var next_state: PlayerState = PlayerState.RUNNING if has_move_intent or is_moving else PlayerState.IDLE
 	_set_player_state(next_state)
 
-func _send_network_state() -> void:
-	if NetworkManager.is_connected_to_server():
-		NetworkManager.send_position(global_position)
-		var state_dict = {
-			"anim": _animated_sprite.animation if _animated_sprite else "idle",
-			"flip_h": _animated_sprite.flip_h if _animated_sprite else false
-		}
-		NetworkManager.send_state(state_dict)
-
 func _send_movement_input() -> void:
-	if not _is_connected_to_server():
-		return
-	NetworkManager.send_movement_input(collect_movement_input())
-
-func _is_connected_to_server() -> bool:
-	return has_node("/root/NetworkManager") and NetworkManager.is_connected_to_server()
+	if has_node("/root/NetworkManager"):
+		var nm = get_node("/root/NetworkManager")
+		if nm.has_method("send_movement_input"):
+			nm.send_movement_input(collect_movement_input())
+			return
+	
+	input_collected.emit(collect_movement_input())
 
 func _register_push_block_contacts() -> void:
 	var push_direction: float = get_push_direction()

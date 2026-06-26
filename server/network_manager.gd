@@ -18,7 +18,7 @@ const PLAYER_JUMP_BUFFER_TIME: float = 0.10
 const PLAYER_MAX_FALL_SPEED: float = 330.0
 const PLAYER_FAST_FALL_GRAVITY_MULTIPLIER: float = 1.25
 const PLAYER_ANIMATION_MOVE_THRESHOLD: float = 5.0
-const PROTOTYPE_LEVEL_PHYSICS_SCENE: PackedScene = preload("res://shared/scenes/levels/prototype_level_physics.tscn")
+const PROTOTYPE_LEVEL_PHYSICS_SCENE: PackedScene = preload("res://shared/Map/prototype_level.tscn")
 const PLAYERS_PATH: NodePath = ^"Players"
 const PLAYER_SPAWN_PATH: NodePath = ^"Players/PlayerSpawn"
 const PLAYER_SPAWN_2_PATH: NodePath = ^"Players/PlayerSpawn2"
@@ -120,13 +120,22 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 
 	var body := CharacterBody2D.new()
 	body.name = "ServerPlayer_%d" % peer_id
-	body.collision_layer = 1
-	body.collision_mask = 1
+	
+	# ALL layers and masks so it touches gems and boxes
+	body.collision_layer = 4294967295
+	body.collision_mask = 4294967295
+
+	body.add_to_group("player")
+	body.set_meta("player_id", peer_id)
+	body.set_meta("element", role)
 
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(9, 18)
+	shape.size = Vector2(10, 20)
 	collision.shape = shape
+	
+	# Fix levitate: offset shape to match client feet origin
+	collision.position = Vector2(0, -10) 
 	body.add_child(collision)
 
 	var parent := _players_root if _players_root != null else _world_root
@@ -139,7 +148,6 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 		body.global_position = spawn.global_position
 	else:
 		body.global_position = Vector2.ZERO
-		push_warning("[Server] No spawn marker available; spawning player %d at origin." % peer_id)
 
 	server_players[peer_id] = {
 		"body": body,
@@ -148,7 +156,7 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 		"anim": "idle"
 	}
 	latest_inputs[peer_id] = _neutral_input()
-
+	
 func _despawn_server_player(peer_id: int) -> void:
 	if not server_players.has(peer_id):
 		return
@@ -217,6 +225,16 @@ func _simulate_player(peer_id: int, delta: float) -> void:
 	body.velocity = velocity
 	body.move_and_slide()
 
+	# NEW PUSH LOGIC FOR SERVER DUMMY
+	if direction != 0.0:
+		var push_dir = signf(direction)
+		for i in body.get_slide_collision_count():
+			var col = body.get_slide_collision(i)
+			var collider = col.get_collider()
+			if collider != null and collider.has_method("register_push_attempt"):
+				if absf(col.get_normal().x) > 0.35 and signf(push_dir) == -signf(col.get_normal().x):
+					collider.call("register_push_attempt", body, push_dir)
+
 	state["coyote"] = coyote
 	state["jump_buffer"] = jump_buffer
 	state["anim"] = "running" if direction != 0.0 or absf(body.velocity.x) > PLAYER_ANIMATION_MOVE_THRESHOLD else "idle"
@@ -225,7 +243,8 @@ func _simulate_player(peer_id: int, delta: float) -> void:
 	if jump_pressed:
 		input["j"] = false
 		latest_inputs[peer_id] = input
-
+		
+		
 func _broadcast_player_sync(peer_id: int) -> void:
 	var state: Dictionary = server_players.get(peer_id, {})
 	var body := state.get("body") as CharacterBody2D
@@ -240,6 +259,7 @@ func _broadcast_player_sync(peer_id: int) -> void:
 	}
 	for pid in connected_players:
 		rpc_id(pid, "receive_player_sync", packet)
+		
 
 # ------------------------------------------------------------------
 # RPCs called ON clients (defined here so the server script compiles,
@@ -310,3 +330,11 @@ func receive_player_position(_player_id: int, _position: Vector2) -> void:
 @rpc("authority", "call_remote", "unreliable_ordered")
 func receive_player_state(_player_id: int, _state: Dictionary) -> void:
 	pass  # Implemented on clients
+@rpc("any_peer", "call_remote", "reliable")
+func server_teleport_player(pos: Vector2) -> void:
+	var sender = multiplayer.get_remote_sender_id()
+	if server_players.has(sender):
+		var body = server_players[sender]["body"]
+		body.global_position = pos
+		body.velocity = Vector2.ZERO
+		latest_inputs[sender] = _neutral_input() # Stop running!

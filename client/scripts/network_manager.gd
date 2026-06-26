@@ -44,9 +44,12 @@ func connect_to_server(ip: String = "", port: int = 0) -> Error:
 		return error
 
 	multiplayer.multiplayer_peer = peer
-	multiplayer.connected_to_server.connect(_on_connected)
-	multiplayer.server_disconnected.connect(_on_disconnected)
-	multiplayer.connection_failed.connect(_on_connection_failed)
+	if not multiplayer.connected_to_server.is_connected(_on_connected):
+		multiplayer.connected_to_server.connect(_on_connected)
+	if not multiplayer.server_disconnected.is_connected(_on_disconnected):
+		multiplayer.server_disconnected.connect(_on_disconnected)
+	if not multiplayer.connection_failed.is_connected(_on_connection_failed):
+		multiplayer.connection_failed.connect(_on_connection_failed)
 
 	print("[Client] Connecting to %s:%d …" % [server_ip, server_port])
 	return OK
@@ -163,4 +166,7 @@ func relay_player_position(_player_id: int, _position: Vector2) -> void:
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_state(_player_id: int, _state: Dictionary) -> void:
+	pass
+@rpc("any_peer", "call_remote", "reliable")
+func server_teleport_player(_pos: Vector2) -> void:
 	pass
