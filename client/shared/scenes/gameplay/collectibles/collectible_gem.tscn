@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b1l8rha1m7g4p"]
 
-[ext_resource type="Script" uid="uid://c7lxnn2f8e1q4" path="res://scripts/gameplay/collectibles/collectible_gem.gd" id="1_gem"]
+[ext_resource type="Script" uid="uid://c7lxnn2f8e1q4" path="res://shared/scripts/gameplay/collectibles/collectible_gem.gd" id="1_gem"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gem"]
 size = Vector2(14, 14)

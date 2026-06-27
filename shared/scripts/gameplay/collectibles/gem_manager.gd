@@ -8,8 +8,8 @@ var _required_gems: Array[CollectibleGem] = []
 var _collected_gems: Array[CollectibleGem] = []
 var _is_configured: bool = false
 
-func configure_for_player(player: PrototypePlayer) -> void:
-	_active_gem_element = int(player.get_element())
+func configure_for_element(element: int) -> void:
+	_active_gem_element = element
 	_required_gems.clear()
 	_collected_gems.clear()
 
@@ -17,8 +17,11 @@ func configure_for_player(player: PrototypePlayer) -> void:
 		var gem := child as CollectibleGem
 		if gem == null:
 			continue
-		if not gem.collected.is_connected(_on_gem_collected):
-			gem.collected.connect(_on_gem_collected)
+		
+		if multiplayer.is_server():
+			if not gem.collected.is_connected(_on_gem_collected):
+				gem.collected.connect(_on_gem_collected)
+				
 		if int(gem.gem_element) == _active_gem_element:
 			_required_gems.append(gem)
 
@@ -43,12 +46,20 @@ func get_required_count() -> int:
 func get_active_gem_element() -> int:
 	return _active_gem_element
 
-func _on_gem_collected(gem: CollectibleGem, _player: PrototypePlayer) -> void:
+func _on_gem_collected(gem: CollectibleGem, _player_id: int) -> void:
 	if not _required_gems.has(gem):
 		return
 	if _collected_gems.has(gem):
 		return
 	_collected_gems.append(gem)
+	rpc("client_sync_progress", _collected_gems.size())
+
+@rpc("authority", "call_local", "reliable")
+func client_sync_progress(collected_count: int) -> void:
+	var needed = collected_count - _collected_gems.size()
+	if needed > 0:
+		for i in range(needed):
+			_collected_gems.append(null) # Dummy fill on client for count
 	_emit_progress()
 
 func _emit_progress() -> void:

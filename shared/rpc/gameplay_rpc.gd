@@ -17,3 +17,24 @@ func rpc_player_died(player_id: int, hazard_type: String):
 func rpc_level_completed(time_taken: float):
 	print("Màn chơi hoàn thành trong ", time_taken, " giây!")
 	# Chuyển state sang RESULT_SCREEN
+@rpc("authority", "call_remote", "unreliable_ordered")
+func sync_push_block(block_name: String, pos: Vector2, rot: float) -> void:
+	var blocks := get_tree().get_nodes_in_group("push_block")
+	for b in blocks:
+		if b.name == block_name:
+			b.global_position = pos
+			b.rotation = rot
+			return
+
+@rpc("authority", "call_remote", "reliable")
+func sync_gem_collected(gem_name: String) -> void:
+	# We fix gem here too before it breaks
+	var root = get_tree().root
+	_hide_gem_recursive(root, gem_name)
+
+func _hide_gem_recursive(node: Node, gem_name: String) -> void:
+	if node.name == gem_name and node.has_method("client_collect_gem"):
+		node.client_collect_gem()
+		return
+	for child in node.get_children():
+		_hide_gem_recursive(child, gem_name)
