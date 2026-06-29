@@ -17,44 +17,44 @@ var _base_color: Color = Color.WHITE
 func _ready() -> void:
 	if multiplayer.is_server():
 		body_entered.connect(_on_body_entered)
+		monitoring = true
+		monitorable = true
+		collision_mask = 1 # Force look at layer 1
 	_apply_element_color()
 
 func can_collect(player_element: int) -> bool:
 	return player_element == int(gem_element)
 
 func _on_body_entered(body: Node2D) -> void:
-	if _is_collected:
-		return
-
-	if not body.is_in_group("player"):
+	if _is_collected or not body.is_in_group("player"):
 		return
 		
 	var pid: int = 0
 	var p_element: int = 0
 	
-	if body.has_method("get_element"):
+	if body.has_meta("player_id"):
+		pid = body.get_meta("player_id")
+		p_element = body.get_meta("element")
+	elif "player_id" in body:
 		pid = body.get("player_id")
-		p_element = int(body.get_element())
-	else:
-		pid = body.get_meta("player_id", 0)
-		p_element = body.get_meta("element", 0)
+		p_element = int(body.get("element"))
 
 	if pid == 0:
 		return
 
 	if not can_collect(p_element):
-		wrong_element_touched.emit(self, pid)
-		rpc("client_wrong_element")
-		return
+		return 
 
+	print("[Server] Player ", pid, " collect gem: ", name)
 	_is_collected = true
 	set_deferred("monitoring", false)
 	set_deferred("monitorable", false)
 	visible = false
 	collected.emit(self, pid)
+	
 	var rpc_node = get_node_or_null("/root/GameplayRPC")
 	if rpc_node:
-		rpc_node.rpc("sync_gem_collected", name)
+		rpc_node.rpc("sync_gem_collected", name, global_position)
 
 @rpc("authority", "call_local", "reliable")
 func client_collect_gem() -> void:

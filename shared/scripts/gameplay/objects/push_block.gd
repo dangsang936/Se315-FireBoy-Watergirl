@@ -48,7 +48,7 @@ func _ready() -> void:
 		return
 
 	lock_rotation = false
-	can_sleep = true
+	can_sleep = false # <--- NO SLEEP ON SERVER!
 	contact_monitor = true
 	max_contacts_reported = 8
 	linear_damp = idle_damping
@@ -85,7 +85,7 @@ func _physics_process(delta: float) -> void:
 		_is_grounded = _ground_detector.is_colliding()
 
 	_sync_timer += delta
-	if _sync_timer >= SYNC_RATE and not sleeping:
+	if _sync_timer >= SYNC_RATE:
 		_sync_timer = 0.0
 		var rpc_node = get_node_or_null("/root/GameplayRPC")
 		if rpc_node:

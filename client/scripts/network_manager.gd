@@ -170,3 +170,11 @@ func relay_player_state(_player_id: int, _state: Dictionary) -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func server_teleport_player(_pos: Vector2) -> void:
 	pass
+func send_stop_movement() -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "server_stop_movement")
+
+@rpc("any_peer", "call_remote", "reliable")
+func server_stop_movement() -> void:
+	pass

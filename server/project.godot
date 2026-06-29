@@ -15,6 +15,10 @@ run/main_scene="res://network_manager.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[autoload]
+
+GameplayRpc="*uid://lwcokmjrq16n"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

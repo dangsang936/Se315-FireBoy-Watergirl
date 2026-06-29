@@ -139,28 +139,37 @@ func _simulate_movement(delta: float, register_push_blocks: bool) -> void:
 func reset_to_spawn(spawn_position: Vector2) -> void:
 	global_position = spawn_position
 	velocity = Vector2.ZERO
+	_movement_input_dir = 0.0
+	_movement_jump_pressed = false
+	_movement_down_pressed = false
 	_coyote_timer = 0.0
 	_jump_buffer_timer = 0.0
 	_jump_key_was_pressed = false
-	
-	if _is_connected_to_server() and has_node("/root/NetworkManager"):
-		var nm = get_node("/root/NetworkManager")
-		if nm.has_method("rpc_id"):
-			nm.rpc_id(1, "server_teleport_player", spawn_position)
-			
 	set_control_enabled(true)
 	_set_player_state(PlayerState.IDLE)
 	call_deferred("_refresh_camera")
-
+	
+	# Send stop packet right now so server knows!
+	if movement_authority == MovementAuthority.CLIENT_INPUT_ONLY:
+		_send_movement_input()
+		
 func set_control_enabled(is_enabled: bool) -> void:
 	_control_enabled = is_enabled
-	set_physics_process(is_enabled)
+	
 	if not is_enabled:
+		_movement_input_dir = 0.0
+		_movement_jump_pressed = false
+		_movement_down_pressed = false
+		if movement_authority == MovementAuthority.CLIENT_INPUT_ONLY:
+			_send_movement_input()
+			
 		velocity = Vector2.ZERO
 		_coyote_timer = 0.0
 		_jump_buffer_timer = 0.0
 		_jump_key_was_pressed = false
 		_set_player_state(PlayerState.IDLE)
+
+	set_physics_process(is_enabled)
 
 func get_player_state() -> PlayerState:
 	return player_state

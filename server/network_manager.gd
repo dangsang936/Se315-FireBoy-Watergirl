@@ -18,7 +18,7 @@ const PLAYER_JUMP_BUFFER_TIME: float = 0.10
 const PLAYER_MAX_FALL_SPEED: float = 330.0
 const PLAYER_FAST_FALL_GRAVITY_MULTIPLIER: float = 1.25
 const PLAYER_ANIMATION_MOVE_THRESHOLD: float = 5.0
-const PROTOTYPE_LEVEL_PHYSICS_SCENE: PackedScene = preload("res://shared/Map/prototype_level.tscn")
+const PROTOTYPE_LEVEL_PHYSICS_SCENE: PackedScene = preload("res://shared/scenes/levels/prototype_level.tscn")
 const PLAYERS_PATH: NodePath = ^"Players"
 const PLAYER_SPAWN_PATH: NodePath = ^"Players/PlayerSpawn"
 const PLAYER_SPAWN_2_PATH: NodePath = ^"Players/PlayerSpawn2"
@@ -122,8 +122,8 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 	body.name = "ServerPlayer_%d" % peer_id
 	
 	# ALL layers and masks so it touches gems and boxes
-	body.collision_layer = 4294967295
-	body.collision_mask = 4294967295
+	body.collision_layer = 1 # Back to default!
+	body.collision_mask = 1
 
 	body.add_to_group("player")
 	body.set_meta("player_id", peer_id)
@@ -131,16 +131,15 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(10, 20)
+	shape.size = Vector2(10, 10) # BIG shape to hit gem for sure
 	collision.shape = shape
-	
 	# Fix levitate: offset shape to match client feet origin
-	collision.position = Vector2(0, -10) 
-	body.add_child(collision)
+	collision.position = Vector2(0, -5)
+	body.add_child(collision) 
 
 	var parent := _players_root if _players_root != null else _world_root
 	parent.add_child(body)
-
+	collision.force_update_transform()
 	var spawn := _player_spawn
 	if role == 1 and _player_spawn_2 != null:
 		spawn = _player_spawn_2
@@ -268,10 +267,27 @@ func _broadcast_player_sync(peer_id: int) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func server_request_restart() -> void:
-	print("[Server] Restart requested by peer.")
+	print("[Server] Restarting world.")
+	
+	# Burn old world
+	if is_instance_valid(_world_root):
+		_world_root.queue_free()
+	
+	server_players.clear()
+	
+	# Build new world
+	_create_movement_world()
+	
+	# Respawn players
+	for pid in connected_players:
+		if player_roles.has(pid):
+			var role = player_roles[pid]
+			latest_inputs[pid] = _neutral_input()
+			_spawn_server_player(pid, role)
+			
+	# Tell clients
 	for pid in connected_players:
 		rpc_id(pid, "receive_level_restart")
-
 @rpc("authority", "call_remote", "reliable")
 func receive_level_restart() -> void:
 	pass
@@ -338,3 +354,11 @@ func server_teleport_player(pos: Vector2) -> void:
 		body.global_position = pos
 		body.velocity = Vector2.ZERO
 		latest_inputs[sender] = _neutral_input() # Stop running!
+@rpc("any_peer", "call_remote", "reliable")
+func server_stop_movement() -> void:
+	var sender := multiplayer.get_remote_sender_id()
+	if sender in latest_inputs:
+		latest_inputs[sender] = _neutral_input()
+		if server_players.has(sender):
+			var body = server_players[sender]["body"]
+			body.velocity = Vector2.ZERO
