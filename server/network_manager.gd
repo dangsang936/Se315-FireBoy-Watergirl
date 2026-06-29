@@ -34,8 +34,10 @@ var _players_root: Node2D = null
 var _player_spawn: Marker2D = null
 var _player_spawn_2: Marker2D = null
 var _gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
+var _log_box: RichTextLabel
 
 func _ready() -> void:
+	_create_log_ui()
 	_create_movement_world()
 	_start_server()
 
@@ -48,18 +50,18 @@ func _start_server() -> void:
 	peer = ENetMultiplayerPeer.new()
 	var error := peer.create_server(PORT, MAX_PLAYERS)
 	if error != OK:
-		printerr("[Server] Failed to create server on port %d: %s" % [PORT, error_string(error)])
+		s_print("[Server] Failed to create server on port %d: %s" % [PORT, error_string(error)])
 		return
 
 	multiplayer.multiplayer_peer = peer
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
-	print("[Server] Server started on port %d (max %d players)" % [PORT, MAX_PLAYERS])
+	s_print("[Server] Server started on port %d (max %d players)" % [PORT, MAX_PLAYERS])
 
 func _on_peer_connected(id: int) -> void:
 	connected_players.append(id)
-	print("[Server] Player connected: %d (total: %d)" % [id, connected_players.size()])
+	s_print("[Server] Player connected: %d (total: %d)" % [id, connected_players.size()])
 
 	var role: int = 0 # Default to Fireboy
 	if player_roles.values().has(0):
@@ -68,12 +70,12 @@ func _on_peer_connected(id: int) -> void:
 	player_roles[id] = role
 	_spawn_server_player(id, role)
 	rpc_id(id, "receive_role_assignment", role)
-	print("[Server] Assigned role %d to player %d" % [role, id])
+	s_print("[Server] Assigned role %d to player %d" % [role, id])
 
 	_broadcast_player_list()
 
 	if connected_players.size() == MAX_PLAYERS:
-		print("[Server] Lobby full, starting game!")
+		s_print("[Server] Lobby full, starting game!")
 		for pid in connected_players:
 			rpc_id(pid, "notify_game_start")
 
@@ -82,7 +84,7 @@ func _on_peer_disconnected(id: int) -> void:
 	player_roles.erase(id)
 	latest_inputs.erase(id)
 	_despawn_server_player(id)
-	print("[Server] Player disconnected: %d (remaining: %d)" % [id, connected_players.size()])
+	s_print("[Server] Player disconnected: %d (remaining: %d)" % [id, connected_players.size()])
 
 	for pid in connected_players:
 		rpc_id(pid, "notify_peer_disconnected", id)
@@ -260,6 +262,22 @@ func _broadcast_player_sync(peer_id: int) -> void:
 		rpc_id(pid, "receive_player_sync", packet)
 		
 
+func _create_log_ui() -> void:
+	var canvas = CanvasLayer.new()
+	add_child(canvas)
+	_log_box = RichTextLabel.new()
+	_log_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_log_box.scroll_following = true
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.8)
+	_log_box.add_theme_stylebox_override("normal", style)
+	canvas.add_child(_log_box)
+
+func s_print(msg: String) -> void:
+	print(msg)
+	if _log_box:
+		_log_box.text += msg + "\n"
+
 # ------------------------------------------------------------------
 # RPCs called ON clients (defined here so the server script compiles,
 # but the real implementation lives in the client's network_manager).
@@ -267,7 +285,7 @@ func _broadcast_player_sync(peer_id: int) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func server_request_restart() -> void:
-	print("[Server] Restarting world.")
+	s_print("[Server] Restarting world.")
 	
 	# Burn old world
 	if is_instance_valid(_world_root):

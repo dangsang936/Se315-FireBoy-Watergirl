@@ -45,7 +45,11 @@ func _on_body_entered(body: Node2D) -> void:
 	if not can_collect(p_element):
 		return 
 
-	print("[Server] Player ", pid, " collect gem: ", name)
+	var msg: String = "[Server] Player " + str(pid) + " collect gem: " + name
+	print(msg)
+	var nm = get_node_or_null("/root/NetworkManager")
+	if nm and nm.has_method("s_print"):
+		nm.s_print(msg)
 	_is_collected = true
 	set_deferred("monitoring", false)
 	set_deferred("monitorable", false)
