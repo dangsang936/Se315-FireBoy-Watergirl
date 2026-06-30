@@ -5,7 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://bppae64yonmb7" path="res://assets/tilesets/Grass_Light.png" id="3_3cnh5"]
 [ext_resource type="PackedScene" uid="uid://cft0awxeimp16" path="res://scenes/gameplay/collectibles/fire_gem.tscn" id="4_3cnh5"]
 [ext_resource type="PackedScene" uid="uid://dkg4y5xxe05qk" path="res://scenes/gameplay/collectibles/water_gem.tscn" id="5_ywg6y"]
-[ext_resource type="PackedScene" uid="uid://brer2pc214ft8" path="res://scenes/gameplay/objects/push_block.tscn" id="6_yqnw4"]
+[ext_resource type="PackedScene" uid="uid://brer2pc214ft8" path="res://shared/scenes/gameplay/objects/push_block.tscn" id="6_yqnw4"]
 [ext_resource type="PackedScene" uid="uid://b8604dgbnwhir" path="res://scenes/gameplay/objects/ladder.tscn" id="7_v6obv"]
 
 [sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_auto_full"]

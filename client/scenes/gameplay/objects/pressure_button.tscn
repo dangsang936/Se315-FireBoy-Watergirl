@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dqlxrcj1uh05n"]
 
-[ext_resource type="Script" uid="uid://5m8bnqvfvu35" path="res://scripts/gameplay/objects/pressure_button.gd" id="1_pressure_button"]
+[ext_resource type="Script" uid="uid://5m8bnqvfvu35" path="res://shared/scripts/gameplay/objects/pressure_button.gd" id="1_pressure_button"]
 [ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="2_f0ng8"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
