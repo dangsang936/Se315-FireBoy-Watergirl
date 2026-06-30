@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://cflyv3jd36jau"]
 
-[ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://scripts/gameplay/levels/prototype_level.gd" id="1_level"]
-[ext_resource type="Script" uid="uid://f726xissaotg" path="res://scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
-[ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://scripts/gameplay/doors/exit_door.gd" id="3_exit"]
+[ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://shared/scripts/gameplay/levels/prototype_level.gd" id="1_level"]
+[ext_resource type="Script" uid="uid://f726xissaotg" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
+[ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://shared/scripts/gameplay/doors/exit_door.gd" id="3_exit"]
 [ext_resource type="PackedScene" uid="uid://brer2pc214ft8" path="res://scenes/gameplay/objects/push_block.tscn" id="4_push_block"]
-[ext_resource type="Script" uid="uid://d0g6k1xxrbf0y" path="res://scripts/gameplay/collectibles/gem_manager.gd" id="5_gem_manager"]
+[ext_resource type="Script" uid="uid://d0g6k1xxrbf0y" path="res://shared/scripts/gameplay/collectibles/gem_manager.gd" id="5_gem_manager"]
 [ext_resource type="PackedScene" uid="uid://b1l8rha1m7g4p" path="res://scenes/gameplay/collectibles/collectible_gem.tscn" id="6_gem"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]

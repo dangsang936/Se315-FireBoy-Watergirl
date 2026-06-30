@@ -205,8 +205,8 @@ def check_scene_contracts(failures: list[str]) -> None:
 	real_level_text = read(CLIENT_ROOT / "scenes" / "levels" / "real_level_blank.tscn")
 	for node_name in ["Players", "PlayerSpawn", "Terrain", "Objects", "Hazards", "Goals", "ExitDoor", "HazardZone", "LavaPool", "PoisonPool"]:
 		require(f'name="{node_name}"' in real_level_text, f"Real blank level missing {node_name}", failures)
-	require("res://scripts/gameplay/levels/prototype_level.gd" in real_level_text, "Real blank level missing level script", failures)
-	require("res://scripts/gameplay/hazards/hazard_zone.gd" in real_level_text, "Real blank level missing hazard script", failures)
+	require("res://shared/scripts/gameplay/levels/prototype_level.gd" in real_level_text, "Real blank level missing level script", failures)
+	require("res://shared/scripts/gameplay/hazards/hazard_zone.gd" in real_level_text, "Real blank level missing hazard script", failures)
 
 	game_real_text = read(CLIENT_ROOT / "scenes" / "bootstrap" / "game_real.tscn")
 	require("res://scenes/levels/real_level_blank.tscn" in game_real_text, "Real game bootstrap missing blank level", failures)
@@ -319,7 +319,7 @@ def check_scripts(failures: list[str]) -> None:
 		'name="Visual"',
 		'type="Polygon2D"',
 		'name="CollisionShape2D"',
-		"res://scripts/gameplay/collectibles/collectible_gem.gd",
+		"res://shared/scripts/gameplay/collectibles/collectible_gem.gd",
 	]:
 		require(snippet in gem_scene_text, f"Collectible gem scene missing {snippet}", failures)
 
@@ -357,7 +357,7 @@ def check_scripts(failures: list[str]) -> None:
 		'name="PushDetector"',
 		'name="GroundDetector"',
 		"size = Vector2(16, 16)",
-		"res://scripts/gameplay/objects/push_block.gd",
+		"res://shared/scripts/gameplay/objects/push_block.gd",
 	]:
 		require(snippet in push_block_scene, f"Push block scene missing {snippet}", failures)
 
@@ -373,7 +373,7 @@ def check_scripts(failures: list[str]) -> None:
 	for snippet in ["class_name Ladder", "extends Area2D", "@export var climb_speed: float", "add_to_group(\"ladder\")", "func get_climb_speed() -> float:"]:
 		require(snippet in ladder_text, f"Ladder script missing {snippet}", failures)
 	ladder_scene = read(CLIENT_ROOT / "scenes" / "gameplay" / "objects" / "ladder.tscn")
-	for snippet in ['name="Ladder"', 'type="Area2D"', 'name="CollisionShape2D"', "res://scripts/gameplay/objects/ladder.gd"]:
+	for snippet in ['name="Ladder"', 'type="Area2D"', 'name="CollisionShape2D"', "res://shared/scripts/gameplay/objects/ladder.gd"]:
 		require(snippet in ladder_scene, f"Ladder scene missing {snippet}", failures)
 
 	check_player_state_machine_structure(failures)

@@ -9,15 +9,17 @@ enum ManagerState { BOOT, LOADING_LEVEL, PLAYING, PAUSED, WON, LOST, RESTARTING,
 @export var level_root_path: NodePath = ^"LevelRoot"
 @export var hud_path: NodePath = ^"HUD"
 
+const RemotePlayerScript: Script = preload("res://scripts/multiplayer/remote_player.gd")
+
 var _state: ManagerState = ManagerState.BOOT
-var _current_level: PrototypeLevel
+var _current_level: Node2D
 var _player: CharacterBody2D
 var _remote_player: CharacterBody2D
 var _is_reloading: bool = false
 var player_nodes: Dictionary = {}
 
 @onready var _level_root: Node2D = get_node(level_root_path) as Node2D
-@onready var _hud: PrototypeHUD = get_node(hud_path) as PrototypeHUD
+@onready var _hud: CanvasLayer = get_node(hud_path) as CanvasLayer
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -123,7 +125,7 @@ func _load_level() -> void:
 	_player = null
 	_remote_player = null
 
-	_current_level = level_scene.instantiate() as PrototypeLevel
+	_current_level = level_scene.instantiate() as Node2D
 	_current_level.level_completed.connect(_on_level_completed)
 	_current_level.player_failed.connect(_on_player_failed)
 	_current_level.exit_locked.connect(_on_exit_locked)
@@ -169,7 +171,7 @@ func _spawn_remote_player() -> void:
 		_remote_player.set("is_local", false)
 	
 	# Attach RemotePlayer logic component
-	var remote_comp = RemotePlayer.new()
+	var remote_comp = RemotePlayerScript.new()
 	remote_comp.name = "RemotePlayer"
 	_remote_player.add_child(remote_comp)
 	
