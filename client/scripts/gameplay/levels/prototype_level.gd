@@ -1,3 +1,4 @@
+class_name PrototypeLevel
 extends Node2D
 
 signal level_completed
@@ -31,7 +32,7 @@ func attach_player(player: Node2D, spawn_idx: int = 1) -> void:
 	player.position = _players.to_local(spawn_position)
 	_players.add_child(player)
 	player.global_position = spawn_position
-	
+
 	if _gem_manager != null:
 		var p_element: int = 0
 		if player.has_method("get_element"):
@@ -40,7 +41,7 @@ func attach_player(player: Node2D, spawn_idx: int = 1) -> void:
 			p_element = player.get_meta("element")
 		elif "element" in player:
 			p_element = int(player.get("element"))
-			
+
 		_gem_manager.configure_for_element(p_element)
 func get_spawn_position() -> Vector2:
 	return _player_spawn.global_position
