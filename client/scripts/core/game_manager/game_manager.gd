@@ -214,6 +214,7 @@ func _on_level_completed() -> void:
 func _on_player_failed(_player_node: Node2D) -> void:
 	if _state != GameState.PLAYING:
 		return
+	NetworkManager.send_stop_movement() # NEW LINE
 	_set_player_control_enabled(false)
 	_set_state(GameState.LOST)
 
@@ -300,6 +301,9 @@ func _set_player_control_enabled(is_enabled: bool) -> void:
 			_player.call("set_control_enabled", is_enabled)
 		else:
 			_player.set_physics_process(is_enabled)
+			
+	if not is_enabled:
+		NetworkManager.send_stop_movement() # Make sure server stop
 
 func _set_state(next_state: GameState) -> void:
 	_state = next_state

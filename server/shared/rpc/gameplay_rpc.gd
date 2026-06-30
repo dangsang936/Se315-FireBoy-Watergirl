@@ -1,40 +1,61 @@
 class_name GameplayRPC
 extends Node
 
-# Server yêu cầu tất cả Client load màn chơi mới
 @rpc("authority", "call_local", "reliable")
 func rpc_load_level(level_id: String):
 	print("Load màn chơi: ", level_id)
-	# GameManager sẽ bắt sự kiện này để đổi State sang LOADING_LEVEL
 
-# Server thông báo có người chơi bị chết (rớt dung nham/nước)
 @rpc("authority", "call_local", "reliable")
 func rpc_player_died(player_id: int, hazard_type: String):
 	print("Player ", player_id, " vừa chết do: ", hazard_type)
 
-# Server báo cả 2 đã đến cửa thành công
 @rpc("authority", "call_local", "reliable")
 func rpc_level_completed(time_taken: float):
 	print("Màn chơi hoàn thành trong ", time_taken, " giây!")
-	# Chuyển state sang RESULT_SCREEN
+
 @rpc("authority", "call_remote", "unreliable_ordered")
 func sync_push_block(block_name: String, pos: Vector2, rot: float) -> void:
 	var blocks := get_tree().get_nodes_in_group("push_block")
+	var best_block: Node2D = null
+	var best_dist: float = 999999.0
+	
 	for b in blocks:
-		if b.name == block_name:
-			b.global_position = pos
-			b.rotation = rot
-			return
+		var d = b.global_position.distance_to(pos)
+		if d < best_dist:
+			best_dist = d
+			best_block = b
+			
+	if best_block != null and best_dist < 200.0:
+		best_block.global_position = pos
+		best_block.rotation = rot
+		if best_block is RigidBody2D:
+			best_block.linear_velocity = Vector2.ZERO
+			best_block.angular_velocity = 0.0
 
 @rpc("authority", "call_remote", "reliable")
-func sync_gem_collected(gem_name: String) -> void:
-	# We fix gem here too before it breaks
+func sync_gem_collected(gem_name: String, pos: Vector2 = Vector2.ZERO) -> void:
 	var root = get_tree().root
-	_hide_gem_recursive(root, gem_name)
+	var best_gem = _find_closest_gem(root, pos, 99999.0, null)
+	if best_gem:
+		best_gem.client_collect_gem()
 
-func _hide_gem_recursive(node: Node, gem_name: String) -> void:
-	if node.name == gem_name and node.has_method("client_collect_gem"):
-		node.client_collect_gem()
-		return
+func _find_closest_gem(node: Node, pos: Vector2, best_dist: float, best_gem: Node) -> Node:
+	if node.has_method("client_collect_gem") and "global_position" in node:
+		var d = node.get("global_position").distance_to(pos)
+		if d < best_dist:
+			best_dist = d
+			best_gem = node
 	for child in node.get_children():
-		_hide_gem_recursive(child, gem_name)
+		best_gem = _find_closest_gem(child, pos, best_dist, best_gem)
+		if best_gem and "global_position" in best_gem:
+			best_dist = best_gem.get("global_position").distance_to(pos)
+	return best_gem
+
+@rpc("authority", "call_local", "reliable")
+func sync_gem_progress(collected_count: int) -> void:
+	var managers = get_tree().get_nodes_in_group("gem_manager")
+	for gm in managers:
+		if gm.has_method("client_sync_progress_rpc"):
+			gm.client_sync_progress_rpc(collected_count)
+			
+	
