@@ -132,7 +132,7 @@ func _update_jump_cut_state(delta: float) -> void:
 	if _jump_hold_timer > 0.0:
 		_jump_hold_timer = maxf(_jump_hold_timer - delta, 0.0)
 	if input_reader.jump_just_released and _jump_hold_timer > 0.0:
-		owner_player.velocity.y *= owner_player.jump_cutoff_multiplier
+		owner_player.velocity.y = maxf(owner_player.velocity.y * owner_player.jump_cutoff_multiplier, 260.0)
 		_jump_hold_timer = 0.0
 		_jump_cut_active = true
 		return

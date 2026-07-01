@@ -12,7 +12,7 @@
 [ext_resource type="PackedScene" uid="uid://dqlxrcj1uh05n" path="res://scenes/gameplay/objects/pressure_button.tscn" id="9_button"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hazard"]
-size = Vector2(48, 18)
+size = Vector2(128, 27)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
 size = Vector2(34, 62)
@@ -28,7 +28,7 @@ glow_bloom = 0.2
 [node name="RealLevelBlank" type="Node2D" unique_id=2094822713]
 script = ExtResource("1_level")
 players_path = NodePath("tilemap/Players")
-player_spawn_path = NodePath("tilemap/Players/PlayerSpawn")
+player_spawn_path = NodePath("SpawnPoints/PlayerSpawn")
 
 [node name="parallaxlayers" type="Node2D" parent="." unique_id=163411141]
 z_index = -15
@@ -72,24 +72,28 @@ centered = false
 [node name="Hazards" type="Node2D" parent="." unique_id=591894627]
 
 [node name="LavaPool" type="Area2D" parent="Hazards" unique_id=1038535333]
-position = Vector2(-51, -63)
+position = Vector2(-5, -62)
 collision_layer = 16
 collision_mask = 2
 script = ExtResource("2_hazard")
 pool_type = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=1861931717]
-position = Vector2(491, 720)
+position = Vector2(445, 719)
+shape = SubResource("RectangleShape2D_hazard")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=634877222]
+position = Vector2(629, 736.5)
 shape = SubResource("RectangleShape2D_hazard")
 
 [node name="HazardZone" type="Area2D" parent="Hazards" unique_id=993619337]
-position = Vector2(-3, -62)
+position = Vector2(9, -62)
 collision_layer = 16
 collision_mask = 2
 script = ExtResource("2_hazard")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/HazardZone" unique_id=937581071]
-position = Vector2(347, 719)
+position = Vector2(334, 716)
 shape = SubResource("RectangleShape2D_hazard")
 
 [node name="PoisonPool" type="Area2D" parent="Hazards" unique_id=566607842]
@@ -151,9 +155,7 @@ tile_set = ExtResource("4_gkpaa")
 script = ExtResource("8_7tvm4")
 
 [node name="Players" type="Node2D" parent="tilemap" unique_id=496550713]
-
-[node name="PlayerSpawn" type="Marker2D" parent="tilemap/Players" unique_id=1453074696]
-position = Vector2(4, 612)
+position = Vector2(26, 618)
 
 [node name="PressureButton" parent="tilemap" unique_id=859789714 instance=ExtResource("9_button")]
 position = Vector2(765, 656)
@@ -161,15 +163,22 @@ collision_layer = 128
 collision_mask = 2
 bridge_path = NodePath("../../Puzzles/LavaBridge")
 
+[node name="SpawnPoints" type="Node2D" parent="." unique_id=1453074696]
+
+[node name="PlayerSpawn" type="Marker2D" parent="SpawnPoints" unique_id=906776050]
+position = Vector2(41, 618)
+
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=377752583]
 environment = SubResource("Environment_7tvm4")
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=120806549]
-color = Color(0.34613913, 0.4417098, 0.7906228, 1)
+position = Vector2(16, 4)
+color = Color(0.28162947, 0.51476526, 0.53207594, 1)
 
 [node name="DirectionalLight2D" type="DirectionalLight2D" parent="." unique_id=757165895]
+position = Vector2(-5.722046e-06, -7.6293945e-06)
 rotation = -0.31205624
-color = Color(0.27934235, 0.7692838, 0.8798201, 1)
+color = Color(0.71040076, 0.7216921, 0.41666624, 1)
 energy = 1.8
 shadow_enabled = true
 shadow_filter = 2

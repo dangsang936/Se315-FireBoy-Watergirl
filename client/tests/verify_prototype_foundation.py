@@ -18,6 +18,7 @@ REQUIRED_FILES = [
 	"scenes/levels/prototype_level.tscn",
 	"scenes/levels/real_level_blank.tscn",
 	"scenes/ui/hud.tscn",
+	"scenes/ui/host_waiting_room.tscn",
 	"scenes/menus/pause_menu.tscn",
 	"scripts/core/game_manager/game_manager.gd",
 	"scripts/player/movement/player.gd",
@@ -35,17 +36,9 @@ REQUIRED_FILES = [
 	"scripts/player/states/push_state.gd",
 	"scripts/player/states/climb_state.gd",
 	"scripts/player/states/disabled_state.gd",
-	"scripts/gameplay/levels/prototype_level.gd",
-	"scripts/gameplay/hazards/hazard_zone.gd",
-	"scripts/gameplay/doors/exit_door.gd",
-	"scripts/gameplay/collectibles/collectible_gem.gd",
-	"scripts/gameplay/collectibles/gem_manager.gd",
-	"scripts/gameplay/objects/push_block.gd",
-	"scripts/gameplay/objects/ladder.gd",
 	"scripts/ui/hud/hud.gd",
+	"scripts/ui/host_waiting_room.gd",
 	"scripts/ui/menus/pause_menu.gd",
-	"scenes/gameplay/collectibles/collectible_gem.tscn",
-	"scenes/gameplay/objects/push_block.tscn",
 	"scenes/gameplay/objects/ladder.tscn",
 	"scenes/levels/ladder_test_level.tscn",
 	"docs/level_workflow.md",
@@ -53,6 +46,23 @@ REQUIRED_FILES = [
 	"tests/player_state_machine_probe.gd",
 	"tests/button_ladder_interactions_probe.gd",
 	"tests/precision_player_movement_probe.gd",
+	"tests/client_prediction_contract_probe.gd",
+]
+
+REQUIRED_REPO_FILES = [
+	"shared/scripts/multiplayer/movement/player_movement_config.gd",
+	"shared/scripts/multiplayer/movement/player_movement_state.gd",
+	"shared/scripts/multiplayer/movement/player_movement_simulator.gd",
+	"client/scripts/multiplayer/prediction/client_prediction_controller.gd",
+	"shared/scripts/gameplay/levels/prototype_level.gd",
+	"shared/scripts/gameplay/hazards/hazard_zone.gd",
+	"shared/scripts/gameplay/doors/exit_door.gd",
+	"shared/scripts/gameplay/collectibles/collectible_gem.gd",
+	"shared/scripts/gameplay/collectibles/gem_manager.gd",
+	"shared/scripts/gameplay/objects/push_block.gd",
+	"shared/scripts/gameplay/objects/ladder.gd",
+	"shared/scenes/gameplay/collectibles/collectible_gem.tscn",
+	"shared/scenes/gameplay/objects/push_block.tscn",
 ]
 
 REQUIRED_ACTIONS = ["move_left", "move_right", "jump", "pause", "restart"]
@@ -107,11 +117,11 @@ REQUIRED_2D_LAYER_NAMES = {
 COLLISION_SCENE_SNIPPETS = {
 	"scenes/players/fireboy.tscn": ["collision_layer = 2", "collision_mask = 5", "collision_mask = 8"],
 	"scenes/players/watergirl.tscn": ["collision_layer = 2", "collision_mask = 5", "collision_mask = 8"],
-	"scenes/gameplay/objects/push_block.tscn": ["collision_layer = 4", "collision_mask = 3", "collision_mask = 2", "collision_mask = 1"],
+	"shared/scenes/gameplay/objects/push_block.tscn": ["collision_layer = 4", "collision_mask = 3", "collision_mask = 2"],
 	"scenes/gameplay/objects/ladder.tscn": ["collision_layer = 8", "collision_mask = 0"],
 	"scenes/gameplay/objects/pressure_button.tscn": ["collision_layer = 128", "collision_mask = 2"],
 	"scenes/gameplay/objects/bridge_platform.tscn": ["collision_layer = 1", "collision_mask = 6"],
-	"scenes/gameplay/collectibles/collectible_gem.tscn": ["collision_layer = 32", "collision_mask = 2"],
+	"shared/scenes/gameplay/collectibles/collectible_gem.tscn": ["collision_layer = 32", "collision_mask = 2"],
 	"scenes/gameplay/collectibles/water_gem.tscn": ["collision_layer = 32", "collision_mask = 2"],
 	"scenes/levels/prototype_level.tscn": ["collision_layer = 1", "collision_mask = 6", "collision_layer = 16", "collision_layer = 64"],
 	"scenes/levels/ladder_test_level.tscn": ["collision_layer = 1", "collision_mask = 6", "collision_layer = 16", "collision_layer = 64"],
@@ -121,13 +131,13 @@ COLLISION_SCENE_SNIPPETS = {
 COLLISION_SCRIPT_SNIPPETS = {
 	"scripts/player/movement/player.gd": ["PLAYER_COLLISION_LAYER: int = 2", "PLAYER_COLLISION_MASK: int = 5"],
 	"scripts/player/interaction/ladder_detector.gd": ["LADDER_DETECTOR_LAYER: int = 0", "LADDER_DETECTOR_MASK: int = 8"],
-	"scripts/gameplay/objects/ladder.gd": ["LADDER_COLLISION_LAYER: int = 8", "LADDER_COLLISION_MASK: int = 0"],
-	"scripts/gameplay/objects/pressure_button.gd": ["PRESSURE_BUTTON_COLLISION_LAYER: int = 128", "PRESSURE_BUTTON_COLLISION_MASK: int = 2"],
-	"scripts/gameplay/objects/push_block.gd": ["PUSH_BLOCK_COLLISION_LAYER: int = 4", "PUSH_BLOCK_COLLISION_MASK: int = 3", "PUSH_DETECTOR_COLLISION_MASK: int = 2"],
-	"scripts/gameplay/objects/bridge_platform.gd": ["WORLD_COLLISION_LAYER: int = 1", "WORLD_COLLISION_MASK: int = 6"],
-	"scripts/gameplay/collectibles/collectible_gem.gd": ["GEM_COLLISION_LAYER: int = 32", "GEM_COLLISION_MASK: int = 2"],
-	"scripts/gameplay/hazards/hazard_zone.gd": ["HAZARD_COLLISION_LAYER: int = 16", "HAZARD_COLLISION_MASK: int = 2"],
-	"scripts/gameplay/doors/exit_door.gd": ["EXIT_COLLISION_LAYER: int = 64", "EXIT_COLLISION_MASK: int = 2"],
+	"shared/scripts/gameplay/objects/ladder.gd": ["LADDER_COLLISION_LAYER: int = 8", "LADDER_COLLISION_MASK: int = 0"],
+	"shared/scripts/gameplay/objects/pressure_button.gd": ["PRESSURE_BUTTON_COLLISION_LAYER: int = 128", "PRESSURE_BUTTON_COLLISION_MASK: int = 2"],
+	"shared/scripts/gameplay/objects/push_block.gd": ["PUSH_BLOCK_COLLISION_LAYER: int = 4", "PUSH_BLOCK_COLLISION_MASK: int = 3", "PUSH_DETECTOR_COLLISION_MASK: int = 2"],
+	"shared/scripts/gameplay/objects/bridge_platform.gd": ["WORLD_COLLISION_LAYER: int = 1", "WORLD_COLLISION_MASK: int = 6"],
+	"shared/scripts/gameplay/collectibles/collectible_gem.gd": ["GEM_COLLISION_LAYER: int = 32", "GEM_COLLISION_MASK: int = 2"],
+	"shared/scripts/gameplay/hazards/hazard_zone.gd": ["HAZARD_COLLISION_LAYER: int = 16", "HAZARD_COLLISION_MASK: int = 2"],
+	"shared/scripts/gameplay/doors/exit_door.gd": ["EXIT_COLLISION_LAYER: int = 64", "EXIT_COLLISION_MASK: int = 2"],
 }
 
 
@@ -143,6 +153,8 @@ def require(condition: bool, message: str, failures: list[str]) -> None:
 def check_required_files(failures: list[str]) -> None:
 	for relative_path in REQUIRED_FILES:
 		require((CLIENT_ROOT / relative_path).exists(), f"Missing {relative_path}", failures)
+	for relative_path in REQUIRED_REPO_FILES:
+		require((REPO_ROOT / relative_path).exists(), f"Missing {relative_path}", failures)
 
 
 def check_rules(failures: list[str]) -> None:
@@ -157,7 +169,7 @@ def check_rules(failures: list[str]) -> None:
 
 def check_project_settings(failures: list[str]) -> None:
 	project_text = read(CLIENT_ROOT / "project.godot")
-	require('run/main_scene="res://scenes/bootstrap/game.tscn"' in project_text, "Wrong main scene", failures)
+	require('run/main_scene="res://scenes/menus/main_menu.tscn"' in project_text, "Wrong main scene", failures)
 	for layer_index, layer_name in REQUIRED_2D_LAYER_NAMES.items():
 		require(f'2d_physics/layer_{layer_index}="{layer_name}"' in project_text, f"Missing 2D physics layer {layer_index}: {layer_name}", failures)
 	for action in REQUIRED_ACTIONS:
@@ -170,14 +182,24 @@ def check_project_settings(failures: list[str]) -> None:
 	for banned in BANNED_INPUT_ACTIONS:
 		require(banned not in project_text, f"Banned co-op input/config found: {banned}", failures)
 
+
+def check_shared_project_links(failures: list[str]) -> None:
+	client_shared = CLIENT_ROOT / "shared"
+	server_shared = REPO_ROOT / "server" / "shared"
+	expected = (REPO_ROOT / "shared").resolve()
+	for label, path in [("client/shared", client_shared), ("server/shared", server_shared)]:
+		require(path.exists(), f"Missing {label}; res://shared paths will not resolve", failures)
+		if path.exists():
+			require(path.resolve() == expected, f"{label} must resolve to {expected}", failures)
+
 def check_collision_contracts(failures: list[str]) -> None:
 	for relative_path, snippets in COLLISION_SCENE_SNIPPETS.items():
-		text = read(CLIENT_ROOT / relative_path)
+		text = read(REPO_ROOT / relative_path if relative_path.startswith("shared/") else CLIENT_ROOT / relative_path)
 		for snippet in snippets:
 			require(snippet in text, f"{relative_path} missing collision contract {snippet}", failures)
 
 	for relative_path, snippets in COLLISION_SCRIPT_SNIPPETS.items():
-		text = read(CLIENT_ROOT / relative_path)
+		text = read(REPO_ROOT / relative_path if relative_path.startswith("shared/") else CLIENT_ROOT / relative_path)
 		for snippet in snippets:
 			require(snippet in text, f"{relative_path} missing collision default {snippet}", failures)
 
@@ -218,6 +240,12 @@ def check_scene_contracts(failures: list[str]) -> None:
 	require("res://scenes/menus/pause_menu.tscn" in hud_text, "HUD missing pause menu", failures)
 	require('name="GemLabel"' in hud_text, "HUD missing persistent gem count label", failures)
 
+	host_waiting_room_text = read(CLIENT_ROOT / "scenes" / "ui" / "host_waiting_room.tscn")
+	require("res://scripts/ui/host_waiting_room.gd" in host_waiting_room_text, "Host waiting room missing script", failures)
+	require('name="StartGameButton"' in host_waiting_room_text, "Host waiting room missing StartGameButton", failures)
+	require('name="FireboyButton"' in host_waiting_room_text, "Host waiting room missing FireboyButton", failures)
+	require('name="WatergirlButton"' in host_waiting_room_text, "Host waiting room missing WatergirlButton", failures)
+
 
 def check_scripts(failures: list[str]) -> None:
 	player_text = read(CLIENT_ROOT / "scripts" / "player" / "movement" / "player.gd")
@@ -246,29 +274,128 @@ def check_scripts(failures: list[str]) -> None:
 	for snippet in ["@export var camera_path: NodePath", "make_current()", "reset_smoothing()"]:
 		require(snippet in player_text, f"Player camera restart fix missing {snippet}", failures)
 
+	prediction_text = read(CLIENT_ROOT / "scripts" / "multiplayer" / "prediction" / "client_prediction_controller.gd")
+	for snippet in [
+		"class_name ClientPredictionController",
+		"const MAX_PENDING_INPUTS: int = 128",
+		"func predict(packet: Dictionary, delta: float) -> PlayerMovementState:",
+		"func reconcile(snapshot: Dictionary, delta: float) -> PlayerMovementState:",
+		"func _replay_pending_inputs(delta: float) -> PlayerMovementState:",
+	]:
+		require(snippet in prediction_text, f"Prediction controller missing {snippet}", failures)
+
 	game_manager_text = read(CLIENT_ROOT / "scripts" / "core" / "game_manager" / "game_manager.gd")
 	for state in ["LOADING_LEVEL", "PLAYING", "PAUSED", "WON", "LOST", "RESTARTING"]:
 		require(state in game_manager_text, f"Game manager missing state {state}", failures)
 	for snippet in ["var _is_reloading: bool", "queue_free()", "await get_tree().process_frame", "call_deferred(\"_load_level\")", "_set_player_control_enabled(false)"]:
 		require(snippet in game_manager_text, f"Game manager restart fix missing {snippet}", failures)
+	require(
+		'DEFAULT_LEVEL_SCENE: PackedScene = preload("res://scenes/levels/real_level_blank.tscn")' in game_manager_text,
+		"Game manager default level must be the real blank level, not the prototype fallback",
+		failures,
+	)
 
 	for relative_path in [
-		"scripts/gameplay/levels/prototype_level.gd",
-		"scripts/gameplay/hazards/hazard_zone.gd",
-		"scripts/gameplay/doors/exit_door.gd",
-		"scripts/gameplay/collectibles/collectible_gem.gd",
-		"scripts/gameplay/collectibles/gem_manager.gd",
-		"scripts/gameplay/objects/push_block.gd",
+		"shared/scripts/gameplay/levels/prototype_level.gd",
+		"shared/scripts/gameplay/hazards/hazard_zone.gd",
+		"shared/scripts/gameplay/doors/exit_door.gd",
+		"shared/scripts/gameplay/collectibles/collectible_gem.gd",
+		"shared/scripts/gameplay/collectibles/gem_manager.gd",
+		"shared/scripts/gameplay/objects/push_block.gd",
 		"scripts/ui/hud/hud.gd",
+		"scripts/ui/host_waiting_room.gd",
 		"scripts/ui/menus/pause_menu.gd",
 	]:
-		text = read(CLIENT_ROOT / relative_path)
+		text = read(REPO_ROOT / relative_path if relative_path.startswith("shared/") else CLIENT_ROOT / relative_path)
 		require("extends " in text, f"{relative_path} missing extends", failures)
 
-	hazard_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "hazards" / "hazard_zone.gd")
+	network_manager_text = read(CLIENT_ROOT / "scripts" / "network_manager.gd")
+	for snippet in [
+		"func host_room(port: int = DEFAULT_PORT) -> void:",
+		"OS.create_process",
+		"func request_role(role: int) -> void:",
+		"rpc_id(1, \"request_role\", role)",
+		"func start_game() -> void:",
+		"rpc_id(1, \"request_start_game\")",
+		"signal authoritative_player_snapshot_received(player_id: int, snapshot: Dictionary)",
+		"func send_player_input(packet: Dictionary) -> void:",
+		"rpc_id(1, \"receive_player_input\", multiplayer.get_unique_id(), packet)",
+		"func receive_authoritative_player_snapshot(player_id: int, snapshot: Dictionary) -> void:",
+	]:
+		require(snippet in network_manager_text, f"Network manager host flow missing {snippet}", failures)
+
+	server_network_manager_text = read(REPO_ROOT / "server" / "network_manager.gd")
+	for snippet in [
+		"func request_role(role: int) -> void:",
+		"_assign_role(sender_id, role)",
+		"func request_start_game() -> void:",
+		"multiplayer.get_remote_sender_id()",
+		"rpc_id(pid, \"notify_game_start\")",
+		"var _authoritative_states: Dictionary = {}",
+		"func receive_player_input(player_id: int, packet: Dictionary) -> void:",
+		"PlayerMovementSimulator.step",
+		"rpc_id(sender_id, \"receive_authoritative_player_snapshot\", player_id, snapshot)",
+	]:
+		require(snippet in server_network_manager_text, f"Server host flow missing {snippet}", failures)
+
+	player_text = read(CLIENT_ROOT / "scripts" / "player" / "movement" / "player.gd")
+	for snippet in [
+		"var _prediction_controller: ClientPredictionController",
+		"func apply_authoritative_snapshot(snapshot: Dictionary) -> void:",
+		"_prediction_controller.reconcile(snapshot, _last_prediction_delta)",
+	]:
+		require(snippet in player_text, f"Player prediction integration missing {snippet}", failures)
+
+	game_manager_text = read(CLIENT_ROOT / "scripts" / "core" / "game_manager" / "game_manager.gd")
+	for snippet in [
+		"NetworkManager.authoritative_player_snapshot_received.connect(_on_authoritative_player_snapshot_received)",
+		"func _on_authoritative_player_snapshot_received(player_id: int, snapshot: Dictionary) -> void:",
+		"if _player.has_method(\"apply_authoritative_snapshot\")",
+	]:
+		require(snippet in game_manager_text, f"Game manager prediction routing missing {snippet}", failures)
+
+	scene_loader_text = read(CLIENT_ROOT / "addons" / "maaacks_game_template" / "base" / "nodes" / "autoloads" / "scene_loader" / "scene_loader.gd")
+	require(
+		"ResourceLoader.CACHE_MODE_REPLACE_DEEP" in scene_loader_text,
+		"SceneLoader must replace deep resource cache so editor debug runs cannot reuse stale gameplay scenes",
+		failures,
+	)
+	require(
+		"ResourceLoader.load(_scene_path, \"\", ResourceLoader.CACHE_MODE_REPLACE_DEEP)" in scene_loader_text,
+		"SceneLoader must load scenes synchronously with deep cache replacement",
+		failures,
+	)
+	require(
+		"call_deferred(\"change_scene_to_resource\")" in scene_loader_text,
+		"SceneLoader cached scene changes must be deferred out of the loading callback",
+		failures,
+	)
+	require(
+		"load_threaded_get" not in scene_loader_text,
+		"SceneLoader must not call load_threaded_get because it crashes Godot 4.6.2 in the gameplay start flow",
+		failures,
+	)
+	require(
+		"load_threaded_request" not in scene_loader_text,
+		"SceneLoader must not use threaded scene loading in the gameplay start flow",
+		failures,
+	)
+	lobby_ui_text = read(CLIENT_ROOT / "scripts" / "ui" / "lobby_ui.gd")
+	require(
+		"SceneLoader.load_scene(\"res://scenes/bootstrap/game.tscn\")" in lobby_ui_text,
+		"Lobby game start should use cache-replacing SceneLoader",
+		failures,
+	)
+	require(
+		"change_scene_to_file(\"res://scenes/bootstrap/game.tscn\")" not in lobby_ui_text,
+		"Lobby game start must not bypass SceneLoader with change_scene_to_file",
+		failures,
+	)
+
+	hazard_text = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "hazards" / "hazard_zone.gd")
 	require("POISON" in hazard_text, "Hazard zone missing poison pool type", failures)
 
-	collectible_gem_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "collectibles" / "collectible_gem.gd")
+	collectible_gem_text = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "collectibles" / "collectible_gem.gd")
 	for snippet in [
 		"class_name CollectibleGem",
 		"extends Area2D",
@@ -281,7 +408,7 @@ def check_scripts(failures: list[str]) -> None:
 	]:
 		require(snippet in collectible_gem_text, f"Collectible gem missing {snippet}", failures)
 
-	gem_manager_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "collectibles" / "gem_manager.gd")
+	gem_manager_text = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "collectibles" / "gem_manager.gd")
 	for snippet in [
 		"class_name GemManager",
 		"extends Node2D",
@@ -293,7 +420,7 @@ def check_scripts(failures: list[str]) -> None:
 	]:
 		require(snippet in gem_manager_text, f"Gem manager missing {snippet}", failures)
 
-	level_script_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "levels" / "prototype_level.gd")
+	level_script_text = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "levels" / "prototype_level.gd")
 	for snippet in [
 		"signal exit_locked(remaining: int, gem_element: int)",
 		"@export var collectibles_path: NodePath = ^\"Collectibles\"",
@@ -313,7 +440,7 @@ def check_scripts(failures: list[str]) -> None:
 	pause_menu_text = read(CLIENT_ROOT / "scripts" / "ui" / "menus" / "pause_menu.gd")
 	require("func set_paused_view(should_show: bool) -> void:" in pause_menu_text, "Pause menu should avoid is_visible shadow warning", failures)
 
-	gem_scene_text = read(CLIENT_ROOT / "scenes" / "gameplay" / "collectibles" / "collectible_gem.tscn")
+	gem_scene_text = read(REPO_ROOT / "shared" / "scenes" / "gameplay" / "collectibles" / "collectible_gem.tscn")
 	for snippet in [
 		'type="Area2D"',
 		'name="Visual"',
@@ -323,7 +450,7 @@ def check_scripts(failures: list[str]) -> None:
 	]:
 		require(snippet in gem_scene_text, f"Collectible gem scene missing {snippet}", failures)
 
-	push_block_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "objects" / "push_block.gd")
+	push_block_text = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "objects" / "push_block.gd")
 	for snippet in [
 		"class_name PushBlock",
 		"extends RigidBody2D",
@@ -349,7 +476,7 @@ def check_scripts(failures: list[str]) -> None:
 	]:
 		require(snippet in player_text, f"Player push contact missing {snippet}", failures)
 
-	push_block_scene = read(CLIENT_ROOT / "scenes" / "gameplay" / "objects" / "push_block.tscn")
+	push_block_scene = read(REPO_ROOT / "shared" / "scenes" / "gameplay" / "objects" / "push_block.tscn")
 	for snippet in [
 		'type="RigidBody2D"',
 		'name="CollisionShape2D"',
@@ -361,7 +488,7 @@ def check_scripts(failures: list[str]) -> None:
 	]:
 		require(snippet in push_block_scene, f"Push block scene missing {snippet}", failures)
 
-	pressure_button_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "objects" / "pressure_button.gd")
+	pressure_button_text = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "objects" / "pressure_button.gd")
 	for snippet in ["class_name PressureButton", "@export var visual_path: NodePath", "@export var released_frame: int", "@export var pressed_frame: int", "func _sync_visual_state() -> void:", "AnimatedSprite2D"]:
 		require(snippet in pressure_button_text, f"Pressure button artwork state missing {snippet}", failures)
 	pressure_button_scene = read(CLIENT_ROOT / "scenes" / "gameplay" / "objects" / "pressure_button.tscn")
@@ -369,7 +496,7 @@ def check_scripts(failures: list[str]) -> None:
 		require(snippet in pressure_button_scene, f"Pressure button scene missing {snippet}", failures)
 	require("frame = 0" in pressure_button_scene or "frame = " not in pressure_button_scene, "Pressure button scene should start on default frame 0", failures)
 
-	ladder_text = read(CLIENT_ROOT / "scripts" / "gameplay" / "objects" / "ladder.gd")
+	ladder_text = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "objects" / "ladder.gd")
 	for snippet in ["class_name Ladder", "extends Area2D", "@export var climb_speed: float", "add_to_group(\"ladder\")", "func get_climb_speed() -> float:"]:
 		require(snippet in ladder_text, f"Ladder script missing {snippet}", failures)
 	ladder_scene = read(CLIENT_ROOT / "scenes" / "gameplay" / "objects" / "ladder.tscn")
@@ -436,13 +563,76 @@ def check_res_paths(failures: list[str]) -> None:
 	for file_path in CLIENT_ROOT.rglob("*"):
 		if file_path.suffix not in {".tscn", ".tres", ".import", ".godot"}:
 			continue
+		if "addons\\maaacks_game_template" in str(file_path.relative_to(CLIENT_ROOT)):
+			continue
 		text = file_path.read_text(encoding="utf-8", errors="ignore")
 		for match in re.finditer(r'res://[^"\]\)]+', text):
 			res_path = match.group(0)
 			if res_path.startswith("res://.godot/"):
 				continue
-			local_path = CLIENT_ROOT / res_path.removeprefix("res://")
+			if res_path.startswith("res://shared/") or res_path.startswith("res://client/"):
+				local_path = REPO_ROOT / res_path.removeprefix("res://")
+			else:
+				local_path = CLIENT_ROOT / res_path.removeprefix("res://")
 			require(local_path.exists(), f"Broken res path in {file_path.relative_to(CLIENT_ROOT)}: {res_path}", failures)
+
+
+def check_review_regressions(failures: list[str]) -> None:
+	player_text = read(CLIENT_ROOT / "scripts" / "player" / "movement" / "player.gd")
+	require(
+		"_apply_prediction_state(predicted_state)" not in player_text,
+		"Connected player prediction must not apply raw simulated position before move_and_slide",
+		failures,
+	)
+	require(
+		"NetworkManager.send_player_input(input_packet)" not in player_text,
+		"Do not send live prediction input until server simulation is collision-aware",
+		failures,
+	)
+
+	server_text = read(REPO_ROOT / "server" / "network_manager.gd")
+	require(
+		'packet.get("t", 0)' in server_text,
+		"Server authoritative snapshot must ack the input packet tick key 't'",
+		failures,
+	)
+	require(
+		'packet.get("ack_tick", 0)' not in server_text,
+		"Server must not read ack_tick from client input packets",
+		failures,
+	)
+
+	gem_script = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "collectibles" / "collectible_gem.gd")
+	require(
+		"can_collect(player)" in gem_script,
+		"CollectibleGem._on_body_entered must call can_collect() with a PrototypePlayer",
+		failures,
+	)
+	require(
+		"collision_mask = 1 # Force look at layer 1" not in gem_script,
+		"CollectibleGem must not override its mask to World at runtime",
+		failures,
+	)
+
+	for relative_path in [
+		"scenes/levels/prototype_level.tscn",
+		"scenes/levels/ladder_test_level.tscn",
+	]:
+		text = read(CLIENT_ROOT / relative_path)
+		require(
+			"res://client/" not in text,
+			f"{relative_path} must not use res://client paths inside the client project",
+			failures,
+		)
+
+	gem_scene = read(REPO_ROOT / "shared" / "scenes" / "gameplay" / "collectibles" / "collectible_gem.tscn")
+	require(gem_scene.count("collision_mask = ") == 1, "Collectible gem scene must have one collision_mask assignment", failures)
+	require("collision_mask = 2" in gem_scene, "Collectible gem must scan Player layer", failures)
+
+	push_scene = read(REPO_ROOT / "shared" / "scenes" / "gameplay" / "objects" / "push_block.tscn")
+	root_block = push_scene.split("[node name=\"PushDetector\"", 1)[0]
+	require(root_block.count("collision_mask = ") == 1, "PushBlock root must have one collision_mask assignment", failures)
+	require("collision_mask = 3" in root_block, "PushBlock root must scan World and Player layers", failures)
 
 
 def main() -> int:
@@ -451,11 +641,13 @@ def main() -> int:
 	check_rules(failures)
 	if (CLIENT_ROOT / "project.godot").exists():
 		check_project_settings(failures)
+	check_shared_project_links(failures)
 	if not failures:
 		check_scene_contracts(failures)
 		check_scripts(failures)
 		check_collision_contracts(failures)
 		check_res_paths(failures)
+		check_review_regressions(failures)
 	if failures:
 		print("Prototype foundation verification failed:")
 		for failure in failures:

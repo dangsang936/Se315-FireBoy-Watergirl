@@ -1,17 +1,26 @@
 extends Control
 
-# UI References
+const FIREBOY_ROLE: int = 0
+const WATERGIRL_ROLE: int = 1
+
+@onready var ip_input: LineEdit = $VBoxContainer/IPContainer/IPInput
+@onready var port_input: LineEdit = $VBoxContainer/PortContainer/PortInput
+@onready var connect_button: Button = $VBoxContainer/ConnectButton
+@onready var fireboy_button: Button = $VBoxContainer/RoleButtons/FireboyButton
+@onready var watergirl_button: Button = $VBoxContainer/RoleButtons/WatergirlButton
+@onready var status_label: Label = $VBoxContainer/StatusLabel
+@onready var player_list_label: Label = $VBoxContainer/PlayerList
+
 @onready var name_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/NameSection/NameInput"
 @onready var tabs: TabContainer = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs"
 @onready var quick_match_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Matchmaking/VBox/QuickMatchBtn"
-
 @onready var room_name_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar/RoomNameInput"
 @onready var host_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar/HostBtn"
 @onready var refresh_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar/RefreshBtn"
 @onready var room_list_container: VBoxContainer = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Scroll/RoomList"
 
-@onready var ip_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/IPRow/IPInput"
-@onready var port_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/PortRow/PortInput"
+@onready var ip_input_2: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/IPRow/IPInput"
+@onready var port_input_2: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/PortRow/PortInput"
 @onready var direct_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/DirectBtn"
 
 @onready var active_room: VBoxContainer = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom"
@@ -20,7 +29,7 @@ extends Control
 @onready var watergirl_name: Label = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/WatergirlSlot/Margin/VBox/PlayerName"
 @onready var leave_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom/LeaveBtn"
 
-@onready var status_label: Label = $"CenterContainer/MainPanel/Margin/Layout/StatusLine/StatusLabel"
+@onready var status_label_2: Label = $"CenterContainer/MainPanel/Margin/Layout/StatusLine/StatusLabel"
 @onready var lan_checkbox: CheckBox = $"CenterContainer/MainPanel/Margin/Layout/StatusLine/LANCheckbox"
 
 # Themes & Styling
@@ -30,18 +39,17 @@ extends Control
 @onready var watergirl_slot: PanelContainer = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/WatergirlSlot"
 
 func _ready() -> void:
-	# Random default nickname
-	name_input.text = "Player_" + str(randi() % 900 + 100)
-	room_name_input.text = name_input.text + "'s Room"
-
-	# Connect Buttons
+	# Kết nối UI signals
+	connect_button.pressed.connect(_on_direct_pressed)
+	fireboy_button.pressed.connect(_on_fireboy_pressed)
+	watergirl_button.pressed.connect(_on_watergirl_pressed)
 	quick_match_btn.pressed.connect(_on_quick_match_pressed)
 	host_btn.pressed.connect(_on_host_pressed)
 	refresh_btn.pressed.connect(_on_refresh_pressed)
 	direct_btn.pressed.connect(_on_direct_pressed)
 	leave_btn.pressed.connect(_on_leave_pressed)
-
-	# Connect NetworkManager Signals
+	
+	# Kết nối NetworkManager signals
 	NetworkManager.connected_to_server.connect(_on_connected_to_server)
 	NetworkManager.connection_failed.connect(_on_connection_failed)
 	NetworkManager.disconnected_from_server.connect(_on_disconnected_from_server)
@@ -179,6 +187,46 @@ func _on_refresh_pressed() -> void:
 	status_label.text = "Refreshing room list..."
 	NetworkManager.fetch_rooms()
 
+func _on_rooms_list_received(rooms: Array) -> void:
+	for child in room_list_container.get_children():
+		child.queue_free()
+
+	if rooms.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No rooms found."
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		room_list_container.add_child(empty_label)
+		status_label.text = "No rooms found."
+		return
+
+	for room in rooms:
+		if not room is Dictionary:
+			continue
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+		var room_label := Label.new()
+		room_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		room_label.text = "%s - %s/%s players" % [
+			str(room.get("name", "Unnamed Room")),
+			str(room.get("players", 0)),
+			str(room.get("max_players", 2)),
+		]
+		row.add_child(room_label)
+
+		var join_btn := Button.new()
+		join_btn.text = "Join"
+		join_btn.pressed.connect(func():
+			var ip := str(room.get("ip", "127.0.0.1"))
+			var port := int(room.get("port", 9999))
+			status_label.text = "Connecting to " + ip + ":" + str(port) + "..."
+			NetworkManager.connect_to_server(ip, port)
+		)
+		row.add_child(join_btn)
+		room_list_container.add_child(row)
+
+	status_label.text = "Found %d room(s)." % rooms.size()
+
 func _on_direct_pressed() -> void:
 	var ip = ip_input.text.strip_edges()
 	var port = port_input.text.to_int()
@@ -194,7 +242,9 @@ func _on_leave_pressed() -> void:
 	status_label.text = "Leaving lobby..."
 	NetworkManager.disconnect_from_server()
 
-# --- Network Signal Callbacks ---
+func _on_connected() -> void:
+	status_label.text = "Connected! Waiting for players..."
+	_update_role_buttons()
 
 func _on_connected_to_server() -> void:
 	status_label.text = "Connected!"
@@ -210,111 +260,70 @@ func _on_connected_to_server() -> void:
 
 func _on_connection_failed() -> void:
 	status_label.text = "Connection failed."
-	_update_ui_state(false)
+	connect_button.disabled = false
+	player_list_label.text = ""
+	_update_role_buttons()
 
 func _on_disconnected_from_server() -> void:
 	status_label.text = "Disconnected from server."
-	_update_ui_state(false)
+	connect_button.disabled = false
+	player_list_label.text = ""
+	_update_role_buttons()
 
 func _on_player_list_updated(players: Array[int]) -> void:
 	# Clear slots
 	fireboy_name.text = "Waiting for player..."
 	watergirl_name.text = "Waiting for player..."
-	
+
 	# Determine player tags and update slots
+	var text := "Players:\n"
 	for pid in players:
-		var role = -1
+		var role := -1
+		var role_name := "Unassigned"
 		if NetworkManager.player_roles.has(pid):
 			role = NetworkManager.player_roles[pid]
-		
-		var my_tag = " (You)" if pid == multiplayer.get_unique_id() or (NetworkManager.is_host and pid == 1) else ""
-		var label_text = "Peer %d%s" % [pid, my_tag]
-		if pid == 1 and NetworkManager.is_host:
-			label_text = name_input.text + my_tag + " (Host)"
-		elif pid != 1 and NetworkManager.is_host:
-			label_text = "Peer %d (Guest)" % pid
-		elif pid == 1 and not NetworkManager.is_host:
-			label_text = "Host"
-		else:
-			label_text = name_input.text + my_tag + " (Guest)"
-
-		if role == 0:
-			fireboy_name.text = label_text
-		elif role == 1:
-			watergirl_name.text = label_text
+			role_name = "Fireboy" if role == FIREBOY_ROLE else "Watergirl"
+		var my_tag := " (You)" if pid == multiplayer.get_unique_id() else ""
+		var player_text := "Peer %d%s" % [pid, my_tag]
+		if role == FIREBOY_ROLE:
+			fireboy_name.text = player_text
+		elif role == WATERGIRL_ROLE:
+			watergirl_name.text = player_text
+		text += "- Peer %d: %s%s\n" % [pid, role_name, my_tag]
+	player_list_label.text = text
+	_update_role_buttons()
 
 func _on_role_assigned(_role: int) -> void:
 	# Force re-render of slot tags
 	_on_player_list_updated(NetworkManager.connected_players)
 
 func _on_game_started() -> void:
-	status_label.text = "Game starting! Loading level..."
-	get_tree().change_scene_to_file("res://scenes/bootstrap/game.tscn")
+	print("[LobbyUI] Loading gameplay scene res://scenes/bootstrap/game.tscn")
+	SceneLoader.load_scene("res://scenes/bootstrap/game.tscn")
 
-func _on_rooms_list_received(rooms: Array) -> void:
-	# Clear old items
-	for child in room_list_container.get_children():
-		child.queue_free()
-		
-	if rooms.size() == 0:
-		status_label.text = "No active rooms found."
-		var no_room_lbl = Label.new()
-		no_room_lbl.text = "No rooms hosted. Be the first!"
-		no_room_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		no_room_lbl.modulate = Color(0.5, 0.5, 0.5)
-		room_list_container.add_child(no_room_lbl)
-		return
-		
-	status_label.text = "Found " + str(rooms.size()) + " room(s)."
-	
-	# Populate list
-	for room in rooms:
-		var room_id = room.get("id", "")
-		var rname = room.get("name", "Unnamed Room")
-		var rip = room.get("ip", "127.0.0.1")
-		var rport = int(room.get("port", 9999))
-		var rplayers = int(room.get("players", 1))
-		var rmax = int(room.get("max_players", 2))
-		
-		# Card Row
-		var card = PanelContainer.new()
-		var card_style = StyleBoxFlat.new()
-		card_style.bg_color = Color(0.12, 0.15, 0.2, 1.0)
-		card_style.set_corner_radius_all(6)
-		card.add_theme_stylebox_override("panel", card_style)
-		
-		var margin = MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 10)
-		margin.add_theme_constant_override("margin_top", 6)
-		margin.add_theme_constant_override("margin_right", 10)
-		margin.add_theme_constant_override("margin_bottom", 6)
-		card.add_child(margin)
-		
-		var hbox = HBoxContainer.new()
-		hbox.add_theme_constant_override("separation", 15)
-		margin.add_child(hbox)
-		
-		# Room Details Label
-		var label = Label.new()
-		label.text = "%s (%s:%d) - Players: %d/%d" % [rname, rip, rport, rplayers, rmax]
-		label.size_flags_horizontal = SIZE_EXPAND_FILL
-		hbox.add_child(label)
-		
-		# Join Button
-		var join_btn = Button.new()
-		join_btn.text = "JOIN"
-		_style_button(join_btn, Color(0.15, 0.5, 0.7, 1.0))
-		join_btn.custom_minimum_size = Vector2(80, 0)
-		
-		# If lobby is full, disable join
-		if rplayers >= rmax:
-			join_btn.disabled = True
-			join_btn.text = "FULL"
-			
-		join_btn.pressed.connect(func():
-			status_label.text = "Connecting to " + rip + ":" + str(rport) + "..."
-			NetworkManager.connect_to_server(rip, rport)
-		)
-		hbox.add_child(join_btn)
-		
-		room_list_container.add_child(card)
+func _update_role_buttons() -> void:
+	var my_peer_id := multiplayer.get_unique_id()
+	var is_connected := NetworkManager.is_connected_to_server()
+	fireboy_button.disabled = not is_connected or _is_role_taken_by_other(FIREBOY_ROLE, my_peer_id)
+	watergirl_button.disabled = not is_connected or _is_role_taken_by_other(WATERGIRL_ROLE, my_peer_id)
+	fireboy_button.text = _get_role_button_text("Fireboy", FIREBOY_ROLE, my_peer_id)
+	watergirl_button.text = _get_role_button_text("Watergirl", WATERGIRL_ROLE, my_peer_id)
+
+func _is_role_taken_by_other(role: int, my_peer_id: int) -> bool:
+	for peer_id in NetworkManager.player_roles:
+		if peer_id != my_peer_id and NetworkManager.player_roles[peer_id] == role:
+			return true
+	return false
+
+func _get_role_button_text(label: String, role: int, my_peer_id: int) -> String:
+	if NetworkManager.player_roles.get(my_peer_id, -1) == role:
+		return "%s (You)" % label
+	if _is_role_taken_by_other(role, my_peer_id):
+		return "%s (Taken)" % label
+	return label
+
+func _on_fireboy_pressed() -> void:
+	NetworkManager.request_role(FIREBOY_ROLE)
+
+func _on_watergirl_pressed() -> void:
+	NetworkManager.request_role(WATERGIRL_ROLE)
