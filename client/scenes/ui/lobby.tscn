@@ -24,6 +24,7 @@ grow_vertical = 2
 color = Color(0.0705882, 0.0784314, 0.0941176, 1)
 
 [node name="CenterContainer" type="CenterContainer" parent="." unique_id=1965252117]
+visible = false
 layout_mode = 0
 
 [node name="MainPanel" type="PanelContainer" parent="CenterContainer" unique_id=578695580]
@@ -282,30 +283,38 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Title" type="Label" parent="VBoxContainer" unique_id=1707833047]
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 text = "Your Nickname: "
+vertical_alignment = 1
 
 [node name="IPContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=918626496]
 layout_mode = 2
-size_flags_vertical = 3
 
 [node name="Label" type="Label" parent="VBoxContainer/IPContainer" unique_id=807313939]
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 text = "IP Address:"
+vertical_alignment = 1
 
 [node name="IPInput" type="LineEdit" parent="VBoxContainer/IPContainer" unique_id=618203863]
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 text = "127.0.0.1"
 
 [node name="PortContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=1599316076]
 layout_mode = 2
 
 [node name="Label" type="Label" parent="VBoxContainer/PortContainer" unique_id=994000741]
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 text = "Port:"
+vertical_alignment = 1
 
 [node name="PortInput" type="LineEdit" parent="VBoxContainer/PortContainer" unique_id=1638471438]
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "9999"
