@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://c6f2a7db04s1x"]
+[gd_scene load_steps=2 format=3 uid="uid://c6f2a7db04s1x"]
 
 [ext_resource type="Script" uid="uid://lt66vji72kow" path="res://scripts/ui/lobby_ui.gd" id="1_lobby"]
 
@@ -11,6 +11,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lobby")
 
+[node name="Background" type="ColorRect" parent="."]
 [node name="ColorRect" type="ColorRect" parent="." unique_id=752879941]
 layout_mode = 1
 anchors_preset = 15
@@ -18,33 +19,160 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.12549, 0.12549, 0.12549, 1)
+color = Color(0.0705882, 0.0784314, 0.0941176, 1)
 
+[node name="CenterContainer" type="CenterContainer" parent="."]
 [node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=945083534]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -150.0
-offset_top = -100.0
-offset_right = 150.0
-offset_bottom = 100.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="VBoxContainer" unique_id=1707833047]
+[node name="MainPanel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(650, 480)
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "FireBoy & WaterGirl
-Multiplayer Lobby"
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/MainPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="Layout" type="VBoxContainer" parent="CenterContainer/MainPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="Header" type="VBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/Header"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "FIREBOY & WATERGIRL"
 horizontal_alignment = 1
 
+[node name="Subtitle" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.482353, 0.541176, 0.639216, 1)
+theme_override_font_sizes/font_size = 14
+text = "ONLINE MULTIPLAYER PORTAL"
+horizontal_alignment = 1
+
+[node name="NameSection" type="HBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/NameSection"]
+[node name="Title" type="Label" parent="VBoxContainer" unique_id=1707833047]
+layout_mode = 2
+text = "Your Nickname: "
+
+[node name="NameInput" type="LineEdit" parent="CenterContainer/MainPanel/Margin/Layout/NameSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Enter name..."
+max_length = 16
+
+[node name="TabPanel" type="PanelContainer" parent="CenterContainer/MainPanel/Margin/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Tabs" type="TabContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel"]
+layout_mode = 2
+current_tab = 0
+
+[node name="Matchmaking" type="MarginContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs"]
+layout_mode = 2
+theme_override_constants/margin_left = 15
+theme_override_constants/margin_top = 15
+theme_override_constants/margin_right = 15
+theme_override_constants/margin_bottom = 15
+metadata/_tab_index = 0
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Matchmaking"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Desc" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Matchmaking/VBox"]
+layout_mode = 2
+text = "Press Quick Match to find an available online player automatically."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="QuickMatchBtn" type="Button" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Matchmaking/VBox"]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "QUICK MATCH"
+
+[node name="Server Browser" type="MarginContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+metadata/_tab_index = 1
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Toolbar" type="HBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RoomNameInput" type="LineEdit" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Lobby name..."
+
+[node name="HostBtn" type="Button" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar"]
+layout_mode = 2
+text = "Host Room"
+
+[node name="RefreshBtn" type="Button" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar"]
+layout_mode = 2
+text = "Refresh"
+
+[node name="Scroll" type="ScrollContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox"]
 [node name="IPContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=918626496]
 layout_mode = 2
+size_flags_vertical = 3
 
+[node name="RoomList" type="VBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="Direct Connect" type="MarginContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 15
+theme_override_constants/margin_top = 15
+theme_override_constants/margin_right = 15
+theme_override_constants/margin_bottom = 15
+metadata/_tab_index = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect"]
+layout_mode = 2
+theme_override_constants/separation = 15
+alignment = 1
+
+[node name="IPRow" type="HBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/IPRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "IP Address:"
+
+[node name="IPInput" type="LineEdit" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/IPRow"]
 [node name="Label" type="Label" parent="VBoxContainer/IPContainer" unique_id=807313939]
 layout_mode = 2
 text = "IP Address:"
@@ -54,21 +182,95 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "127.0.0.1"
 
+[node name="PortRow" type="HBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/PortRow"]
+custom_minimum_size = Vector2(80, 0)
 [node name="PortContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=1599316076]
 layout_mode = 2
 
 [node name="Label" type="Label" parent="VBoxContainer/PortContainer" unique_id=994000741]
 layout_mode = 2
-text = "Port:            "
+text = "Port:"
 
+[node name="PortInput" type="LineEdit" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/PortRow"]
 [node name="PortInput" type="LineEdit" parent="VBoxContainer/PortContainer" unique_id=1638471438]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "9999"
 
+[node name="DirectBtn" type="Button" parent="CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox"]
+custom_minimum_size = Vector2(150, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Direct Connect"
+
+[node name="ActiveRoom" type="VBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="RoomTitle" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Room Name"
+horizontal_alignment = 1
+
+[node name="Slots" type="HBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="FireboySlot" type="PanelContainer" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/FireboySlot"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/FireboySlot/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Role" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/FireboySlot/Margin/VBox"]
+layout_mode = 2
+text = "FIREBOY"
+horizontal_alignment = 1
+
+[node name="PlayerName" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/FireboySlot/Margin/VBox"]
+layout_mode = 2
+text = "Waiting for player..."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="WatergirlSlot" type="PanelContainer" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/WatergirlSlot"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/WatergirlSlot/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Role" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/WatergirlSlot/Margin/VBox"]
 [node name="ConnectButton" type="Button" parent="VBoxContainer" unique_id=456562733]
 layout_mode = 2
-text = "Connect"
+text = "WATERGIRL"
+horizontal_alignment = 1
 
 [node name="RoleLabel" type="Label" parent="VBoxContainer"]
 layout_mode = 2
@@ -95,10 +297,26 @@ text = "Watergirl"
 
 [node name="StatusLabel" type="Label" parent="VBoxContainer" unique_id=1844907076]
 layout_mode = 2
-text = "Not connected"
+text = "Waiting for player..."
 horizontal_alignment = 1
+autowrap_mode = 2
 
+[node name="LeaveBtn" type="Button" parent="CenterContainer/MainPanel/Margin/Layout/ActiveRoom"]
+custom_minimum_size = Vector2(150, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Leave Room"
+
+[node name="StatusLine" type="HBoxContainer" parent="CenterContainer/MainPanel/Margin/Layout"]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="CenterContainer/MainPanel/Margin/Layout/StatusLine"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Ready to connect"
+autowrap_mode = 2
+
+[node name="LANCheckbox" type="CheckBox" parent="CenterContainer/MainPanel/Margin/Layout/StatusLine"]
 [node name="PlayerList" type="Label" parent="VBoxContainer" unique_id=1854641930]
 layout_mode = 2
-text = "
-"
+text = "LAN Mode (Local)"
