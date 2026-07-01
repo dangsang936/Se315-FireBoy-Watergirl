@@ -572,4 +572,3 @@ func _notification(what: int) -> void:
 		cleanup_upnp()
 		if _upnp_thread and _upnp_thread.is_started():
 			_upnp_thread.wait_to_finish()
-

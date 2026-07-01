@@ -11,13 +11,16 @@ const WATERGIRL_ROLE: int = 1
 @onready var status_label: Label = $VBoxContainer/StatusLabel
 @onready var player_list_label: Label = $VBoxContainer/PlayerList
 
+@onready var name_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/NameSection/NameInput"
+@onready var tabs: TabContainer = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs"
+@onready var quick_match_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Matchmaking/VBox/QuickMatchBtn"
 @onready var room_name_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar/RoomNameInput"
 @onready var host_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar/HostBtn"
 @onready var refresh_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar/RefreshBtn"
 @onready var room_list_container: VBoxContainer = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Scroll/RoomList"
 
-@onready var ip_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/IPRow/IPInput"
-@onready var port_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/PortRow/PortInput"
+@onready var ip_input_2: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/IPRow/IPInput"
+@onready var port_input_2: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/PortRow/PortInput"
 @onready var direct_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/DirectBtn"
 
 @onready var active_room: VBoxContainer = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom"
@@ -26,7 +29,7 @@ const WATERGIRL_ROLE: int = 1
 @onready var watergirl_name: Label = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/WatergirlSlot/Margin/VBox/PlayerName"
 @onready var leave_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom/LeaveBtn"
 
-@onready var status_label: Label = $"CenterContainer/MainPanel/Margin/Layout/StatusLine/StatusLabel"
+@onready var status_label_2: Label = $"CenterContainer/MainPanel/Margin/Layout/StatusLine/StatusLabel"
 @onready var lan_checkbox: CheckBox = $"CenterContainer/MainPanel/Margin/Layout/StatusLine/LANCheckbox"
 
 # Themes & Styling
@@ -37,12 +40,17 @@ const WATERGIRL_ROLE: int = 1
 
 func _ready() -> void:
 	# Kết nối UI signals
-	connect_button.pressed.connect(_on_connect_pressed)
+	connect_button.pressed.connect(_on_direct_pressed)
 	fireboy_button.pressed.connect(_on_fireboy_pressed)
 	watergirl_button.pressed.connect(_on_watergirl_pressed)
+	quick_match_btn.pressed.connect(_on_quick_match_pressed)
+	host_btn.pressed.connect(_on_host_pressed)
+	refresh_btn.pressed.connect(_on_refresh_pressed)
+	direct_btn.pressed.connect(_on_direct_pressed)
+	leave_btn.pressed.connect(_on_leave_pressed)
 	
 	# Kết nối NetworkManager signals
-	NetworkManager.connected_to_server.connect(_on_connected)
+	NetworkManager.connected_to_server.connect(_on_connected_to_server)
 	NetworkManager.connection_failed.connect(_on_connection_failed)
 	NetworkManager.disconnected_from_server.connect(_on_disconnected_from_server)
 	NetworkManager.player_list_updated.connect(_on_player_list_updated)
@@ -179,6 +187,46 @@ func _on_refresh_pressed() -> void:
 	status_label.text = "Refreshing room list..."
 	NetworkManager.fetch_rooms()
 
+func _on_rooms_list_received(rooms: Array) -> void:
+	for child in room_list_container.get_children():
+		child.queue_free()
+
+	if rooms.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No rooms found."
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		room_list_container.add_child(empty_label)
+		status_label.text = "No rooms found."
+		return
+
+	for room in rooms:
+		if not room is Dictionary:
+			continue
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+		var room_label := Label.new()
+		room_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		room_label.text = "%s - %s/%s players" % [
+			str(room.get("name", "Unnamed Room")),
+			str(room.get("players", 0)),
+			str(room.get("max_players", 2)),
+		]
+		row.add_child(room_label)
+
+		var join_btn := Button.new()
+		join_btn.text = "Join"
+		join_btn.pressed.connect(func():
+			var ip := str(room.get("ip", "127.0.0.1"))
+			var port := int(room.get("port", 9999))
+			status_label.text = "Connecting to " + ip + ":" + str(port) + "..."
+			NetworkManager.connect_to_server(ip, port)
+		)
+		row.add_child(join_btn)
+		room_list_container.add_child(row)
+
+	status_label.text = "Found %d room(s)." % rooms.size()
+
 func _on_direct_pressed() -> void:
 	var ip = ip_input.text.strip_edges()
 	var port = port_input.text.to_int()
@@ -226,14 +274,21 @@ func _on_player_list_updated(players: Array[int]) -> void:
 	# Clear slots
 	fireboy_name.text = "Waiting for player..."
 	watergirl_name.text = "Waiting for player..."
-	
+
 	# Determine player tags and update slots
+	var text := "Players:\n"
 	for pid in players:
-		var role = -1
+		var role := -1
+		var role_name := "Unassigned"
 		if NetworkManager.player_roles.has(pid):
-			var role = NetworkManager.player_roles[pid]
-			role_name = "Fireboy" if role == 0 else "Watergirl"
-		var my_tag = " (You)" if pid == multiplayer.get_unique_id() else ""
+			role = NetworkManager.player_roles[pid]
+			role_name = "Fireboy" if role == FIREBOY_ROLE else "Watergirl"
+		var my_tag := " (You)" if pid == multiplayer.get_unique_id() else ""
+		var player_text := "Peer %d%s" % [pid, my_tag]
+		if role == FIREBOY_ROLE:
+			fireboy_name.text = player_text
+		elif role == WATERGIRL_ROLE:
+			watergirl_name.text = player_text
 		text += "- Peer %d: %s%s\n" % [pid, role_name, my_tag]
 	player_list_label.text = text
 	_update_role_buttons()
