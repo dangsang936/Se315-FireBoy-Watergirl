@@ -399,6 +399,7 @@ logs/
 # Cached transformers models
 cache/
 # Misc AI generated files
+plan.md
 *.bin
 *.json
 *.txt
