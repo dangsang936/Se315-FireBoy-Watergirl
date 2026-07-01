@@ -1,12 +1,6 @@
 class_name PushBlock
 extends RigidBody2D
 
-const PUSH_BLOCK_COLLISION_LAYER: int = 4
-const PUSH_BLOCK_COLLISION_MASK: int = 3
-const PUSH_DETECTOR_COLLISION_LAYER: int = 0
-const PUSH_DETECTOR_COLLISION_MASK: int = 2
-const GROUND_DETECTOR_COLLISION_MASK: int = 1
-
 @export var max_push_force: float = 700.0
 @export var push_ramp_time: float = 0.6
 @export var two_player_boost_multiplier: float = 1.55
@@ -30,38 +24,46 @@ const GROUND_ROLL_ACCEL: float = 1.2
 const GROUND_ROLL_RATIO: float = 0.015
 const PUSH_ROLL_TORQUE_RATIO: float = 0.025
 const PUSH_ATTEMPT_TTL: float = 0.1
+const SYNC_RATE: float = 0.05
 
 var _push_attempts: Dictionary = {}
 var _push_time: float = 0.0
 var _is_grounded: bool = false
 var _was_grounded: bool = false
+var _sync_timer: float = 0.0
 
 @onready var _push_detector: Area2D = get_node_or_null(push_detector_path) as Area2D
 @onready var _ground_detector: RayCast2D = get_node_or_null(ground_detector_path) as RayCast2D
 
 func _ready() -> void:
-	collision_layer = PUSH_BLOCK_COLLISION_LAYER
-	collision_mask = PUSH_BLOCK_COLLISION_MASK
 	add_to_group("push_block")
+	
+	if not multiplayer.is_server():
+		freeze = true
+		freeze_mode = RigidBody2D.FREEZE_MODE_KINEMATIC
+		if _push_detector != null:
+			_push_detector.monitoring = false
+		if _ground_detector != null:
+			_ground_detector.enabled = false
+		return
+
 	lock_rotation = false
-	can_sleep = true
+	can_sleep = false # <--- NO SLEEP ON SERVER!
 	contact_monitor = true
 	max_contacts_reported = 8
 	linear_damp = idle_damping
 	angular_damp = idle_damping
 
 	if _push_detector != null:
-		_push_detector.collision_layer = PUSH_DETECTOR_COLLISION_LAYER
-		_push_detector.collision_mask = PUSH_DETECTOR_COLLISION_MASK
 		_push_detector.body_entered.connect(_on_push_detector_body_entered)
-		_push_detector.body_exited.connect(_on_push_detector_body_exited)
 
 	if _ground_detector != null:
-		_ground_detector.collision_mask = GROUND_DETECTOR_COLLISION_MASK
 		_ground_detector.top_level = true
 		_ground_detector.enabled = true
 
 func register_push_attempt(body: Node2D, push_direction: float) -> void:
+	if not multiplayer.is_server():
+		return
 	if not body.is_in_group("player"):
 		return
 	var direction: float = clampf(push_direction, -1.0, 1.0)
@@ -70,17 +72,29 @@ func register_push_attempt(body: Node2D, push_direction: float) -> void:
 	sleeping = false
 	_push_attempts[body.get_instance_id()] = Vector2(direction, PUSH_ATTEMPT_TTL)
 
-func _physics_process(_delta: float) -> void:
-	if _ground_detector == null:
-		_is_grounded = get_contact_count() > 0
+func _physics_process(delta: float) -> void:
+	if not multiplayer.is_server():
 		return
 
-	_ground_detector.global_position = global_position + Vector2(0.0, GROUND_DETECTOR_OFFSET)
-	_ground_detector.global_rotation = 0.0
-	_ground_detector.force_raycast_update()
-	_is_grounded = _ground_detector.is_colliding()
+	if _ground_detector == null:
+		_is_grounded = get_contact_count() > 0
+	else:
+		_ground_detector.global_position = global_position + Vector2(0.0, GROUND_DETECTOR_OFFSET)
+		_ground_detector.global_rotation = 0.0
+		_ground_detector.force_raycast_update()
+		_is_grounded = _ground_detector.is_colliding()
+
+	_sync_timer += delta
+	if _sync_timer >= SYNC_RATE:
+		_sync_timer = 0.0
+		var rpc_node = get_node_or_null("/root/GameplayRPC")
+		if rpc_node:
+			rpc_node.rpc("sync_push_block", name, global_position, rotation)
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
+	if not multiplayer.is_server():
+		return
+
 	var right_pushers: int = _count_pushers_for_direction(1.0)
 	var left_pushers: int = _count_pushers_for_direction(-1.0)
 	var push_direction: float = 0.0
@@ -138,7 +152,6 @@ func _count_pushers_for_direction(direction: float) -> int:
 		var attempt := attempt_data as Vector2
 		if signf(attempt.x) == direction:
 			count += 1
-
 	return count
 
 func _decay_push_attempts(delta: float) -> void:
@@ -155,5 +168,7 @@ func _on_push_detector_body_entered(body: Node2D) -> void:
 		return
 	sleeping = false
 
-func _on_push_detector_body_exited(_body: Node2D) -> void:
-	pass
+@rpc("authority", "call_remote", "unreliable_ordered")
+func client_sync_block(pos: Vector2, rot: float) -> void:
+	global_position = pos
+	rotation = rot

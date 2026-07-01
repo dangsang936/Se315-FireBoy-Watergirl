@@ -5,8 +5,8 @@ const WATERGIRL_SCENE: PackedScene = preload("res://scenes/players/watergirl.tsc
 const PRESSURE_BUTTON_SCENE: PackedScene = preload("res://scenes/gameplay/objects/pressure_button.tscn")
 const LADDER_SCENE: PackedScene = preload("res://scenes/gameplay/objects/ladder.tscn")
 const GEM_SCENE: PackedScene = preload("res://scenes/gameplay/collectibles/fire_gem.tscn")
-const HAZARD_SCRIPT: Script = preload("res://scripts/gameplay/hazards/hazard_zone.gd")
-const EXIT_SCRIPT: Script = preload("res://scripts/gameplay/doors/exit_door.gd")
+const HAZARD_SCRIPT: Script = preload("res://shared/scripts/gameplay/hazards/hazard_zone.gd")
+const EXIT_SCRIPT: Script = preload("res://shared/scripts/gameplay/doors/exit_door.gd")
 
 class MockBridge:
 	extends Node

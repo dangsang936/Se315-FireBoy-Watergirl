@@ -1,0 +1,51 @@
+[gd_scene load_steps=5 format=3]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(560, 24)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_platform"]
+size = Vector2(96, 18)
+
+[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_fall"]
+distance = 96.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_push_block"]
+size = Vector2(16, 16)
+
+[node name="PrototypeLevelPhysics" type="Node2D"]
+
+[node name="Players" type="Node2D" parent="."]
+
+[node name="PlayerSpawn" type="Marker2D" parent="Players"]
+position = Vector2(-218, -31)
+
+[node name="PlayerSpawn2" type="Marker2D" parent="Players"]
+position = Vector2(-168, -31)
+
+[node name="Terrain" type="Node2D" parent="."]
+
+[node name="Floor" type="StaticBody2D" parent="Terrain"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/Floor"]
+shape = SubResource("RectangleShape2D_floor")
+
+[node name="UpperPlatform" type="StaticBody2D" parent="Terrain"]
+position = Vector2(96, -74)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/UpperPlatform"]
+position = Vector2(0, 21)
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="FallBoundary" type="StaticBody2D" parent="Terrain"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/FallBoundary"]
+position = Vector2(-3, 85)
+shape = SubResource("WorldBoundaryShape2D_fall")
+
+[node name="Objects" type="Node2D" parent="."]
+
+[node name="PushBlockCollision" type="StaticBody2D" parent="Objects"]
+position = Vector2(129, -85)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Objects/PushBlockCollision"]
+shape = SubResource("RectangleShape2D_push_block")

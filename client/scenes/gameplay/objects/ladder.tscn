@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b8604dgbnwhir"]
 
-[ext_resource type="Script" uid="uid://dekmigpc00kkw" path="res://scripts/gameplay/objects/ladder.gd" id="1_ladder"]
+[ext_resource type="Script" uid="uid://dekmigpc00kkw" path="res://shared/scripts/gameplay/objects/ladder.gd" id="1_ladder"]
 [ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="2_s7xp5"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ladder"]
