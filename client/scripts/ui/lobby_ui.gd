@@ -140,7 +140,7 @@ func _update_ui_state(in_room: bool) -> void:
 	# Hide tabs and show active room if connected
 	tabs.visible = not in_room
 	name_input.editable = not in_room
-	lan_checkbox.editable = not in_room
+	lan_checkbox.disabled = in_room
 	active_room.visible = in_room
 	
 	if not in_room:

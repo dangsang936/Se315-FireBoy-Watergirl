@@ -4,6 +4,11 @@ extends Node
 
 const DEFAULT_PORT: int = 9999
 const DEFAULT_MAX_PLAYERS: int = 2
+const DEFAULT_MAP_SCENE_PATH: String = "res://shared/scenes/levels/prototype_level_physics.tscn"
+const SERVER_PLAYER_COLLISION_LAYER: int = 2
+const SERVER_PLAYER_COLLISION_MASK: int = 5
+const SERVER_PLAYER_COLLISION_SIZE: Vector2 = Vector2(6, 18)
+const SERVER_PLAYER_COLLISION_OFFSET: Vector2 = Vector2(6, -9)
 const PlayerMovementConfigScript = preload("res://shared/scripts/multiplayer/movement/player_movement_config.gd")
 const PlayerMovementStateScript = preload("res://shared/scripts/multiplayer/movement/player_movement_state.gd")
 const PlayerMovementSimulator = preload("res://shared/scripts/multiplayer/movement/player_movement_simulator.gd")
@@ -16,9 +21,14 @@ var _movement_config: PlayerMovementConfig = PlayerMovementConfigScript.create_d
 var _server_tick_delta: float = 1.0 / 60.0
 var port: int = DEFAULT_PORT
 var max_players: int = DEFAULT_MAX_PLAYERS
+var map_scene_path: String = DEFAULT_MAP_SCENE_PATH
+var _loaded_map: Node2D = null
+var _server_players: Dictionary = {}
+var _pending_inputs: Dictionary = {}
 
 func _ready() -> void:
 	_parse_args()
+	_load_authoritative_map()
 	_start_server()
 
 func _parse_args() -> void:
@@ -31,6 +41,30 @@ func _parse_args() -> void:
 			var parsed_max_players := arg.get_slice("=", 1).to_int()
 			if parsed_max_players > 0:
 				max_players = parsed_max_players
+		elif arg.begins_with("--map="):
+			var parsed_map := arg.get_slice("=", 1)
+			if not parsed_map.is_empty():
+				map_scene_path = parsed_map
+		elif arg.begins_with("--tick-rate="):
+			var parsed_tick_rate := arg.get_slice("=", 1).to_int()
+			if parsed_tick_rate > 0:
+				Engine.physics_ticks_per_second = parsed_tick_rate
+				_server_tick_delta = 1.0 / float(parsed_tick_rate)
+
+func _load_authoritative_map() -> void:
+	var packed_scene := load(map_scene_path) as PackedScene
+	if packed_scene == null:
+		printerr("[Server] Failed to load map scene: %s" % map_scene_path)
+		return
+
+	_loaded_map = packed_scene.instantiate() as Node2D
+	if _loaded_map == null:
+		printerr("[Server] Map root is not Node2D: %s" % map_scene_path)
+		return
+
+	_loaded_map.name = "AuthoritativeMap"
+	add_child(_loaded_map)
+	print("[Server] Loaded authoritative map: %s" % map_scene_path)
 
 func _start_server() -> void:
 	peer = ENetMultiplayerPeer.new()
@@ -63,6 +97,11 @@ func _on_peer_disconnected(id: int) -> void:
 	connected_players.erase(id)
 	player_roles.erase(id)
 	_authoritative_states.erase(id)
+	_pending_inputs.erase(id)
+	var server_player := _server_players.get(id) as Node
+	if server_player != null:
+		server_player.queue_free()
+	_server_players.erase(id)
 	print("[Server] Player disconnected: %d (remaining: %d)" % [id, connected_players.size()])
 
 	for pid in connected_players:
@@ -164,22 +203,102 @@ func receive_player_input(player_id: int, packet: Dictionary) -> void:
 	if sender_id != player_id:
 		printerr("[Server] Ignoring player input from %d for player %d" % [sender_id, player_id])
 		return
-	if not _authoritative_states.has(player_id):
+	if not connected_players.has(player_id):
+		return
+
+	if not _server_players.has(player_id):
+		var packet_position: Vector2 = packet.get("pos", Vector2.ZERO)
+		var spawn_position := _get_spawn_position(player_id, packet_position)
+		var body := _create_server_player(player_id, spawn_position)
+		_server_players[player_id] = body
+
 		var initial_state := PlayerMovementStateScript.new()
-		initial_state.position = packet.get("pos", Vector2.ZERO)
-		initial_state.velocity = packet.get("vel", Vector2.ZERO)
-		initial_state.on_floor = packet.get("on_floor", false)
+		initial_state.position = body.global_position
+		initial_state.velocity = body.velocity
+		initial_state.on_floor = body.is_on_floor()
 		_authoritative_states[player_id] = initial_state
 
-	var state: PlayerMovementState = _authoritative_states[player_id]
-	var next_state: PlayerMovementState = PlayerMovementSimulator.step(state, packet, _movement_config, _server_tick_delta)
-	_authoritative_states[player_id] = next_state
+	_pending_inputs[player_id] = packet
 
-	var ack_tick := int(packet.get("t", 0))
-	var snapshot := next_state.to_snapshot(ack_tick)
-	rpc_id(sender_id, "receive_authoritative_player_snapshot", player_id, snapshot)
+func _physics_process(delta: float) -> void:
+	for player_id in _server_players.keys():
+		var body := _server_players[player_id] as CharacterBody2D
+		if body == null:
+			continue
+		var packet: Dictionary = _pending_inputs.get(player_id, {})
+		_simulate_server_player(body, packet, delta)
+		var ack_tick := int(packet.get("t", 0))
+		_publish_authoritative_snapshot(player_id, body, ack_tick)
+
+func _create_server_player(peer_id: int, initial_position: Vector2) -> CharacterBody2D:
+	var body := CharacterBody2D.new()
+	body.name = "ServerPlayer_%d" % peer_id
+	body.collision_layer = SERVER_PLAYER_COLLISION_LAYER
+	body.collision_mask = SERVER_PLAYER_COLLISION_MASK
+	body.global_position = initial_position
+	body.velocity = Vector2.ZERO
+
+	var shape := CollisionShape2D.new()
+	shape.position = SERVER_PLAYER_COLLISION_OFFSET
+	var rectangle := RectangleShape2D.new()
+	rectangle.size = SERVER_PLAYER_COLLISION_SIZE
+	shape.shape = rectangle
+	body.add_child(shape)
+	add_child(body)
+	print("[Server] Spawned authoritative player %d at %s" % [peer_id, str(initial_position)])
+	return body
+
+func _get_spawn_position(peer_id: int, fallback: Vector2 = Vector2.ZERO) -> Vector2:
+	if _loaded_map == null:
+		return fallback
+
+	var role := int(player_roles.get(peer_id, 0))
+	var preferred_name := "PlayerSpawn2" if role == 1 else "PlayerSpawn"
+	var preferred := _find_node_recursive(_loaded_map, preferred_name) as Node2D
+	if preferred != null:
+		return preferred.global_position
+
+	var default_spawn := _find_node_recursive(_loaded_map, "PlayerSpawn") as Node2D
+	if default_spawn != null:
+		return default_spawn.global_position
+
+	return fallback
+
+func _find_node_recursive(root: Node, node_name: String) -> Node:
+	return root.find_child(node_name, true, false)
+
+func _simulate_server_player(body: CharacterBody2D, packet: Dictionary, delta: float) -> void:
+	var input_dir: float = clampf(float(packet.get("x", 0.0)), -1.0, 1.0)
+	var jump_pressed: bool = bool(packet.get("j", false))
+	var down_pressed: bool = bool(packet.get("d", false))
+
+	if absf(input_dir) > 0.0:
+		body.velocity.x = move_toward(body.velocity.x, input_dir * _movement_config.max_speed, _movement_config.acceleration * delta)
+	else:
+		body.velocity.x = move_toward(body.velocity.x, 0.0, _movement_config.deceleration * delta)
+
+	if not body.is_on_floor():
+		body.velocity.y += _movement_config.gravity * delta
+	elif jump_pressed:
+		body.velocity.y = _movement_config.jump_velocity
+
+	if down_pressed and not body.is_on_floor():
+		body.velocity.y += _movement_config.gravity * delta * 0.5
+
+	body.move_and_slide()
+
+func _publish_authoritative_snapshot(player_id: int, body: CharacterBody2D, ack_tick: int) -> void:
+	var state := PlayerMovementStateScript.new()
+	state.position = body.global_position
+	state.velocity = body.velocity
+	state.on_floor = body.is_on_floor()
+	_authoritative_states[player_id] = state
+
+	var snapshot := state.to_snapshot(ack_tick)
+	if connected_players.has(player_id):
+		rpc_id(player_id, "receive_authoritative_player_snapshot", player_id, snapshot)
 	for pid in connected_players:
-		if pid != sender_id:
+		if pid != player_id:
 			rpc_id(pid, "receive_player_snapshot", player_id, snapshot, ack_tick)
 
 # --- Gameplay Event Relays ---
