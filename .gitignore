@@ -378,3 +378,27 @@ FodyWeavers.xsd
 
 #toll 
 .codegraph/
+# AI/ML generated artifacts
+# Model checkpoints, weights, serialized tensors
+*.ckpt
+*.pt
+*.pth
+*.h5
+*.onnx
+# Dataset caches, preprocessed data
+*.tfrecord
+*.npz
+*.npy
+# Python notebook checkpoints
+.ipynb_checkpoints/
+# Virtual environment directories
+venv/
+.env/
+# Temporary training logs
+logs/
+# Cached transformers models
+cache/
+# Misc AI generated files
+*.bin
+*.json
+*.txt

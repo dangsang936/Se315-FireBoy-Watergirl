@@ -70,6 +70,29 @@ text = "9999"
 layout_mode = 2
 text = "Connect"
 
+[node name="RoleLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Choose your character"
+horizontal_alignment = 1
+
+[node name="RoleButtons" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FireboyButton" type="Button" parent="VBoxContainer/RoleButtons"]
+layout_mode = 2
+focus_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "Fireboy"
+
+[node name="WatergirlButton" type="Button" parent="VBoxContainer/RoleButtons"]
+layout_mode = 2
+focus_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "Watergirl"
+
 [node name="StatusLabel" type="Label" parent="VBoxContainer" unique_id=1844907076]
 layout_mode = 2
 text = "Not connected"

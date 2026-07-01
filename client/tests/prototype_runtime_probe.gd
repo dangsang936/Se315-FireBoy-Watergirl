@@ -5,7 +5,7 @@ const REAL_GAME_SCENE: PackedScene = preload("res://scenes/bootstrap/game_real.t
 const PLAYER_SCENE: PackedScene = preload("res://scenes/players/fireboy.tscn")
 const WATERGIRL_SCENE: PackedScene = preload("res://scenes/players/watergirl.tscn")
 const PUSH_BLOCK_SCENE: PackedScene = preload("res://scenes/gameplay/objects/push_block.tscn")
-const GEM_SCENE: PackedScene = preload("res://scenes/gameplay/collectibles/collectible_gem.tscn")
+const GEM_SCENE: PackedScene = preload("res://shared/scenes/gameplay/collectibles/collectible_gem.tscn")
 const HAZARD_SCRIPT: Script = preload("res://shared/scripts/gameplay/hazards/hazard_zone.gd")
 
 class PushProbePlayer:
@@ -25,6 +25,7 @@ func _run() -> void:
 	await process_frame
 	await _verify_game_start_allows_movement()
 	await _verify_real_blank_game_starts()
+	await _verify_real_level_single_spawn_is_shared_by_roles()
 	await _verify_level_connects_all_hazards()
 	await _verify_player_can_jump_over_hazard()
 	await _verify_precision_jump_profile()
@@ -536,19 +537,19 @@ func _verify_game_start_allows_movement() -> void:
 		await physics_frame
 
 	var level := game.get("_current_level") as PrototypeLevel
-	var state: GameManager.GameState = game.get("_state") as GameManager.GameState
-	var state_name: String = GameManager.GameState.keys()[state]
+	var state: GameManager.ManagerState = game.get("_state") as GameManager.ManagerState
+	var state_name: String = GameManager.ManagerState.keys()[state]
 
 	var player := game.get("_player") as PrototypePlayer
 	_require(player != null, "Game should spawn a PrototypePlayer.")
 	if player != null and level != null:
 		var hazard := level.get_node("Hazards/HazardZone") as HazardZone
 		_require(
-			state == GameManager.GameState.PLAYING,
+			state == GameManager.ManagerState.PLAYING,
 			"Game should stay playable after spawning the player. state=%s player=%s hazard=%s" % [state_name, player.global_position, hazard.global_position]
 		)
 	else:
-		_require(state == GameManager.GameState.PLAYING, "Game should stay playable after spawning the player. state=%s" % state_name)
+		_require(state == GameManager.ManagerState.PLAYING, "Game should stay playable after spawning the player. state=%s" % state_name)
 	if player != null:
 		var start_x := player.global_position.x
 		_press_key(KEY_D)
@@ -578,6 +579,29 @@ func _verify_real_blank_game_starts() -> void:
 		_require(level.get_node_or_null(level.player_spawn_path) != null, "Real blank level should keep a PlayerSpawn node.")
 
 	game.queue_free()
+	await process_frame
+
+func _verify_real_level_single_spawn_is_shared_by_roles() -> void:
+	var level := preload("res://scenes/levels/real_level_blank.tscn").instantiate() as PrototypeLevel
+	root.add_child(level)
+	await process_frame
+
+	_require(level.get_node_or_null(level.player_spawn_2_path) == null, "Real level should document single-spawn fallback when PlayerSpawn2 is absent.")
+	var expected_spawn := level.get_spawn_position()
+	var ground_ray := PhysicsRayQueryParameters2D.create(expected_spawn, expected_spawn + Vector2(0.0, 32.0))
+	ground_ray.collision_mask = 1
+	var ground_hit := root.world_2d.direct_space_state.intersect_ray(ground_ray)
+	_require(expected_spawn.x >= 64.0, "Real level PlayerSpawn should sit inside the playable map, not at the far-left camera edge.")
+	_require(not ground_hit.is_empty(), "Real level PlayerSpawn should be directly above solid ground.")
+	var fireboy := PLAYER_SCENE.instantiate() as PrototypePlayer
+	var watergirl := WATERGIRL_SCENE.instantiate() as PrototypePlayer
+	level.attach_player(fireboy, 1)
+	level.attach_player(watergirl, 2)
+
+	_require(fireboy.global_position == expected_spawn, "Role 1 should spawn exactly at real level PlayerSpawn.")
+	_require(watergirl.global_position == expected_spawn, "Role 2 should reuse real level PlayerSpawn when PlayerSpawn2 is absent.")
+
+	level.queue_free()
 	await process_frame
 
 func _verify_player_can_jump_over_hazard() -> void:
@@ -615,16 +639,16 @@ func _verify_player_can_jump_over_hazard() -> void:
 		if jump_started and frame % 6 == 0:
 			_release_key(KEY_W)
 		await physics_frame
-		var state: GameManager.GameState = game.get("_state") as GameManager.GameState
-		if state != GameManager.GameState.PLAYING:
+		var state: GameManager.ManagerState = game.get("_state") as GameManager.ManagerState
+		if state != GameManager.ManagerState.PLAYING:
 			break
 		if player.global_position.x > hazard.global_position.x + 55.0:
 			break
 	_release_key(KEY_W)
 	_release_key(KEY_D)
 
-	var final_state: GameManager.GameState = game.get("_state") as GameManager.GameState
-	_require(final_state == GameManager.GameState.PLAYING, "Player should be able to jump over the hazard without losing.")
+	var final_state: GameManager.ManagerState = game.get("_state") as GameManager.ManagerState
+	_require(final_state == GameManager.ManagerState.PLAYING, "Player should be able to jump over the hazard without losing.")
 	_require(player.global_position.x > hazard.global_position.x + 35.0, "Player should land past the hazard after a running jump.")
 
 	game.queue_free()
@@ -856,7 +880,7 @@ func _verify_restart_keeps_runtime_live() -> void:
 
 func _wait_until_playing(game: GameManager) -> void:
 	for frame in 30:
-		if game.get("_state") == GameManager.GameState.PLAYING:
+		if game.get("_state") == GameManager.ManagerState.PLAYING:
 			return
 		await process_frame
 	_require(false, "GameManager should return to PLAYING after restart.")

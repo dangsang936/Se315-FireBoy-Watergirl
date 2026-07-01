@@ -1210,6 +1210,20 @@ texture = ExtResource("1_rlrdu")
 17:7/0 = 0
 18:13/0 = 0
 19:13/0 = 0
+21:12/animation_columns = 4
+21:12/animation_speed = 7.0
+21:12/animation_frame_0/duration = 1.0
+21:12/animation_frame_1/duration = 1.0
+21:12/animation_frame_2/duration = 1.0
+21:12/animation_frame_3/duration = 1.0
+21:12/0 = 0
+21:13/animation_columns = 4
+21:13/animation_speed = 7.0
+21:13/animation_frame_0/duration = 1.0
+21:13/animation_frame_1/duration = 1.0
+21:13/animation_frame_2/duration = 1.0
+21:13/animation_frame_3/duration = 1.0
+21:13/0 = 0
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ywg6y"]
 texture = ExtResource("2_wmkcm")

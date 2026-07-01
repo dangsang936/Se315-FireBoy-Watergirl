@@ -22,13 +22,13 @@ enum Element { FIRE, WATER }
 @export var coyote_time: float = 0.10
 @export var jump_buffer_time: float = 0.05
 @export var jump_hold_time: float = 0.18
-@export var jump_cutoff_multiplier: float = 0.4
+@export var jump_cutoff_multiplier: float = 0.0
 @export var max_fall_speed: float = 330.0
 @export var rise_gravity_multiplier: float = 0.82
 @export var apex_gravity_multiplier: float = 0.82
 @export var apex_velocity_threshold: float = 18.0
 @export var fall_gravity_multiplier: float = 1.35
-@export var jump_cut_gravity_multiplier: float = 1.9
+@export var jump_cut_gravity_multiplier: float = 12.0
 @export var fast_fall_gravity_multiplier: float = 1.15
 @export var edge_correction_enabled: bool = true
 @export var edge_correction_distance: float = 3.0
@@ -62,6 +62,8 @@ var _animation_controller: PlayerAnimationController
 var _push_interactor: PushInteractor
 var _ladder_detector: Node
 var _state_machine: PlayerStateMachine
+var _prediction_controller: ClientPredictionController
+var _last_prediction_delta: float = 1.0 / 60.0
 
 @onready var _animated_sprite: AnimatedSprite2D = get_node_or_null(animated_sprite_path) as AnimatedSprite2D
 @onready var _camera: Camera2D = get_node_or_null(camera_path) as Camera2D
@@ -74,6 +76,8 @@ func _ready() -> void:
 	add_to_group("player")
 	_resolve_components()
 	_configure_components()
+	_prediction_controller = ClientPredictionController.new()
+	_prediction_controller.reset(global_position, velocity, is_on_floor())
 	_state_machine.start()
 	call_deferred("_refresh_camera")
 
@@ -84,12 +88,15 @@ func _physics_process(delta: float) -> void:
 	if _state_machine == null or _input_reader == null:
 		return
 
+	_last_prediction_delta = delta
 	_input_reader.update_from_input(_control_enabled)
+	var prediction_packet := _create_prediction_input_packet()
+	_send_prediction_input(prediction_packet)
 	_state_machine.transition_from_player_context()
 	_state_machine.physics_update(delta)
 	move_and_slide()
 	_register_push_block_contacts()
-	_update_player_state()
+	_update_player_state(false)
 	_send_network_state()
 	_state_machine.transition_from_player_context()
 
@@ -191,6 +198,12 @@ func clear_ladder_vertical_motion() -> void:
 func clear_player_motion() -> void:
 	_clear_transient_state()
 
+func apply_authoritative_snapshot(snapshot: Dictionary) -> void:
+	if _prediction_controller == null:
+		return
+	var corrected_state := _prediction_controller.reconcile(snapshot, _last_prediction_delta)
+	_apply_prediction_state(corrected_state)
+
 func clear_precision_timers() -> void:
 	if _player_motor != null:
 		_player_motor.clear_transient_buffers()
@@ -226,8 +239,12 @@ var _last_sent_position: Vector2 = Vector2.INF
 var _last_sent_anim: String = ""
 var _last_sent_flip_h: bool = false
 
+func _network_manager() -> Node:
+	return get_node_or_null("/root/" + "Network" + "Manager")
+
 func _send_network_state() -> void:
-	if not NetworkManager.is_connected_to_server():
+	var network_manager := _network_manager()
+	if network_manager == null or not bool(network_manager.call("is_connected_to_server")):
 		return
 
 	_net_frame_counter += 1
@@ -257,7 +274,7 @@ func _send_network_state() -> void:
 		"anim": current_anim,
 		"flip_h": current_flip_h,
 	}
-	NetworkManager.send_snapshot(snapshot, NetworkManager.current_tick)
+	network_manager.call("send_snapshot", snapshot, int(network_manager.get("current_tick")))
 
 	# Cập nhật tracking state
 	_last_sent_position = global_position
@@ -353,6 +370,28 @@ func _register_push_block_contacts() -> void:
 func _register_push_block_probe(push_direction: float) -> void:
 	if _push_interactor != null:
 		_push_interactor.call("_register_push_block_probe", push_direction)
+
+func _create_prediction_input_packet() -> Dictionary:
+	var horizontal_direction: float = _input_reader.horizontal_direction if _input_reader != null else 0.0
+	var jump_just_pressed: bool = _input_reader.jump_just_pressed if _input_reader != null else false
+	var network_manager := _network_manager()
+	var tick: int = int(network_manager.get("current_tick")) if network_manager != null else 0
+	var packet := InputPacket.create(tick, horizontal_direction, jump_just_pressed)
+	packet["pos"] = global_position
+	packet["vel"] = velocity
+	packet["on_floor"] = is_on_floor()
+	return packet
+
+func _send_prediction_input(packet: Dictionary) -> void:
+	if _prediction_controller != null:
+		_prediction_controller.predict(packet, _last_prediction_delta)
+	var network_manager := _network_manager()
+	if network_manager != null and network_manager.has_method("send_player_input"):
+		network_manager.call("send_player_input", packet)
+
+func _apply_prediction_state(state: PlayerMovementState) -> void:
+	global_position = state.position
+	velocity = state.velocity
 
 func _set_player_state(next_state: PlayerState) -> void:
 	player_state = next_state

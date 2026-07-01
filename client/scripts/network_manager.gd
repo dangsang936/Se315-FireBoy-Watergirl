@@ -10,9 +10,8 @@ signal connection_failed
 signal disconnected_from_server
 signal role_assigned(role: int)
 signal player_list_updated(players: Array[int])
-signal remote_player_position_received(player_id: int, position: Vector2, tick: int)
-signal remote_player_state_received(player_id: int, state: Dictionary, tick: int)
 signal remote_player_snapshot_received(player_id: int, snapshot: Dictionary, tick: int)
+signal authoritative_player_snapshot_received(player_id: int, snapshot: Dictionary)
 signal game_started
 signal peer_disconnected(peer_id: int)
 signal gem_collected_received(gem_path: String)
@@ -28,6 +27,7 @@ var server_port: int = DEFAULT_PORT
 var connected_players: Array[int] = []
 var player_roles: Dictionary = {}
 var current_tick: int = 0
+var hosted_server_pid: int = -1
 
 func _physics_process(_delta: float) -> void:
 	if is_connected_to_server():
@@ -119,9 +119,18 @@ func receive_all_roles(roles: Dictionary) -> void:
 	player_roles = roles
 	player_list_updated.emit(connected_players)
 
+@rpc("any_peer", "call_remote", "reliable")
+func request_role(role: int) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "request_role", role)
+
 @rpc("authority", "call_remote", "reliable")
 func notify_game_start() -> void:
-	print("[Client] Game starting!")
+	var current_scene_path := "<none>"
+	if get_tree().current_scene != null:
+		current_scene_path = get_tree().current_scene.scene_file_path
+	print("[Client] Game starting! peer=%d current_scene=%s" % [multiplayer.get_unique_id(), current_scene_path])
 	game_started.emit()
 
 @rpc("authority", "call_remote", "reliable")
@@ -134,31 +143,22 @@ func notify_peer_disconnected(peer_id: int) -> void:
 	player_list_updated.emit(connected_players)
 
 @rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_position(player_id: int, position: Vector2, tick: int) -> void:
-	remote_player_position_received.emit(player_id, position, tick)
-
-@rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_state(player_id: int, state: Dictionary, tick: int) -> void:
-	remote_player_state_received.emit(player_id, state, tick)
-
-@rpc("authority", "call_remote", "unreliable_ordered")
 func receive_player_snapshot(player_id: int, snapshot: Dictionary, tick: int) -> void:
 	remote_player_snapshot_received.emit(player_id, snapshot, tick)
 
-func send_position(position: Vector2, tick: int) -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "relay_player_position", multiplayer.get_unique_id(), position, tick)
-
-func send_state(state: Dictionary, tick: int) -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "relay_player_state", multiplayer.get_unique_id(), state, tick)
+@rpc("authority", "call_remote", "reliable")
+func receive_authoritative_player_snapshot(player_id: int, snapshot: Dictionary) -> void:
+	authoritative_player_snapshot_received.emit(player_id, snapshot)
 
 func send_snapshot(snapshot: Dictionary, tick: int) -> void:
 	if not is_connected_to_server():
 		return
 	rpc_id(1, "relay_player_snapshot", multiplayer.get_unique_id(), snapshot, tick)
+
+func send_player_input(packet: Dictionary) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "receive_player_input", multiplayer.get_unique_id(), packet)
 
 func send_stop_movement() -> void:
 	if not is_connected_to_server():
@@ -172,15 +172,11 @@ func send_stop_movement() -> void:
 	rpc_id(1, "relay_player_snapshot", multiplayer.get_unique_id(), stop_snapshot, current_tick)
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func relay_player_position(_player_id: int, _position: Vector2, _tick: int) -> void:
-	pass
-
-@rpc("any_peer", "call_remote", "unreliable_ordered")
-func relay_player_state(_player_id: int, _state: Dictionary, _tick: int) -> void:
-	pass
-
-@rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func receive_player_input(_player_id: int, _packet: Dictionary) -> void:
 	pass
 
 # --- Reliable Gameplay Event RPCs ---
@@ -236,3 +232,80 @@ func rpc_request_restart_level() -> void:
 @rpc("authority", "call_local", "reliable")
 func sync_restart_level() -> void:
 	restart_level_received.emit()
+
+# ============================================================
+# HOST ROOM (Create Room)
+# Starts the sibling Godot server project, then connects this client
+# to localhost as the host player.
+# ============================================================
+signal room_created
+signal room_creation_failed(reason: String)
+
+func host_room(port: int = DEFAULT_PORT) -> void:
+	_disconnect_host_room_result_signals()
+
+	var start_error := _start_server_process(port)
+	if start_error != OK:
+		room_creation_failed.emit("Could not start local server: %s" % error_string(start_error))
+		return
+
+	await get_tree().create_timer(0.5).timeout
+	_connect_host_room_result_signals()
+	var connect_error := connect_to_server(DEFAULT_SERVER_IP, port)
+	if connect_error != OK:
+		_disconnect_host_room_result_signals()
+		room_creation_failed.emit("Could not connect to local server: %s" % error_string(connect_error))
+
+func start_game() -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "request_start_game")
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_start_game() -> void:
+	pass
+
+func _start_server_process(port: int) -> Error:
+	if hosted_server_pid > 0:
+		return OK
+
+	var server_project_path := _get_server_project_path()
+	if not DirAccess.dir_exists_absolute(server_project_path):
+		return ERR_FILE_NOT_FOUND
+
+	var executable_path := OS.get_executable_path()
+	var args := PackedStringArray([
+		"--headless",
+		"--path",
+		server_project_path,
+		"--port=%d" % port,
+	])
+	hosted_server_pid = OS.create_process(executable_path, args, false)
+	if hosted_server_pid <= 0:
+		hosted_server_pid = -1
+		return FAILED
+	return OK
+
+func _get_server_project_path() -> String:
+	var client_project_path := ProjectSettings.globalize_path("res://")
+	return client_project_path.path_join("../server").simplify_path()
+
+func _connect_host_room_result_signals() -> void:
+	if not connected_to_server.is_connected(_on_host_room_connected):
+		connected_to_server.connect(_on_host_room_connected, CONNECT_ONE_SHOT)
+	if not connection_failed.is_connected(_on_host_room_connection_failed):
+		connection_failed.connect(_on_host_room_connection_failed, CONNECT_ONE_SHOT)
+
+func _disconnect_host_room_result_signals() -> void:
+	if connected_to_server.is_connected(_on_host_room_connected):
+		connected_to_server.disconnect(_on_host_room_connected)
+	if connection_failed.is_connected(_on_host_room_connection_failed):
+		connection_failed.disconnect(_on_host_room_connection_failed)
+
+func _on_host_room_connected() -> void:
+	_disconnect_host_room_result_signals()
+	room_created.emit()
+
+func _on_host_room_connection_failed() -> void:
+	_disconnect_host_room_result_signals()
+	room_creation_failed.emit("Local server did not accept the connection")
