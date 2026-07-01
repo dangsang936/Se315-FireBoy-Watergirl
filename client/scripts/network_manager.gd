@@ -83,6 +83,7 @@ func disconnect_from_server() -> void:
 func _reset_connection_state(close_peer: bool = true) -> void:
 	if is_host:
 		unregister_room()
+		cleanup_upnp()
 		is_host = false
 	
 	if multiplayer.peer_connected.is_connected(_on_client_peer_connected):
@@ -433,26 +434,69 @@ func _broadcast_player_list() -> void:
 
 # --- UPnP Helper ---
 
+var _upnp_thread: Thread = null
+var _upnp_instance: UPNP = null
+var _upnp_mapped_port: int = 0
+
 func setup_upnp(port: int) -> void:
-	var upnp = UPnP.new()
-	var err = upnp.discover()
-	if err != UPnP.UPNP_RESULT_SUCCESS:
-		print("[UPnP] Discovery failed: ", err)
-		upnp_status.emit(false, "")
+	# Chạy UPnP trên thread riêng để tránh freeze game
+	if _upnp_thread and _upnp_thread.is_started():
+		_upnp_thread.wait_to_finish()
+	_upnp_mapped_port = port
+	_upnp_thread = Thread.new()
+	_upnp_thread.start(_upnp_thread_func.bind(port))
+
+func _upnp_thread_func(port: int) -> void:
+	var upnp = UPNP.new()
+	upnp.discover_multicast_if = "0.0.0.0"
+	upnp.discover_local_only = false
+
+	var err = upnp.discover(2000, 2, "InternetGatewayDevice")
+	if err != UPNP.UPNP_RESULT_SUCCESS:
+		call_deferred("_upnp_completed", false, "", null)
 		return
-		
+
 	var gateway = upnp.get_gateway()
 	if not gateway or not gateway.is_valid_gateway():
-		print("[UPnP] Invalid Gateway")
-		upnp_status.emit(false, "")
+		call_deferred("_upnp_completed", false, "", null)
 		return
-		
-	var map_err = upnp.add_port_mapping(port, port, "FireBoyWaterGirl Online", "UDP")
-	if map_err != UPnP.UPNP_RESULT_SUCCESS:
-		print("[UPnP] Port mapping failed: ", map_err)
-		upnp_status.emit(false, "")
+
+	# Map cả UDP và TCP cho ENet
+	var map_result_udp = upnp.add_port_mapping(port, port, "FireBoyWaterGirl UDP", "UDP")
+	var map_result_tcp = upnp.add_port_mapping(port, port, "FireBoyWaterGirl TCP", "TCP")
+
+	if map_result_udp != UPNP.UPNP_RESULT_SUCCESS and map_result_tcp != UPNP.UPNP_RESULT_SUCCESS:
+		call_deferred("_upnp_completed", false, "", null)
 		return
-		
+
 	var ext_ip = upnp.query_external_address()
-	print("[UPnP] Port mapped! External IP: ", ext_ip)
-	upnp_status.emit(true, ext_ip)
+	call_deferred("_upnp_completed", true, ext_ip, upnp)
+
+func _upnp_completed(success: bool, ext_ip: String, upnp_ref: UPNP) -> void:
+	if _upnp_thread and _upnp_thread.is_started():
+		_upnp_thread.wait_to_finish()
+	_upnp_thread = null
+
+	if success:
+		_upnp_instance = upnp_ref
+		print("[UPnP] Port mapped! External IP: ", ext_ip)
+	else:
+		_upnp_instance = null
+		print("[UPnP] Failed – hosting will still work on LAN")
+
+	upnp_status.emit(success, ext_ip)
+
+func cleanup_upnp() -> void:
+	if _upnp_instance and _upnp_mapped_port > 0:
+		_upnp_instance.delete_port_mapping(_upnp_mapped_port, "UDP")
+		_upnp_instance.delete_port_mapping(_upnp_mapped_port, "TCP")
+		print("[UPnP] Port mappings removed")
+	_upnp_instance = null
+	_upnp_mapped_port = 0
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
+		cleanup_upnp()
+		if _upnp_thread and _upnp_thread.is_started():
+			_upnp_thread.wait_to_finish()
+
