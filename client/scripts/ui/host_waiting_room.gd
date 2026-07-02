@@ -56,12 +56,21 @@ func _disconnect_network_signals() -> void:
 func _refresh_lobby() -> void:
 	var player_count := NetworkManager.connected_players.size()
 	var is_ready_to_start := NetworkManager.is_connected_to_server() and player_count >= REQUIRED_PLAYERS
+	
+	var am_i_host := false
+	if player_count > 0:
+		am_i_host = (NetworkManager.connected_players[0] == multiplayer.get_unique_id())
+	
+	start_game_button.visible = am_i_host
 	start_game_button.disabled = not is_ready_to_start
 
 	if not NetworkManager.is_connected_to_server():
-		status_label.text = "Connecting to local server..."
+		status_label.text = "Connecting to server..."
 	elif is_ready_to_start:
-		status_label.text = "Player 2 joined. Ready to start."
+		if am_i_host:
+			status_label.text = "Player 2 joined. Ready to start."
+		else:
+			status_label.text = "Player 2 joined. Waiting for host to start..."
 	else:
 		status_label.text = "Waiting for Player 2 to join..."
 

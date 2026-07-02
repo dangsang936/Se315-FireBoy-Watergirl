@@ -26,6 +26,7 @@ var server_port: int = DEFAULT_PORT
 var connected_players: Array[int] = []
 var player_roles: Dictionary = {}
 
+var host_peer_id: int = 0
 var server_players: Dictionary = {}
 var latest_inputs: Dictionary = {}
 var _authoritative_states: Dictionary = {}
@@ -69,14 +70,14 @@ func _read_command_line_args() -> void:
 
 func _on_peer_connected(id: int) -> void:
 	connected_players.append(id)
-	s_print("[Server] Player connected: %d (total: %d)" % [id, connected_players.size()])
+	if host_peer_id == 0:
+		host_peer_id = id
+	s_print("[Server] Player connected: %d (total: %d, host: %d)" % [id, connected_players.size(), host_peer_id])
 
 	_assign_role(id, _first_available_role())
 
 	if connected_players.size() == MAX_PLAYERS:
-		s_print("[Server] Lobby full, starting game!")
-		for pid in connected_players:
-			rpc_id(pid, "notify_game_start")
+		s_print("[Server] Lobby full, ready to start game!")
 
 func _on_peer_disconnected(id: int) -> void:
 	connected_players.erase(id)
@@ -84,7 +85,14 @@ func _on_peer_disconnected(id: int) -> void:
 	latest_inputs.erase(id)
 	_authoritative_states.erase(id)
 	_despawn_server_player(id)
-	s_print("[Server] Player disconnected: %d (remaining: %d)" % [id, connected_players.size()])
+	
+	if host_peer_id == id:
+		if connected_players.size() > 0:
+			host_peer_id = connected_players[0]
+		else:
+			host_peer_id = 0
+			
+	s_print("[Server] Player disconnected: %d (remaining: %d, new host: %d)" % [id, connected_players.size(), host_peer_id])
 
 	for pid in connected_players:
 		rpc_id(pid, "notify_peer_disconnected", id)
@@ -149,17 +157,17 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 	var body := CharacterBody2D.new()
 	body.name = "ServerPlayer_%d" % peer_id
 	
-	body.collision_layer = 2 # Match client layer
-	body.collision_mask = 5  # Match client mask (1 for World + 4 for PushBlock)
+	body.collision_layer = 2
+	body.collision_mask = 5
 	body.add_to_group("player")
 	body.set_meta("player_id", peer_id)
 	body.set_meta("element", role)
 
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(16, 24) # Real player size
+	shape.size = Vector2(16, 24)
 	collision.shape = shape
-	collision.position = Vector2(0, -12) # Put feet on floor
+	collision.position = Vector2(0, -12)
 	body.add_child(collision) 
 
 	var parent := _players_root if _players_root != null else _world_root
@@ -382,6 +390,8 @@ func notify_game_start() -> void:
 func request_start_game() -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
 	if sender_id == 0 or not (sender_id in connected_players):
+		return
+	if sender_id != host_peer_id:
 		return
 	for pid in connected_players:
 		rpc_id(pid, "notify_game_start")
