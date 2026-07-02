@@ -2,8 +2,8 @@ class_name ClientPredictionController
 extends RefCounted
 
 const MAX_PENDING_INPUTS: int = 128
-const IGNORE_THRESHOLD: float = 2.0
-const SNAP_THRESHOLD: float = 12.0
+const IGNORE_THRESHOLD: float = 4.0
+const SNAP_THRESHOLD: float = 16.0
 
 var config: PlayerMovementConfig = PlayerMovementConfig.create_default()
 var current_state: PlayerMovementState = PlayerMovementState.new()
@@ -26,6 +26,7 @@ func predict(packet: Dictionary, delta: float) -> PlayerMovementState:
 		"t": int(packet.get("t", last_ack_tick + pending_inputs.size() + 1)),
 		"x": float(packet.get("x", 0.0)),
 		"j": bool(packet.get("j", false)),
+		"d": bool(packet.get("d", false))
 	}
 	pending_inputs.append(input_packet)
 	current_state = PlayerMovementSimulator.step(current_state, input_packet, config, delta)
@@ -63,7 +64,7 @@ func reconcile(snapshot: Dictionary, delta: float) -> PlayerMovementState:
 	if error >= SNAP_THRESHOLD:
 		current_state = authoritative_state
 	else:
-		current_state.position = current_state.position.lerp(authoritative_state.position, 0.5)
+		current_state.position = current_state.position.lerp(authoritative_state.position, 0.25)
 		current_state.velocity = authoritative_state.velocity
 		current_state.on_floor = authoritative_state.on_floor
 
