@@ -48,17 +48,29 @@ func _on_body_entered(body: Node2D) -> void:
 
 	if not can_collect(player):
 		wrong_element_touched.emit(self, player)
+		# Tell clients to play the "wrong element" animation
+		rpc("client_wrong_element")
 		return 
 
 	var msg: String = "[Server] Player " + str(pid) + " collect gem: " + name
 	print(msg)
+	
 	var nm = get_node_or_null("/root/NetworkManager")
 	if nm and nm.has_method("s_print"):
 		nm.s_print(msg)
+		
 	_is_collected = true
 	set_deferred("monitoring", false)
 	set_deferred("monitorable", false)
 	visible = false
+	
+	# --> THE FIX: Broadcast to all clients to visually hide the gem! <--
+	var rpc_node := get_node_or_null("/root/GameplayRpc")
+	if rpc_node == null:
+		rpc_node = get_node_or_null("/root/GameplayRPC")
+	if rpc_node and rpc_node.has_method("sync_gem_collected"):
+		rpc_node.rpc("sync_gem_collected", name, global_position)
+		
 	collected.emit(self, player)
 
 @rpc("authority", "call_local", "reliable")
