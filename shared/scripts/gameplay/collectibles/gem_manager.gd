@@ -15,14 +15,33 @@ func _ready() -> void:
 	add_to_group("gem_manager")
 
 func configure_all() -> void:
-	configure_for_player(null)
-
-func configure_for_player(player: PrototypePlayer) -> void:
 	if not _is_configured:
 		_required_gems.clear()
 		_collected_gems.clear()
 
-		_active_gem_element = int(player.element) if player != null else 0
+		for child: Node in get_children():
+			var gem := child as CollectibleGem
+			if gem != null:
+				_required_gems.append(gem)
+				if multiplayer.is_server():
+					if not gem.collected.is_connected(_on_gem_collected):
+						gem.collected.connect(_on_gem_collected)
+		
+		_is_configured = true
+		
+	_emit_progress()
+
+func configure_for_player(player: Node2D) -> void:
+	if not _is_configured:
+		_required_gems.clear()
+		_collected_gems.clear()
+
+		if player != null:
+			if player.has_meta("element"):
+				_active_gem_element = int(player.get_meta("element"))
+			elif "element" in player:
+				_active_gem_element = int(player.get("element"))
+			
 		for gem: Node in get_tree().get_nodes_in_group("collectible_gem"):
 			var collectible := gem as CollectibleGem
 			if collectible != null and int(collectible.gem_element) == _active_gem_element:
@@ -46,12 +65,13 @@ func get_remaining_count() -> int:
 func get_active_gem_element() -> int:
 	return _active_gem_element
 
-func _on_gem_collected(gem: CollectibleGem, player: PrototypePlayer) -> void:
+func _on_gem_collected(gem: CollectibleGem, _player_id: int) -> void:
 	if not _required_gems.has(gem):
 		return
 	if _collected_gems.has(gem):
 		return
 	_collected_gems.append(gem)
+	
 	var rpc_node := get_node_or_null("/root/GameplayRpc")
 	if rpc_node == null:
 		rpc_node = get_node_or_null("/root/GameplayRPC")
