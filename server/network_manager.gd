@@ -36,11 +36,13 @@ var _players_root: Node2D = null
 var _player_spawn: Marker2D = null
 var _player_spawn_2: Marker2D = null
 var _gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
+var _movement_config: PlayerMovementConfig = PlayerMovementConfig.create_default()
 var _log_box: RichTextLabel
 var _snapshot_accumulator: float = 0.0
 
 func _ready() -> void:
 	_read_command_line_args()
+	_configure_movement_simulator()
 	_create_log_ui()
 	_create_movement_world()
 	_start_server()
@@ -74,6 +76,21 @@ func _read_command_line_args() -> void:
 			var parsed_port := int(arg.split("=")[1])
 			if parsed_port > 0:
 				server_port = parsed_port
+
+func _configure_movement_simulator() -> void:
+	_movement_config.max_speed = PLAYER_SPEED
+	_movement_config.jump_velocity = PLAYER_JUMP_VELOCITY
+	_movement_config.acceleration = PLAYER_ACCELERATION
+	_movement_config.deceleration = PLAYER_DECELERATION
+	_movement_config.air_acceleration = PLAYER_AIR_ACCELERATION
+	_movement_config.air_deceleration = PLAYER_AIR_DECELERATION
+	_movement_config.gravity = _gravity * PLAYER_GRAVITY_SCALE
+	_movement_config.run_jump_height_multiplier = PLAYER_RUN_JUMP_HEIGHT_MULTIPLIER
+	_movement_config.coyote_time = PLAYER_COYOTE_TIME
+	_movement_config.jump_buffer_time = PLAYER_JUMP_BUFFER_TIME
+	_movement_config.max_fall_speed = PLAYER_MAX_FALL_SPEED
+	_movement_config.fast_fall_gravity_multiplier = PLAYER_FAST_FALL_GRAVITY_MULTIPLIER
+	_movement_config.animation_move_threshold = PLAYER_ANIMATION_MOVE_THRESHOLD
 
 func _on_peer_connected(id: int) -> void:
 	connected_players.append(id)
@@ -236,39 +253,16 @@ func _simulate_player(peer_id: int, delta: float) -> void:
 	var input: Dictionary = latest_inputs.get(peer_id, _neutral_input())
 	var direction := float(input.get("x", 0.0))
 	var jump_pressed := bool(input.get("j", false))
-	var move_down_pressed := bool(input.get("d", false))
+	var movement_state := PlayerMovementState.new()
+	movement_state.position = body.global_position
+	movement_state.velocity = body.velocity
+	movement_state.on_floor = body.is_on_floor()
+	movement_state.coyote_timer = float(state.get("coyote", 0.0))
+	movement_state.jump_buffer_timer = float(state.get("jump_buffer", 0.0))
+	movement_state.anim = String(state.get("anim", "idle"))
+	movement_state.flip_h = body.velocity.x < 0.0
 
-	var coyote := float(state.get("coyote", 0.0))
-	var jump_buffer := float(state.get("jump_buffer", 0.0))
-	var velocity := body.velocity
-
-	if jump_pressed:
-		jump_buffer = PLAYER_JUMP_BUFFER_TIME
-	else:
-		jump_buffer = maxf(jump_buffer - delta, 0.0)
-
-	if body.is_on_floor():
-		coyote = PLAYER_COYOTE_TIME
-	else:
-		coyote = maxf(coyote - delta, 0.0)
-		var gravity_multiplier: float = PLAYER_FAST_FALL_GRAVITY_MULTIPLIER if move_down_pressed and velocity.y > 0.0 else 1.0
-		velocity.y = minf(velocity.y + _gravity * PLAYER_GRAVITY_SCALE * gravity_multiplier * delta, PLAYER_MAX_FALL_SPEED)
-
-	if jump_buffer > 0.0 and coyote > 0.0:
-		var run_factor: float = clampf(absf(velocity.x) / PLAYER_SPEED, 0.0, 1.0)
-		velocity.y = PLAYER_JUMP_VELOCITY * lerpf(1.0, PLAYER_RUN_JUMP_HEIGHT_MULTIPLIER, run_factor)
-		jump_buffer = 0.0
-		coyote = 0.0
-
-	var current_acceleration: float = PLAYER_ACCELERATION if body.is_on_floor() else PLAYER_AIR_ACCELERATION
-	var current_deceleration: float = PLAYER_DECELERATION if body.is_on_floor() else PLAYER_AIR_DECELERATION
-	if direction != 0.0:
-		velocity.x = move_toward(velocity.x, direction * PLAYER_SPEED, current_acceleration * delta)
-	else:
-		velocity.x = move_toward(velocity.x, 0.0, current_deceleration * delta)
-
-	body.velocity = velocity
-	body.move_and_slide()
+	movement_state = PlayerMovementSimulator.step_body(body, movement_state, input, _movement_config, delta)
 
 	if direction != 0.0:
 		var push_dir = signf(direction)
@@ -279,9 +273,9 @@ func _simulate_player(peer_id: int, delta: float) -> void:
 				if absf(col.get_normal().x) > 0.35 and signf(push_dir) == -signf(col.get_normal().x):
 					collider.call("register_push_attempt", body, push_dir)
 
-	state["coyote"] = coyote
-	state["jump_buffer"] = jump_buffer
-	state["anim"] = "running" if direction != 0.0 or absf(body.velocity.x) > PLAYER_ANIMATION_MOVE_THRESHOLD else "idle"
+	state["coyote"] = movement_state.coyote_timer
+	state["jump_buffer"] = movement_state.jump_buffer_timer
+	state["anim"] = movement_state.anim
 	server_players[peer_id] = state
 
 	if jump_pressed:
@@ -391,24 +385,24 @@ func s_print(msg: String) -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_restart() -> void:
 	s_print("[Server] Restarting world.")
-	
-	# Instantly disable and remove the old world so it doesn't bleed 
+
+	# Instantly disable and remove the old world so it doesn't bleed
 	# physics overlaps into the newly generated world!
 	if is_instance_valid(_world_root):
 		_world_root.process_mode = Node.PROCESS_MODE_DISABLED
 		if _world_root.is_inside_tree():
 			remove_child(_world_root)
 		_world_root.queue_free()
-		
+
 	server_players.clear()
 	_create_movement_world()
-	
+
 	for pid in connected_players:
 		if player_roles.has(pid):
 			var role = player_roles[pid]
 			latest_inputs[pid] = _neutral_input()
 			_spawn_server_player(pid, role)
-			
+
 	for pid in connected_players:
 		# Only send ONE restart command to prevent double-loading on clients
 		rpc_id(pid, "sync_restart_level")
@@ -571,31 +565,26 @@ func sync_level_completed() -> void:
 
 # ------------------------------------------------------------------
 # Fallback broadcast helpers — called by prototype_level.gd when
-# GameplayRPC autoload is not in the scene tree (e.g. headless server
-# that has not added GameplayRPC as an autoload).  These forward the
+# GameplayRpc autoload is not in the scene tree. These forward the
 # event to every connected client using the NetworkManager's own
 # registered RPC stubs.
 # ------------------------------------------------------------------
 
 func _broadcast_player_failed_rpc(failed_player_id: int) -> void:
 	var rpc_node := get_node_or_null("/root/GameplayRpc")
-	if rpc_node == null:
-		rpc_node = get_node_or_null("/root/GameplayRPC")
 	if rpc_node != null:
 		rpc_node.rpc("sync_player_failed", failed_player_id)
 		return
-	# GameplayRPC not present — use NetworkManager stubs as last resort.
+	# GameplayRpc not present — use NetworkManager stubs as last resort.
 	for pid: int in connected_players:
 		rpc_id(pid, "receive_player_failed_event", failed_player_id)
 
 func _broadcast_level_completed_rpc() -> void:
 	var rpc_node := get_node_or_null("/root/GameplayRpc")
-	if rpc_node == null:
-		rpc_node = get_node_or_null("/root/GameplayRPC")
 	if rpc_node != null:
 		rpc_node.rpc("sync_level_completed")
 		return
-	# GameplayRPC not present — use NetworkManager stubs as last resort.
+	# GameplayRpc not present — use NetworkManager stubs as last resort.
 	for pid: int in connected_players:
 		rpc_id(pid, "receive_level_completed_event")
 
@@ -618,14 +607,12 @@ func rpc_request_restart_level() -> void:
 func sync_restart_level() -> void:
 	pass
 
-# Legacy listen-server flow; do not use in authorized server mode.
-# Client-authoritative position relay — superseded by receive_world_snapshot.
+# LEGACY RPC COMPAT — listen-server/client-authoritative relays.
+# Do not call in authorized server mode; active state arrives via receive_world_snapshot.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_position(_player_id: int, _pos: Vector2) -> void:
 	pass
 
-# Legacy listen-server flow; do not use in authorized server mode.
-# Client-authoritative state relay — superseded by receive_world_snapshot.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_state(_player_id: int, _state: Dictionary) -> void:
 	pass

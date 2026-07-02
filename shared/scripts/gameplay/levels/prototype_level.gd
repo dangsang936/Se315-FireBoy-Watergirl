@@ -144,7 +144,4 @@ func _broadcast_level_completed() -> void:
 			nm.call("_broadcast_level_completed_rpc")
 
 func _get_gameplay_rpc() -> Node:
-	var node := get_node_or_null("/root/GameplayRpc")
-	if node == null:
-		node = get_node_or_null("/root/GameplayRPC")
-	return node
+	return get_node_or_null("/root/GameplayRpc")

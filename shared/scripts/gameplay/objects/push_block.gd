@@ -95,8 +95,6 @@ func _physics_process(delta: float) -> void:
 	if _sync_timer >= SYNC_RATE:
 		_sync_timer = 0.0
 		var rpc_node := get_node_or_null("/root/GameplayRpc")
-		if rpc_node == null:
-			rpc_node = get_node_or_null("/root/GameplayRPC")
 		if rpc_node:
 			rpc_node.rpc("sync_push_block", name, global_position, rotation)
 

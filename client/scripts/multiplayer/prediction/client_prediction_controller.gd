@@ -16,6 +16,8 @@ func reset(position: Vector2, velocity: Vector2, on_floor: bool) -> void:
 	current_state.position = position
 	current_state.velocity = velocity
 	current_state.on_floor = on_floor
+	current_state.coyote_timer = config.coyote_time if on_floor else 0.0
+	current_state.jump_buffer_timer = 0.0
 	last_ack_tick = -1
 	pending_inputs.clear()
 	predicted_states.clear()

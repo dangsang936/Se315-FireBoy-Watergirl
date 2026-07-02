@@ -650,14 +650,12 @@ func rpc_request_restart_level() -> void:
 func sync_restart_level() -> void:
 	restart_level_received.emit()
 
-# Legacy listen-server flow; do not use in authorized server mode.
-# Client-authoritative position relay — superseded by receive_world_snapshot.
+# LEGACY RPC COMPAT — listen-server/client-authoritative relays.
+# Do not call in authorized server mode; active state arrives via receive_world_snapshot.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_position(_player_id: int, _pos: Vector2) -> void:
 	pass
 
-# Legacy listen-server flow; do not use in authorized server mode.
-# Client-authoritative state relay — superseded by receive_world_snapshot.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_state(_player_id: int, _state: Dictionary) -> void:
 	pass

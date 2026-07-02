@@ -172,8 +172,6 @@ func _set_pressed_state(next_pressed: bool) -> void:
 
 func _broadcast_state() -> void:
 	var rpc_node := get_node_or_null("/root/GameplayRpc")
-	if rpc_node == null:
-		rpc_node = get_node_or_null("/root/GameplayRPC")
 	if rpc_node and rpc_node.has_method("sync_button_state"):
 		rpc_node.rpc("sync_button_state", get_path(), _is_pressed)
 

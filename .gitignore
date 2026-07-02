@@ -407,3 +407,6 @@ plan.md
 *.bin
 *.json
 *.txt
+
+.claude/
+.codegraph/

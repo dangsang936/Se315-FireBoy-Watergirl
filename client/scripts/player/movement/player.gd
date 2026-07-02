@@ -83,7 +83,15 @@ func _ready() -> void:
 		_prediction_controller.config.jump_velocity = jump_velocity
 		_prediction_controller.config.acceleration = acceleration
 		_prediction_controller.config.deceleration = deceleration
+		_prediction_controller.config.air_acceleration = air_acceleration
+		_prediction_controller.config.air_deceleration = air_deceleration
 		_prediction_controller.config.gravity = ProjectSettings.get_setting("physics/2d/default_gravity") * gravity_scale
+		_prediction_controller.config.run_jump_height_multiplier = run_jump_height_multiplier
+		_prediction_controller.config.coyote_time = coyote_time
+		_prediction_controller.config.jump_buffer_time = jump_buffer_time
+		_prediction_controller.config.max_fall_speed = max_fall_speed
+		_prediction_controller.config.fast_fall_gravity_multiplier = fast_fall_gravity_multiplier
+		_prediction_controller.config.animation_move_threshold = animation_move_threshold
 
 	_prediction_controller.reset(global_position, velocity, is_on_floor())
 	_state_machine.start()
@@ -107,7 +115,7 @@ func _physics_process(delta: float) -> void:
 	_update_player_state(false)
 	# AUTHORIZED SERVER: client does NOT push position/snapshot.
 	# Server is the sole authority; movement state comes from
-	# receive_player_sync → apply_authoritative_snapshot.
+	# receive_world_snapshot → apply_authoritative_snapshot.
 	# _send_network_state() is kept below as a legacy stub but is never called.
 	_state_machine.transition_from_player_context()
 
@@ -251,7 +259,7 @@ func _network_manager() -> Node:
 # LEGACY — never called in authorized server mode.
 # ==================================================================
 # In the authorized model the server simulates position from received
-# inputs and broadcasts state via receive_player_sync.  This function
+# inputs and broadcasts state via receive_world_snapshot.  This function
 # must NOT be called from _physics_process or any live code path.
 # It is kept here only so legacy tooling / offline debug can be toggled
 # with a one-line change; never commit with it re-enabled.
@@ -259,7 +267,7 @@ func _network_manager() -> Node:
 # Authoritative data flow:
 #   InputReader → _send_prediction_input → send_player_input
 #   → server rpc_submit_input → server simulate
-#   → receive_player_sync → apply_authoritative_snapshot
+#   → receive_world_snapshot → apply_authoritative_snapshot
 # ==================================================================
 func _send_network_state() -> void:
 	# Guard: disabled in authorized server mode.

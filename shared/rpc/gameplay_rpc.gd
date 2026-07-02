@@ -115,14 +115,14 @@ func sync_gem_progress(collected_count: int) -> void:
 # ------------------------------------------------------------------
 @rpc("authority", "call_remote", "reliable")
 func sync_button_state(button_node_path: String, is_pressed: bool) -> void:
-	var button := get_tree().root.get_node_or_null(button_node_path) as PressureButton
+	var button := get_tree().root.get_node_or_null(button_node_path)
 	if button == null:
 		# Try direct node name search as a fallback
 		var buttons := get_tree().get_nodes_in_group("pressure_button")
 		for b: Node in buttons:
 			if b.name == button_node_path.get_file():
-				button = b as PressureButton
+				button = b
 				break
-	if button == null:
+	if button == null or not button.has_method("client_apply_pressed_state"):
 		return
 	button.client_apply_pressed_state(is_pressed)

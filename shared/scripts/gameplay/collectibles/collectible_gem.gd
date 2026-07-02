@@ -66,8 +66,6 @@ func _on_body_entered(body: Node2D) -> void:
 	
 	# --> THE FIX: Broadcast to all clients to visually hide the gem! <--
 	var rpc_node := get_node_or_null("/root/GameplayRpc")
-	if rpc_node == null:
-		rpc_node = get_node_or_null("/root/GameplayRPC")
 	if rpc_node and rpc_node.has_method("sync_gem_collected"):
 		rpc_node.rpc("sync_gem_collected", name, global_position)
 		
