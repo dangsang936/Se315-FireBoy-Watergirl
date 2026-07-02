@@ -10,33 +10,54 @@ enum ManagerState { BOOT, LOADING_LEVEL, PLAYING, PAUSED, WON, LOST, RESTARTING,
 @export var hud_path: NodePath = ^"HUD"
 
 const RemotePlayerScript: Script = preload("res://scripts/multiplayer/remote_player.gd")
+const DEFAULT_LEVEL_SCENE: PackedScene = preload("res://scenes/levels/real_level_blank.tscn")
+const DEFAULT_FIREBOY_SCENE: PackedScene = preload("res://scenes/players/fireboy.tscn")
+const DEFAULT_WATERGIRL_SCENE: PackedScene = preload("res://scenes/players/watergirl.tscn")
 
 var _state: ManagerState = ManagerState.BOOT
 var _current_level: Node2D
 var _player: CharacterBody2D
 var _remote_player: CharacterBody2D
 var _is_reloading: bool = false
+var player_nodes: Dictionary = {}
 
 @onready var _level_root: Node2D = get_node(level_root_path) as Node2D
 @onready var _hud: CanvasLayer = get_node(hud_path) as CanvasLayer
 
+func _network_manager() -> Node:
+	return get_node_or_null("/root/" + "Network" + "Manager")
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_hud.restart_requested.connect(_request_restart) # Changed this line
+	if level_scene == null:
+		level_scene = DEFAULT_LEVEL_SCENE
+	if fireboy_scene == null:
+		fireboy_scene = DEFAULT_FIREBOY_SCENE
+	if watergirl_scene == null:
+		watergirl_scene = DEFAULT_WATERGIRL_SCENE
+	_hud.restart_requested.connect(_on_restart_requested)
 	_hud.resume_requested.connect(_resume_game)
 
-	# Listen to network manager
-	NetworkManager.peer_disconnected.connect(_on_peer_disconnected)
-	NetworkManager.disconnected_from_server.connect(_on_disconnected_from_server)
-	NetworkManager.remote_player_position_received.connect(_on_remote_position_received)
-	NetworkManager.remote_player_state_received.connect(_on_remote_state_received)
-	NetworkManager.player_sync_received.connect(_on_player_sync_received)
+	var network_manager := _network_manager()
+	if network_manager != null:
+		network_manager.peer_disconnected.connect(_on_peer_disconnected)
+		network_manager.disconnected_from_server.connect(_on_disconnected_from_server)
+		network_manager.remote_player_snapshot_received.connect(_on_remote_snapshot_received)
 
-	NetworkManager.role_assigned.connect(_on_role_assigned)
-	NetworkManager.player_list_updated.connect(_on_player_list_updated)
-	NetworkManager.level_restart_requested.connect(_on_network_restart) # Added this line
-	
-	_show_connect_ui()
+		network_manager.gem_collected_received.connect(_on_gem_collected_received)
+		network_manager.player_failed_received.connect(_on_player_failed_received)
+		network_manager.level_completed_received.connect(_on_level_completed_received)
+		network_manager.restart_level_received.connect(_on_restart_level_received)
+
+		network_manager.role_assigned.connect(_on_role_assigned)
+		network_manager.player_list_updated.connect(_on_player_list_updated)
+		network_manager.authoritative_player_snapshot_received.connect(_on_authoritative_player_snapshot_received)
+		# NetworkManager.authoritative_player_snapshot_received.connect(_on_authoritative_player_snapshot_received)
+
+	if network_manager == null or not bool(network_manager.call("is_connected_to_server")) or int(network_manager.get("my_role")) == -1:
+		call_deferred("_load_level")
+	else:
+		call_deferred("_load_level")
 
 var _connect_ui_layer: CanvasLayer
 
@@ -72,7 +93,9 @@ func _on_connect_button_pressed() -> void:
 	if _connect_ui_layer.has_node("ColorRect/VBoxContainer/StatusLabel"):
 		var lbl = _connect_ui_layer.get_node("ColorRect/VBoxContainer/StatusLabel") as Label
 		lbl.text = "Connecting..."
-	NetworkManager.connect_to_server()
+	var network_manager := _network_manager()
+	if network_manager != null:
+		network_manager.call("connect_to_server")
 
 func _on_role_assigned(role: int) -> void:
 	if is_instance_valid(_connect_ui_layer):
@@ -88,8 +111,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_pause()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("restart"):
-		_request_restart() # Changed this line
+		_on_restart_requested()
 		get_viewport().set_input_as_handled()
+
+func _on_restart_requested() -> void:
+	var network_manager := _network_manager()
+	if network_manager != null and bool(network_manager.call("is_connected_to_server")):
+		network_manager.call("send_restart_level")
+	else:
+		_restart_level()
 
 func _load_level() -> void:
 	if not level_scene or not fireboy_scene or not watergirl_scene:
@@ -115,17 +145,23 @@ func _load_level() -> void:
 	_current_level.player_failed.connect(_on_player_failed)
 	_current_level.exit_locked.connect(_on_exit_locked)
 	_current_level.gem_progress_changed.connect(_on_gem_progress_changed)
+	_level_root.add_child(_current_level)
+	print("[GameManager] level_scene=%s instantiated=%s spawn=%s" % [
+		level_scene.resource_path,
+		_current_level.scene_file_path,
+		_current_level.call("get_spawn_position") if _current_level.has_method("get_spawn_position") else Vector2.INF,
+	])
 	_spawn_players()
 	_is_reloading = false
 	_set_state(ManagerState.PLAYING)
 
 func _spawn_players() -> void:
-	var my_role = NetworkManager.my_role
+	var network_manager := _network_manager()
+	var my_role: int = int(network_manager.get("my_role")) if network_manager != null else -1
 	if my_role == -1: my_role = 0 # Default if offline testing
 
 	var is_fireboy = (my_role == 0)
 	var local_scene = fireboy_scene if is_fireboy else watergirl_scene
-	var remote_scene = watergirl_scene if is_fireboy else fireboy_scene
 	
 	# Spawn Local Player (chỉ spawn 1 lần)
 	if not is_instance_valid(_player):
@@ -133,27 +169,29 @@ func _spawn_players() -> void:
 		_current_level.attach_player(_player, 1 if is_fireboy else 2)
 		if _player.has_method("reset_to_spawn"):
 			_player.call("reset_to_spawn", _current_level.get_spawn_position() if is_fireboy else _current_level.get_spawn_position_2())
+		
 		if _player.get("is_local") != null:
 			_player.set("is_local", true)
+	var my_id = multiplayer.get_unique_id() if network_manager != null and bool(network_manager.call("is_connected_to_server")) else 1
+	player_nodes[my_id] = _player
 	
 	_spawn_remote_player()
 
 func _spawn_remote_player() -> void:
-	if not NetworkManager.is_connected_to_server() or is_instance_valid(_remote_player):
+	var network_manager := _network_manager()
+	if network_manager == null or not bool(network_manager.call("is_connected_to_server")) or is_instance_valid(_remote_player):
 		return
-	if NetworkManager.connected_players.size() < 2:
+	if int(network_manager.get("connected_players").size()) < 2:
 		return
 		
-	var my_role = NetworkManager.my_role
+	var my_role: int = int(network_manager.get("my_role"))
 	var is_fireboy = (my_role == 0)
 	var remote_scene = watergirl_scene if is_fireboy else fireboy_scene
 	
 	_remote_player = remote_scene.instantiate() as CharacterBody2D
 	if _remote_player.get("is_local") != null:
 		_remote_player.set("is_local", false)
-	if _remote_player.has_method("configure_remote_visual"):
-		_remote_player.call("configure_remote_visual")
-
+	
 	# Attach RemotePlayer logic component
 	var remote_comp = RemotePlayerScript.new()
 	remote_comp.name = "RemotePlayer"
@@ -165,6 +203,14 @@ func _spawn_remote_player() -> void:
 	_remote_player.global_position = spawn_pos
 	remote_comp.target_position = spawn_pos
 
+	var remote_id = -1
+	for pid in network_manager.get("connected_players"):
+		if pid != multiplayer.get_unique_id():
+			remote_id = pid
+			break
+	if remote_id != -1:
+		player_nodes[remote_id] = _remote_player
+
 func _toggle_pause() -> void:
 	if _state == ManagerState.PLAYING:
 		_set_state(ManagerState.PAUSED)
@@ -175,13 +221,6 @@ func _resume_game() -> void:
 	if _state == ManagerState.PAUSED:
 		_set_state(ManagerState.PLAYING)
 
-func _request_restart() -> void:
-	NetworkManager.request_level_restart()
-
-func _on_network_restart() -> void:
-	_restart_level()
-
-
 func _restart_level() -> void:
 	if _state == ManagerState.LOADING_LEVEL or _is_reloading:
 		return
@@ -189,7 +228,6 @@ func _restart_level() -> void:
 	_set_player_control_enabled(false)
 	_set_state(ManagerState.RESTARTING)
 	call_deferred("_load_level")
-
 
 func _on_level_completed() -> void:
 	if _state != ManagerState.PLAYING:
@@ -200,7 +238,9 @@ func _on_level_completed() -> void:
 func _on_player_failed(_player_node: Node2D) -> void:
 	if _state != ManagerState.PLAYING:
 		return
-	NetworkManager.send_stop_movement() # NEW LINE
+	var network_manager := _network_manager()
+	if network_manager != null:
+		network_manager.call("send_stop_movement")
 	_set_player_control_enabled(false)
 	_set_state(ManagerState.LOST)
 
@@ -213,39 +253,67 @@ func _on_gem_progress_changed(collected: int, required: int) -> void:
 	_hud.set_gem_progress(collected, required)
 
 func _on_peer_disconnected(peer_id: int) -> void:
+	_clear_remote_player(peer_id)
 	if _state == ManagerState.PLAYING:
 		_set_state(ManagerState.DISCONNECTED)
 
 func _on_disconnected_from_server() -> void:
+	_clear_multiplayer_players()
 	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
 
-func _on_player_sync_received(packet: Dictionary) -> void:
-	var sync_player_id := int(packet.get("id", 0))
-	if sync_player_id == multiplayer.get_unique_id():
-		if is_instance_valid(_player) and _player.has_method("apply_authoritative_sync"):
-			_player.call("apply_authoritative_sync", packet)
+func _clear_remote_player(peer_id: int = -1) -> void:
+	if peer_id != -1:
+		player_nodes.erase(peer_id)
+	if is_instance_valid(_remote_player):
+		_remote_player.queue_free()
+	_remote_player = null
+
+func _clear_multiplayer_players() -> void:
+	_clear_remote_player()
+	player_nodes.clear()
+	if is_instance_valid(_player):
+		_player.queue_free()
+	_player = null
+
+func _on_remote_snapshot_received(player_id: int, snapshot: Dictionary, tick: int) -> void:
+	if player_nodes.has(player_id):
+		var p_node = player_nodes[player_id]
+		if is_instance_valid(p_node) and p_node.has_node("RemotePlayer"):
+			var rp = p_node.get_node("RemotePlayer")
+			if rp.has_method("push_snapshot"):
+				rp.push_snapshot(snapshot, tick)
+
+func _on_authoritative_player_snapshot_received(player_id: int, snapshot: Dictionary) -> void:
+	if not is_instance_valid(_player):
 		return
+	var network_manager := _network_manager()
+	var my_id := multiplayer.get_unique_id() if network_manager != null and bool(network_manager.call("is_connected_to_server")) else 1
+	if player_id != my_id:
+		return
+	if _player.has_method("apply_authoritative_snapshot"):
+		_player.call("apply_authoritative_snapshot", snapshot)
 
-	var position: Vector2 = packet.get("p", Vector2.ZERO)
-	var velocity: Vector2 = packet.get("v", Vector2.ZERO)
-	var state := {
-		"anim": str(packet.get("a", "idle")),
-		"flip_h": velocity.x < 0.0
-	}
-	_on_remote_position_received(sync_player_id, position)
-	_on_remote_state_received(sync_player_id, state)
+# --- Reliable Gameplay Event RPC Listeners ---
 
-func _on_remote_position_received(player_id: int, pos: Vector2) -> void:
-	if _remote_player and _remote_player.has_node("RemotePlayer"):
-		var rp = _remote_player.get_node("RemotePlayer")
-		if rp.has_method("update_position"):
-			rp.update_position(pos)
+func _on_gem_collected_received(gem_path: String) -> void:
+	var gem_node = get_node_or_null(gem_path)
+	if gem_node and gem_node.has_method("collect_remotely"):
+		gem_node.collect_remotely()
 
-func _on_remote_state_received(player_id: int, state: Dictionary) -> void:
-	if _remote_player and _remote_player.has_node("RemotePlayer"):
-		var rp = _remote_player.get_node("RemotePlayer")
-		if rp.has_method("update_state"):
-			rp.update_state(state)
+func _on_player_failed_received() -> void:
+	if _state != ManagerState.PLAYING:
+		return
+	_set_player_control_enabled(false)
+	_set_state(ManagerState.LOST)
+
+func _on_level_completed_received() -> void:
+	if _state != ManagerState.PLAYING:
+		return
+	_set_player_control_enabled(false)
+	_set_state(ManagerState.WON)
+
+func _on_restart_level_received() -> void:
+	_restart_level()
 
 func _set_player_control_enabled(is_enabled: bool) -> void:
 	if is_instance_valid(_player):
@@ -255,7 +323,9 @@ func _set_player_control_enabled(is_enabled: bool) -> void:
 			_player.set_physics_process(is_enabled)
 			
 	if not is_enabled:
-		NetworkManager.send_stop_movement() # Make sure server stop
+		var network_manager := _network_manager()
+		if network_manager != null:
+			network_manager.call("send_stop_movement")
 
 func _set_state(next_state: ManagerState) -> void:
 	_state = next_state

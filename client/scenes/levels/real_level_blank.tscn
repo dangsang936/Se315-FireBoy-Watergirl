@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://bnfjogf41hh0d"]
+[gd_scene format=4 uid="uid://bnfjogf41hh0d"]
 
 [ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://shared/scripts/gameplay/levels/prototype_level.gd" id="1_level"]
 [ext_resource type="Script" uid="uid://f726xissaotg" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
@@ -11,91 +11,175 @@
 [ext_resource type="Script" uid="uid://cvmrbef7tkkam" path="res://scripts/core/scene_loader/foreground.gd" id="8_7tvm4"]
 [ext_resource type="PackedScene" uid="uid://dqlxrcj1uh05n" path="res://scenes/gameplay/objects/pressure_button.tscn" id="9_button"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
-size = Vector2(240, 24)
-
-[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_fall"]
-distance = 96.0
-
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hazard"]
-size = Vector2(48, 18)
+size = Vector2(128, 27)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
 size = Vector2(34, 62)
 
-[node name="RealLevelBlank" type="Node2D"]
+[sub_resource type="Environment" id="Environment_7tvm4"]
+background_mode = 3
+tonemap_mode = 1
+tonemap_white = 1.2
+glow_enabled = true
+glow_intensity = 1.0
+glow_bloom = 0.2
+
+[node name="RealLevelBlank" type="Node2D" unique_id=2094822713]
 script = ExtResource("1_level")
+players_path = NodePath("tilemap/Players")
+player_spawn_path = NodePath("SpawnPoints/PlayerSpawn")
 
-[node name="Players" type="Node2D" parent="."]
+[node name="parallaxlayers" type="Node2D" parent="." unique_id=163411141]
+z_index = -15
+position = Vector2(391, 496)
 
-[node name="PlayerSpawn" type="Marker2D" parent="Players"]
-position = Vector2(-96, -31)
+[node name="background" type="Parallax2D" parent="parallaxlayers" unique_id=1299752094]
+scroll_scale = Vector2(0.15, 1)
+repeat_size = Vector2(320, 0)
+repeat_times = 4
 
-[node name="Terrain" type="Node2D" parent="."]
+[node name="Sprite2D" type="Sprite2D" parent="parallaxlayers/background" unique_id=458292250]
+texture_repeat = 2
+scale = Vector2(1, 1.2)
+texture = ExtResource("4_drtrc")
+centered = false
 
-[node name="Floor" type="StaticBody2D" parent="Terrain"]
+[node name="midground" type="Parallax2D" parent="parallaxlayers" unique_id=92766918]
+scroll_scale = Vector2(0.35, 1)
+repeat_size = Vector2(320, 0)
+repeat_times = 4
 
-[node name="FloorVisual" type="Polygon2D" parent="Terrain/Floor"]
-color = Color(0.28, 0.22, 0.16, 1)
-polygon = PackedVector2Array(-120, -12, 120, -12, 120, 12, -120, 12)
+[node name="Sprite2D" type="Sprite2D" parent="parallaxlayers/midground" unique_id=1429356739]
+z_index = 1
+texture_repeat = 2
+scale = Vector2(1, 1.2)
+texture = ExtResource("5_7tvm4")
+centered = false
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/Floor"]
-shape = SubResource("RectangleShape2D_floor")
+[node name="foreground" type="Parallax2D" parent="parallaxlayers" unique_id=272202258]
+scroll_scale = Vector2(0.6, 1)
+repeat_size = Vector2(320, 0)
+repeat_times = 4
 
-[node name="FallBoundary" type="StaticBody2D" parent="Terrain"]
+[node name="Sprite2D" type="Sprite2D" parent="parallaxlayers/foreground" unique_id=833692166]
+z_index = 2
+texture_repeat = 2
+scale = Vector2(1, 1.2)
+texture = ExtResource("6_y1y1q")
+centered = false
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/FallBoundary"]
-position = Vector2(0, 85)
-shape = SubResource("WorldBoundaryShape2D_fall")
+[node name="Hazards" type="Node2D" parent="." unique_id=591894627]
 
-[node name="Objects" type="Node2D" parent="."]
-
-[node name="Hazards" type="Node2D" parent="."]
-
-[node name="LavaPool" type="Area2D" parent="Hazards"]
-position = Vector2(-48, 40)
+[node name="LavaPool" type="Area2D" parent="Hazards" unique_id=1038535333]
+position = Vector2(-5, -62)
+collision_layer = 16
+collision_mask = 2
 script = ExtResource("2_hazard")
 pool_type = 0
 
-[node name="LavaVisual" type="Polygon2D" parent="Hazards/LavaPool"]
-color = Color(0.95, 0.28, 0.08, 0.78)
-polygon = PackedVector2Array(-24, -9, 24, -9, 24, 9, -24, 9)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/LavaPool"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=1861931717]
+position = Vector2(445, 719)
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="HazardZone" type="Area2D" parent="Hazards"]
-position = Vector2(0, 40)
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=634877222]
+position = Vector2(629, 736.5)
+shape = SubResource("RectangleShape2D_hazard")
+
+[node name="HazardZone" type="Area2D" parent="Hazards" unique_id=993619337]
+position = Vector2(9, -62)
+collision_layer = 16
+collision_mask = 2
 script = ExtResource("2_hazard")
 
-[node name="HazardVisual" type="Polygon2D" parent="Hazards/HazardZone"]
-color = Color(0.1, 0.48, 0.95, 0.75)
-polygon = PackedVector2Array(-24, -9, 24, -9, 24, 9, -24, 9)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/HazardZone"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/HazardZone" unique_id=937581071]
+position = Vector2(334, 716)
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="PoisonPool" type="Area2D" parent="Hazards"]
-position = Vector2(48, 40)
+[node name="PoisonPool" type="Area2D" parent="Hazards" unique_id=566607842]
+position = Vector2(45, -63)
+collision_layer = 16
+collision_mask = 2
 script = ExtResource("2_hazard")
 pool_type = 2
 
-[node name="PoisonVisual" type="Polygon2D" parent="Hazards/PoisonPool"]
+[node name="PoisonVisual" type="Polygon2D" parent="Hazards/PoisonPool" unique_id=1385295729]
 color = Color(0.32, 0.85, 0.18, 0.78)
 polygon = PackedVector2Array(-24, -9, 24, -9, 24, 9, -24, 9)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/PoisonPool"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/PoisonPool" unique_id=1984233923]
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="Goals" type="Node2D" parent="."]
+[node name="Goals" type="Node2D" parent="." unique_id=1090063674]
 
-[node name="ExitDoor" type="Area2D" parent="Goals"]
+[node name="ExitDoor" type="Area2D" parent="Goals" unique_id=1861265908]
 position = Vector2(96, -42)
+collision_layer = 64
+collision_mask = 2
 script = ExtResource("3_exit")
 
-[node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor"]
+[node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor" unique_id=1758419958]
 color = Color(0.95, 0.72, 0.18, 0.85)
 polygon = PackedVector2Array(-17, -31, 17, -31, 17, 31, -17, 31)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Goals/ExitDoor"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Goals/ExitDoor" unique_id=1751659209]
 shape = SubResource("RectangleShape2D_exit")
+
+[node name="Puzzles" type="Node2D" parent="." unique_id=634451493]
+
+[node name="LavaBridge" parent="Puzzles" unique_id=23184816 instance=ExtResource("7_bridge")]
+position = Vector2(640, 656)
+bridge_size = Vector2(182, 14)
+editor_preview_alpha = 0.18
+visual_layer_path = NodePath("Visual")
+
+[node name="Terrain" type="Node2D" parent="." unique_id=182746802]
+
+[node name="Objects" type="Node2D" parent="." unique_id=182746803]
+
+[node name="tilemap" type="Node2D" parent="." unique_id=1481712616]
+
+[node name="Background" type="TileMapLayer" parent="tilemap" unique_id=1495634537]
+z_index = -20
+tile_map_data = PackedByteArray("AAADACQAAAABAAoAAAADACUAAAABAAsAAAADACYAAAABAAwAAAADACcAAAABAA0AAAAEACQAAAACAAoAAAAEACUAAAACAAsAAAAEACYAAAACAAwAAAAEACcAAAACAA0AAAAFACQAAAADAAoAAAAFACUAAAADAAsAAAAFACYAAAADAAwAAAAFACcAAAADAA0AAAACACIAAAAFAAoAAAACACMAAAAFAAsAAAADACIAAAAGAAoAAAADACMAAAAGAAsAAAAEACIAAAAHAAoAAAAEACMAAAAHAAsAAAAFACIAAAAIAAoAAAAFACMAAAAIAAsAAAA=")
+tile_set = ExtResource("4_gkpaa")
+
+[node name="Midground" type="TileMapLayer" parent="tilemap" unique_id=367856715]
+tile_map_data = PackedByteArray("AAABACcAAAAbAAoAAAAEACcAAAAdAAoAAAADACcAAAAcAAoAAAACACcAAAAcAAoAAAACACYAAAAbAAoAAAADACYAAAAcAAoAAAAEACYAAAAcAAoAAAAFACYAAAAcAAoAAAAGACYAAAAcAAoAAAAHACYAAAAcAAoAAAAFACcAAAAbAAsAAAAGACcAAAAcAAsAAAAIACcAAAAdAAsAAAAHACcAAAAdAAcAAAAIACYAAAAdAAoAAAAIACgAAAAdAAwAAAAHACgAAAAcAAwAAAAGACgAAAAcAAwAAAAFACgAAAAbAAwAAAApACUAAAAXAAcAAAApACQAAAAcAAsAAAAoACUAAAAcAAsAAAAoACQAAAAcAAoAAAAnACUAAAAYAAcAAAAnACQAAAAcAAoAAAAmACUAAAAcAAwAAAAmACQAAAAcAAoAAAAlACUAAAAbAAwAAAAlACQAAAAbAAoAAAApACYAAAAdAAwAAAAoACYAAAAcAAwAAAAnACYAAAAbAAwAAAAqACQAAAAdAAsAAAAqACMAAAAdAAoAAAApACMAAAAcAAoAAAAqACUAAAAdAAwAAAAjACMAAAAdAAwAAAAjACIAAAAdAAoAAAAiACMAAAAbAAwAAAAiACIAAAAbAAoAAAACACQAAAABAAgAAAACACUAAAABAAgAAAACACMAAAABAAcAAAADACMAAAACAAcAAAAGACIAAAAEAAgAABAFACMAAAADAAcAAAAFACQAAAADAAgAAAAFACUAAAADAAgAAAAEACMAAAACAAcAAAACACIAAAASAAkAAAADACIAAAATAAkAAAACACEAAAATAAkAAAAEACIAAAATAAkAAAAFACIAAAATAAkAAAACACAAAAAUAAkAAAADACEAAAAVAAkAAAAJACMAAAAEAAgAAAAdACIAAAAEAAgAABAgACEAAAAEAAgAAAASACIAAAAEAAgAAAAPACMAAAAEAAgAABAkACkAAAALAAcAAAAlACkAAAALAAcAAAAmACkAAAALAAcAAAAnACkAAAALAAcAAAAoACkAAAALAAcAAAApACkAAAALAAcAAAAqACkAAAALAAcAAAAjACkAAAALAAcAAAAtACAAAwAAAAAABAAtACEAAwAAAAAABAAtACIAAwAAAAAABAAtACMAAwAAAAAABAAtACQAAwAAAAAABAAtACUAAwAAAAAABAAtACYAAwAAAAAABAAtACcAAwAAAAAABAAtACgAAwAAAAAABAAsACgAAAABAAgAAAAsACcAAAABAAgAAAAsACYAAAABAAgAAAAsACEAAAABAAgAAAAsACIAAAABAAgAAAAsACMAAAABAAgAAAAsACQAAAABAAgAAAAsACUAAAABAAgAAAAsACAAAAABAAcAAAA=")
+tile_set = ExtResource("4_gkpaa")
+
+[node name="Foreground" type="TileMapLayer" parent="tilemap" unique_id=691087066]
+z_index = 20
+tile_map_data = PackedByteArray("AAAUACgAAAAGAAcAAAAUACkAAAAGAAgAAAAVACgAAAAGAAcAAAAVACkAAAAGAAgAAAAZACsAAAAHAAUAAAAZACoAAAAVAAMAAAAZACkAAAATAAMAAAAZACgAAAAaAAMAAAAYACsAAAAaAAEAAAAYACoAAAATAAcAAAAYACkAAAACAAIAAAAYACgAAAATAAEAAAAXACoAAAAVAAUAAAAXACkAAAAVAAUAAAAXACgAAAAcAAMAAAATACoAAAAUAAMAAAATACkAAAAVAAMAAAATACgAAAADAAEAAAASACsAAAAaAAEAAAASACoAAAACAAIAAAASACkAAAATAAcAAAASACgAAAATAAEAAAARACsAAAAZAAEAAAARACoAAAACAAIAAAARACkAAAAUAAcAAAARACgAAAAWAAEAAAAQACsAAAAdAAEAAAAQACoAAAATAAcAAAAQACkAAAAUAAcAAAAQACgAAAAXAAEAAAAPACsAAAACAAMAAAAPACoAAAACAAIAAAAPACkAAAACAAIAAAAPACgAAAAHAAIAAAAKACsAAAAZAAUAAAAKACoAAAAVAAMAAAAKACkAAAAVAAMAAAAKACgAAAATAAMAAAAJACsAAAAZAAEAAAAJACoAAAATAAcAAAAJACkAAAACAAIAAAAJACgAAAACAAIAAAAIACsAAAACAAMAAAAIACoAAAACAAIAAAAIACkAAAACAAIAAAAIACgAAAAVAAcAAAAHACsAAAAaAAEAAAAHACoAAAACAAIAAAAHACkAAAACAAIAAAAHACgAAAAIAAIAAAAGACsAAAACAAMAAAAGACoAAAACAAIAAAAGACkAAAACAAIAAAAGACgAAAAXAAEAAAAWACgAAAAGAAcAAAAWACkAAAAGAAgAAAAaACgAAAALAAcAAAAbACgAAAALAAcAAAAcACgAAAALAAcAAAAaACkAAAALAAgAAAAbACkAAAALAAgAAAAcACkAAAALAAgAAAAeACsAAAAbAAEAAAAeACoAAAACAAIAAAAeACkAAAAVAAcAAAAeACgAAAAIAAIAAAAdACsAAAAIAAUAAAAdACoAAAATAAUAAAAdACkAAAAVAAUAAAAdACgAAAAdAAMAAAAFACsAAAAZAAEAAAAFACoAAAACAAIAAAAFACkAAAAVAAcAAAAFACgAAAAUAAEAAAAEACsAAAAbAAEAAAAEACoAAAAUAAcAAAAEACkAAAAVAAcAAAAEACgAAAAWAAEAAAADACsAAAAbAAEAAAADACoAAAACAAIAAAADACkAAAACAAIAAAADACgAAAAWAAEAAAACACsAAAAcAAEAAAACACoAAAACAAIAAAACACkAAAACAAIAAAACACgAAAAVAAEAAAABACsAAAAaAAEAAAABACoAAAAUAAcAAAABACkAAAACAAIAAAABACgAAAAVAAEAAAAAACsAAAAaAAEAAAAAACoAAAACAAIAAAAAACkAAAACAAIAAAAAACgAAAATAAEAAAD//ysAAAAQAAUAAAD//yoAAAATAAUAAAD//ykAAAAWAAUAAAD//ygAAAAdAAMAAAAKACcAAAAZAAMAAAAJACcAAAACAAEAAAAIACcAAAAVAAEAAAAPACcAAAADAAEAAAAHACcAAAAcAAMAAAAOACsAAAAdAAUAAAAOACoAAAABAAIAAAAOACkAAAATAAUAAAAOACgAAAAUAAUAAAAOACcAAAAdAAMAAAAhACsAAAAbAAEAAAAhACoAAAACAAIAAAAhACkAAAAHAAIAAAAhACgAAAAZAAMAAAAgACsAAAAaAAEAAAAgACoAAAACAAIAAAAgACkAAAACAAIAAAAgACgAAAAHAAIAAAAgACcAAAADAAEAAAAfACsAAAAaAAEAAAAfACoAAAAVAAcAAAAfACkAAAACAAIAAAAfACgAAAACAAIAAAAfACcAAAACAAEAAAAUACoAAAAGAAgAAAAVACoAAAAGAAgAAAAWACoAAAAGAAgAAAAaACoAAAALAAgAAAAbACoAAAALAAgAAAAcACoAAAALAAgAAAAcACsAAAACAAUAAAAbACsAAAACAAUAAAAaACsAAAACAAUAAAAXACsAAAAIAAUAAAATACsAAAAHAAUAAAAUACsAAAACAAUAAAAVACsAAAACAAUAAAAWACsAAAACAAUAAAAkACsAAAACAAUAAAAjACsAAAAHAAUAAAAjACoAAAARAAQAAAAiACsAAAAaAAEAAAAiACoAAAAHAAIAAAAiACkAAAAaAAMAAAApACQAAAARAAUAAAApACMAAAAHAAEAAAApACIAAAACAAIAAAApACEAAAACAAIAAAAoACQAAAAdAAEAAAAoACMAAAACAAIAAAAoACIAAAACAAIAAAAoACEAAAACAAIAAAAnACQAAAAcAAEAAAAnACMAAAACAAIAAAAnACIAAAACAAIAAAAnACEAAAAIAAIAAAAmACQAAAAcAAEAAAAmACMAAAACAAIAAAAmACIAAAATAAcAAAAmACEAAAACAAEAAAAlACQAAAAZAAEAAAAlACMAAAACAAIAAAAlACIAAAACAAIAAAAlACEAAAATAAEAAAAkACQAAAAdAAEAAAAkACMAAAAVAAcAAAAkACIAAAATAAcAAAAkACEAAAATAAEAAAAjACQAAAAcAAUAAAAjACMAAAAUAAUAAAAjACIAAAAIAAEAAAAjACEAAAATAAEAAAArACIAAAAVAAMAAAArACEAAAAWAAMAAAArACAAAAAZAAMAAAAqACIAAAATAAcAAAAqACEAAAACAAIAAAAqACAAAAAHAAIAAAArACMAAAAZAAUAAAAqACMAAAAbAAEAAAAqAB8AAAAaAAMAAAApACAAAAACAAIAAAApAB8AAAAXAAEAAAAoACAAAAACAAIAAAAoAB8AAAATAAEAAAAnACAAAAATAAUAAAAnAB8AAAABAAEAAAAiACIAAAAZAAEAAAAiACEAAAAWAAEAAAAhACIAAAABAAMAAAAhACEAAAAQAAQAAAAwACsAAAAZAAUAAAAwACoAAAAVAAMAAAAwACkAAAAZAAMAAAAvACsAAAAaAAEAAAAvACoAAAAUAAcAAAAvACkAAAAXAAEAAAAuACsAAAACAAMAAAAuACoAAAACAAIAAAAuACkAAAAWAAEAAAAtACsAAAAdAAEAAAAtACoAAAACAAIAAAAtACkAAAAVAAEAAAAsACsAAAAaAAEAAAAsACoAAAATAAcAAAAsACkAAAATAAEAAAArACsAAAAdAAEAAAArACoAAAAIAAIAAAAcACQAAAAZAAUAAAAcACMAAAAWAAMAAAAcACIAAAADAAEAAAAbACQAAAAdAAEAAAAbACMAAAATAAcAAAAbACIAAAAWAAEAAAAaACQAAAAcAAEAAAAaACMAAAACAAIAAAAaACIAAAAHAAIAAAAZACQAAAAdAAEAAAAZACMAAAACAAIAAAAZACIAAAACAAIAAAAYACQAAAAcAAEAAAAYACMAAAACAAIAAAAYACIAAAACAAIAAAAXACQAAAAaAAEAAAAXACMAAAACAAIAAAAXACIAAAAIAAIAAAAWACQAAAAZAAEAAAAWACMAAAACAAIAAAAWACIAAAATAAEAAAAVACQAAAAcAAEAAAAVACMAAAAVAAcAAAAVACIAAAACAAEAAAAUACQAAAACAAMAAAAUACMAAAACAAIAAAAUACIAAAAWAAEAAAATACQAAAABAAMAAAATACMAAAABAAIAAAATACIAAAAQAAQAAAAaACEAAAARAAQAAAAZACEAAAAUAAEAAAAYACEAAAACAAEAAAAXACEAAAABAAEAAAABACMAAAATAAMAAAABACIAAAATAAMAAAABACEAAAAUAAMAAAABACAAAAAXAAMAAAABAB8AAAAaAAMAAAAAACMAAAACAAIAAAAAACIAAAACAAIAAAAAACEAAAACAAIAAAAAACAAAAACAAIAAAAAAB8AAAATAAEAAAD//yMAAAAUAAUAAAD//yIAAAAWAAUAAAD//yEAAAABAAIAAAD//yAAAAAWAAUAAAD//x8AAAAcAAMAAAAOACMAAAADAAUAAAANACMAAAACAAUAAAAMACMAAAACAAUAAAALACMAAAACAAUAAAAKACMAAAABAAUAAAABACQAAAAZAAUAAAAAACQAAAAZAAEAAAD//yQAAAABAAMAAAAJACYAAwAAAAAAAgAEACEAAwAAAAAAAQADACAAAwAAAAAAAQAqACsAAAAIAAUAAAApACsAAAACAAUAAAAoACsAAAACAAUAAAAnACsAAAACAAUAAAAmACsAAAACAAUAAAAlACsAAAACAAUAAAArACkAAAAcAAMAAAAqACoAAAAdAAMAAAAeACcAAAAQAAQAAAAqACkAAAAEAAgAAAAjACkAAAAEAAgAABAkACoAAAALAAgAAAAlACoAAAALAAgAAAAmACoAAAALAAgAAAAnACoAAAALAAgAAAAoACoAAAALAAgAAAApACoAAAALAAgAAAALACQAAAAQAAcAACAMACQAAAAQAAcAADANACQAAAAQAAcAADAYACYAAwAAAAAAAQAPACYAAwAAAAAAAwA=")
+tile_set = ExtResource("4_gkpaa")
+script = ExtResource("8_7tvm4")
+
+[node name="Players" type="Node2D" parent="tilemap" unique_id=496550713]
+position = Vector2(26, 618)
+
+[node name="PressureButton" parent="tilemap" unique_id=859789714 instance=ExtResource("9_button")]
+position = Vector2(765, 656)
+collision_layer = 128
+collision_mask = 2
+bridge_path = NodePath("../../Puzzles/LavaBridge")
+
+[node name="SpawnPoints" type="Node2D" parent="." unique_id=1453074696]
+
+[node name="PlayerSpawn" type="Marker2D" parent="SpawnPoints" unique_id=906776050]
+position = Vector2(41, 618)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=377752583]
+environment = SubResource("Environment_7tvm4")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=120806549]
+position = Vector2(16, 4)
+color = Color(0.28162947, 0.51476526, 0.53207594, 1)
+
+[node name="DirectionalLight2D" type="DirectionalLight2D" parent="." unique_id=757165895]
+position = Vector2(-5.722046e-06, -7.6293945e-06)
+rotation = -0.31205624
+color = Color(0.71040076, 0.7216921, 0.41666624, 1)
+energy = 1.8
+shadow_enabled = true
+shadow_filter = 2
+shadow_filter_smooth = 7.0

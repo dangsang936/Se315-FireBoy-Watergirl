@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://bmf4aisxn37lg"]
+[gd_scene format=3 uid="uid://dkg4y5xxe05qk"]
 
 [ext_resource type="Script" uid="uid://bywqrc87qyhus" path="res://shared/scripts/gameplay/collectibles/water_gem.gd" id="1_water"]
 [ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="2_fai4k"]

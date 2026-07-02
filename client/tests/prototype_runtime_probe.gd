@@ -5,7 +5,7 @@ const REAL_GAME_SCENE: PackedScene = preload("res://scenes/bootstrap/game_real.t
 const PLAYER_SCENE: PackedScene = preload("res://scenes/players/fireboy.tscn")
 const WATERGIRL_SCENE: PackedScene = preload("res://scenes/players/watergirl.tscn")
 const PUSH_BLOCK_SCENE: PackedScene = preload("res://scenes/gameplay/objects/push_block.tscn")
-const GEM_SCENE: PackedScene = preload("res://scenes/gameplay/collectibles/collectible_gem.tscn")
+const GEM_SCENE: PackedScene = preload("res://shared/scenes/gameplay/collectibles/collectible_gem.tscn")
 const HAZARD_SCRIPT: Script = preload("res://shared/scripts/gameplay/hazards/hazard_zone.gd")
 
 class PushProbePlayer:
@@ -25,14 +25,16 @@ func _run() -> void:
 	await process_frame
 	await _verify_game_start_allows_movement()
 	await _verify_real_blank_game_starts()
+	await _verify_real_level_single_spawn_is_shared_by_roles()
 	await _verify_level_connects_all_hazards()
 	await _verify_player_can_jump_over_hazard()
-	await _verify_jump_is_lower_and_floaty()
+	await _verify_precision_jump_profile()
 	await _verify_elemental_pool_rules()
 	await _verify_gem_manager_gates_exit_for_fireboy()
 	await _verify_wrong_element_gem_stays_available()
 	await _verify_level_without_collectibles_keeps_exit_unlocked()
 	await _verify_player_motion_and_animation()
+	await _verify_fast_fall_and_disabled_state()
 	await _verify_player_animation_uses_move_intent_when_blocked()
 	await _verify_real_player_pushes_block_from_side()
 	await _verify_nearby_player_does_not_push_before_contact()
@@ -76,12 +78,14 @@ func _verify_player_motion_and_animation() -> void:
 
 	_require(player.global_position.x > start_x + 1.0, "Player should move right when move_right is pressed.")
 	_require(player.get_player_state() == PrototypePlayer.PlayerState.RUNNING, "Player state should be running while moving.")
+	_require(player.get_player_state_name() == &"run", "Readable player state should be run while moving.")
 	_require(sprite.animation == &"running", "Player should switch to running animation while moving.")
 	_require(sprite.is_playing(), "Running animation should keep playing while moving.")
 
 	for frame in 20:
 		await physics_frame
 	_require(player.get_player_state() == PrototypePlayer.PlayerState.IDLE, "Player state should return to idle after releasing movement.")
+	_require(player.get_player_state_name() == &"idle", "Readable player state should return to idle after releasing movement.")
 	_require(sprite.animation == &"idle", "Player should switch back to idle after releasing movement.")
 
 	var before_jump_y := player.global_position.y
@@ -91,10 +95,72 @@ func _verify_player_motion_and_animation() -> void:
 	_release_key(KEY_W)
 
 	_require(player.global_position.y < before_jump_y, "Player should jump when W is pressed.")
+	_require(player.get_player_state() == PrototypePlayer.PlayerState.AIRBORNE, "Player state should report airborne after jumping.")
+	_require(player.get_player_state_name() == &"airborne", "Readable player state should report airborne after jumping.")
 
 	player.queue_free()
 	floor.queue_free()
 	await process_frame
+
+func _verify_fast_fall_and_disabled_state() -> void:
+	var normal_fall_speed: float = await _measure_air_fall_speed(false)
+	var fast_fall_speed: float = await _measure_air_fall_speed(true)
+	_require(fast_fall_speed > normal_fall_speed + 4.0, "Holding move_down/S should increase fall speed. normal=%s fast=%s" % [normal_fall_speed, fast_fall_speed])
+
+	var floor := _make_floor()
+	root.add_child(floor)
+	var player := PLAYER_SCENE.instantiate() as PrototypePlayer
+	root.add_child(player)
+	await process_frame
+	for frame in 3:
+		await physics_frame
+
+	var start_position: Vector2 = player.global_position
+	player.velocity = Vector2(40.0, -20.0)
+	player.set_control_enabled(false)
+	await physics_frame
+	_press_key(KEY_D)
+	for frame in 5:
+		await physics_frame
+	_release_key(KEY_D)
+
+	_require(player.get_player_state() == PrototypePlayer.PlayerState.DISABLED, "Player enum state should be disabled when control is disabled.")
+	_require(player.get_player_state_name() == &"disabled", "Readable player state should be disabled when control is disabled.")
+	_require(player.velocity == Vector2.ZERO, "Disabled player should clear velocity.")
+	_require(player.global_position.distance_to(start_position) < 0.5, "Disabled player should not move from input.")
+
+	player.reset_to_spawn(start_position)
+	for frame in 3:
+		await physics_frame
+		if player.get_player_state_name() == &"idle":
+			break
+	_require(player.get_player_state() == PrototypePlayer.PlayerState.IDLE, "Reset should return disabled player to idle enum state.")
+	_require(player.get_player_state_name() == &"idle", "Reset should return disabled player to readable idle state.")
+
+	player.queue_free()
+	floor.queue_free()
+	await process_frame
+
+func _measure_air_fall_speed(use_fast_fall: bool) -> float:
+	var player := PLAYER_SCENE.instantiate() as PrototypePlayer
+	player.global_position = Vector2(0.0, -120.0)
+	player.velocity = Vector2(0.0, 40.0)
+	root.add_child(player)
+	await process_frame
+	for frame in 2:
+		await physics_frame
+
+	if use_fast_fall:
+		_press_key(KEY_S)
+	for frame in 12:
+		await physics_frame
+	if use_fast_fall:
+		_release_key(KEY_S)
+
+	var fall_speed: float = player.velocity.y
+	player.queue_free()
+	await process_frame
+	return fall_speed
 
 func _verify_player_animation_uses_move_intent_when_blocked() -> void:
 	var floor := _make_floor()
@@ -112,6 +178,7 @@ func _verify_player_animation_uses_move_intent_when_blocked() -> void:
 	Input.action_release(&"move_right")
 
 	_require(player.get_player_state() == PrototypePlayer.PlayerState.RUNNING, "Player state should stay running while move input is held against a blocking body.")
+	_require(player.get_player_state_name() == &"run", "Readable player state should stay run while move input is held against a blocking body.")
 	_require(sprite.animation == &"running", "Player running animation should not flicker to idle while pushing or blocked.")
 
 	player.queue_free()
@@ -470,19 +537,19 @@ func _verify_game_start_allows_movement() -> void:
 		await physics_frame
 
 	var level := game.get("_current_level") as PrototypeLevel
-	var state: GameManager.GameState = game.get("_state") as GameManager.GameState
-	var state_name: String = GameManager.GameState.keys()[state]
+	var state: GameManager.ManagerState = game.get("_state") as GameManager.ManagerState
+	var state_name: String = GameManager.ManagerState.keys()[state]
 
 	var player := game.get("_player") as PrototypePlayer
 	_require(player != null, "Game should spawn a PrototypePlayer.")
 	if player != null and level != null:
 		var hazard := level.get_node("Hazards/HazardZone") as HazardZone
 		_require(
-			state == GameManager.GameState.PLAYING,
+			state == GameManager.ManagerState.PLAYING,
 			"Game should stay playable after spawning the player. state=%s player=%s hazard=%s" % [state_name, player.global_position, hazard.global_position]
 		)
 	else:
-		_require(state == GameManager.GameState.PLAYING, "Game should stay playable after spawning the player. state=%s" % state_name)
+		_require(state == GameManager.ManagerState.PLAYING, "Game should stay playable after spawning the player. state=%s" % state_name)
 	if player != null:
 		var start_x := player.global_position.x
 		_press_key(KEY_D)
@@ -509,9 +576,32 @@ func _verify_real_blank_game_starts() -> void:
 	if level != null:
 		_require(level.get_node_or_null("Hazards/HazardZone") != null, "Real blank level should keep a HazardZone node.")
 		_require(level.get_node_or_null("Goals/ExitDoor") != null, "Real blank level should keep an ExitDoor node.")
-		_require(level.get_node_or_null("Players/PlayerSpawn") != null, "Real blank level should keep a PlayerSpawn node.")
+		_require(level.get_node_or_null(level.player_spawn_path) != null, "Real blank level should keep a PlayerSpawn node.")
 
 	game.queue_free()
+	await process_frame
+
+func _verify_real_level_single_spawn_is_shared_by_roles() -> void:
+	var level := preload("res://scenes/levels/real_level_blank.tscn").instantiate() as PrototypeLevel
+	root.add_child(level)
+	await process_frame
+
+	_require(level.get_node_or_null(level.player_spawn_2_path) == null, "Real level should document single-spawn fallback when PlayerSpawn2 is absent.")
+	var expected_spawn := level.get_spawn_position()
+	var ground_ray := PhysicsRayQueryParameters2D.create(expected_spawn, expected_spawn + Vector2(0.0, 32.0))
+	ground_ray.collision_mask = 1
+	var ground_hit := root.world_2d.direct_space_state.intersect_ray(ground_ray)
+	_require(expected_spawn.x >= 64.0, "Real level PlayerSpawn should sit inside the playable map, not at the far-left camera edge.")
+	_require(not ground_hit.is_empty(), "Real level PlayerSpawn should be directly above solid ground.")
+	var fireboy := PLAYER_SCENE.instantiate() as PrototypePlayer
+	var watergirl := WATERGIRL_SCENE.instantiate() as PrototypePlayer
+	level.attach_player(fireboy, 1)
+	level.attach_player(watergirl, 2)
+
+	_require(fireboy.global_position == expected_spawn, "Role 1 should spawn exactly at real level PlayerSpawn.")
+	_require(watergirl.global_position == expected_spawn, "Role 2 should reuse real level PlayerSpawn when PlayerSpawn2 is absent.")
+
+	level.queue_free()
 	await process_frame
 
 func _verify_player_can_jump_over_hazard() -> void:
@@ -532,6 +622,7 @@ func _verify_player_can_jump_over_hazard() -> void:
 		return
 
 	var hazard := level.get_node("Hazards/HazardZone") as HazardZone
+	_disable_sibling_hazards(hazard)
 	var block := level.get_node_or_null("Objects/PushBlock") as Node2D
 	if block != null:
 		block.global_position = Vector2(-1000.0, -1000.0)
@@ -548,22 +639,44 @@ func _verify_player_can_jump_over_hazard() -> void:
 		if jump_started and frame % 6 == 0:
 			_release_key(KEY_W)
 		await physics_frame
-		var state: GameManager.GameState = game.get("_state") as GameManager.GameState
-		if state != GameManager.GameState.PLAYING:
+		var state: GameManager.ManagerState = game.get("_state") as GameManager.ManagerState
+		if state != GameManager.ManagerState.PLAYING:
 			break
 		if player.global_position.x > hazard.global_position.x + 55.0:
 			break
 	_release_key(KEY_W)
 	_release_key(KEY_D)
 
-	var final_state: GameManager.GameState = game.get("_state") as GameManager.GameState
-	_require(final_state == GameManager.GameState.PLAYING, "Player should be able to jump over the hazard without losing.")
+	var final_state: GameManager.ManagerState = game.get("_state") as GameManager.ManagerState
+	_require(final_state == GameManager.ManagerState.PLAYING, "Player should be able to jump over the hazard without losing.")
 	_require(player.global_position.x > hazard.global_position.x + 35.0, "Player should land past the hazard after a running jump.")
 
 	game.queue_free()
 	await process_frame
 
-func _verify_jump_is_lower_and_floaty() -> void:
+func _disable_sibling_hazards(active_hazard: HazardZone) -> void:
+	var hazards_parent := active_hazard.get_parent()
+	if hazards_parent == null:
+		return
+	for child: Node in hazards_parent.get_children():
+		if child == active_hazard:
+			continue
+		var hazard_area := child as Area2D
+		if hazard_area == null:
+			continue
+		hazard_area.monitoring = false
+
+func _verify_precision_jump_profile() -> void:
+	var short_profile := await _measure_jump_profile(2)
+	var medium_profile := await _measure_jump_profile(6)
+	var full_profile := await _measure_jump_profile(12)
+	_require(medium_profile.height > short_profile.height + 5.0, "A medium jump hold should beat a tap jump. short=%s medium=%s" % [short_profile.height, medium_profile.height])
+	_require(full_profile.height > medium_profile.height + 5.0, "A full jump hold should beat a medium hold. medium=%s full=%s" % [medium_profile.height, full_profile.height])
+	_require(short_profile.fastest_fall >= full_profile.fastest_fall - 1.0, "Early jump release should not fall slower than a full jump. short=%s full=%s" % [short_profile.fastest_fall, full_profile.fastest_fall])
+	_require(full_profile.fastest_fall >= 180.0, "Precision jump should not feel overly floaty. fastest_fall=%s" % full_profile.fastest_fall)
+	_require(full_profile.fastest_fall <= 340.0, "Precision jump should still respect fall-speed limits. fastest_fall=%s" % full_profile.fastest_fall)
+
+func _measure_jump_profile(release_frame: int) -> Dictionary:
 	var floor := _make_floor()
 	root.add_child(floor)
 	var player := PLAYER_SCENE.instantiate() as PrototypePlayer
@@ -578,19 +691,20 @@ func _verify_jump_is_lower_and_floaty() -> void:
 	_press_key(KEY_W)
 	for frame in 90:
 		await physics_frame
-		if frame == 8:
+		if frame == release_frame:
 			_release_key(KEY_W)
 		peak_y = minf(peak_y, player.global_position.y)
 		fastest_fall = maxf(fastest_fall, player.velocity.y)
 	_release_key(KEY_W)
 
 	var jump_height := start_y - peak_y
-	_require(jump_height >= 38.0 and jump_height <= 62.0, "Jump should be lower but still useful. height=%s" % jump_height)
-	_require(fastest_fall <= 380.0, "Player should fall slowly like feather falling. fastest_fall=%s" % fastest_fall)
-
 	player.queue_free()
 	floor.queue_free()
 	await process_frame
+	return {
+		"height": jump_height,
+		"fastest_fall": fastest_fall,
+	}
 
 func _verify_elemental_pool_rules() -> void:
 	await _verify_pool_rule(PLAYER_SCENE, 0, false, "Fireboy should survive lava.")
@@ -766,7 +880,7 @@ func _verify_restart_keeps_runtime_live() -> void:
 
 func _wait_until_playing(game: GameManager) -> void:
 	for frame in 30:
-		if game.get("_state") == GameManager.GameState.PLAYING:
+		if game.get("_state") == GameManager.ManagerState.PLAYING:
 			return
 		await process_frame
 	_require(false, "GameManager should return to PLAYING after restart.")

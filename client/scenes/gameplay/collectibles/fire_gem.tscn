@@ -1,6 +1,6 @@
-[gd_scene format=3 uid="uid://32e2lu4lijho"]
+[gd_scene format=3 uid="uid://cft0awxeimp16"]
 
-[ext_resource type="PackedScene" uid="uid://b1l8rha1m7g4p" path="res://scenes/gameplay/collectibles/collectible_gem.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://b1l8rha1m7g4p" path="res://shared/scenes/gameplay/collectibles/collectible_gem.tscn" id="1_base"]
 [ext_resource type="Script" uid="uid://b63n7jh0jn8d1" path="res://shared/scripts/gameplay/collectibles/fire_gem.gd" id="2_fire"]
 [ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="3_uj5ed"]
 
@@ -102,16 +102,11 @@ use_hdr = true
 fill = 1
 fill_from = Vector2(0.5, 0.5)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_uj5ed"]
-size = Vector2(14, 14)
-
 [node name="FireGem" unique_id=1474778255 instance=ExtResource("1_base")]
-collision_layer = 32
-collision_mask = 2
 script = ExtResource("2_fire")
 
-[node name="Visual" parent="." index="0" unique_id=1723701316]
-color = Color(1, 0.35, 0.12, 1)
+[node name="CollisionShape2D" parent="." index="0" unique_id=1723701317]
+shape = SubResource("RectangleShape2D_uj5ed")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." index="1" unique_id=1460990169]
 sprite_frames = SubResource("SpriteFrames_gv77h")
@@ -123,6 +118,3 @@ frame_progress = 0.25325677
 color = Color(0.8156863, 0.09411765, 0.22352941, 1)
 energy = 2.0
 texture = SubResource("GradientTexture2D_2d2l5")
-
-[node name="CollisionShape2D" parent="." index="3" unique_id=1723701317]
-shape = SubResource("RectangleShape2D_uj5ed")

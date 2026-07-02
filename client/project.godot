@@ -11,18 +11,26 @@ config_version=5
 [application]
 
 config/name="client"
-run/main_scene="res://scenes/ui/lobby.tscn"
+run/main_scene="res://scenes/menus/main_menu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[audio]
+
+buses/default_bus_layout="uid://f7jh6oxpw3c3"
 
 [autoload]
 
 NetworkManager="*res://scripts/network_manager.gd"
 GameplayRpc="*res://shared/rpc/gameplay_rpc.gd"
+AppConfig="*res://addons/maaacks_game_template/base/nodes/autoloads/app_config/app_config.tscn"
+SceneLoader="*res://addons/maaacks_game_template/base/nodes/autoloads/scene_loader/scene_loader.tscn"
+ProjectMusicController="*res://addons/maaacks_game_template/base/nodes/autoloads/music_controller/project_music_controller.tscn"
+ProjectUISoundController="*res://addons/maaacks_game_template/base/nodes/autoloads/ui_sound_controller/project_ui_sound_controller.tscn"
 
 [editor_plugins]
 
-enabled=PackedStringArray()
+enabled=PackedStringArray("maaacks_game_template")
 
 [input]
 
@@ -52,6 +60,27 @@ restart={
 ]
 }
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://addons/maaacks_game_template/base/translations/menus_translations.en.translation", "res://addons/maaacks_game_template/base/translations/menus_translations.fr.translation")
+
+[layer_names]
+
+2d_physics/layer_1="World"
+2d_physics/layer_2="Player"
+2d_physics/layer_3="PushBlock"
+2d_physics/layer_4="Ladder"
+2d_physics/layer_5="Hazard"
+2d_physics/layer_6="Collectible"
+2d_physics/layer_7="Exit"
+2d_physics/layer_8="PressureButton"
+
+[maaacks_game_template]
+
+disable_install_audio_busses=true
+disable_update_check=false
+disable_install_wizard=true
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
@@ -60,5 +89,4 @@ restart={
 
 textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
-renderer/rendering_method="gl_compatibility"
-renderer/rendering_method.mobile="gl_compatibility"
+viewport/hdr_2d=true
