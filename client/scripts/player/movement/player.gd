@@ -105,7 +105,10 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_register_push_block_contacts()
 	_update_player_state(false)
-	_send_network_state()
+	# AUTHORIZED SERVER: client does NOT push position/snapshot.
+	# Server is the sole authority; movement state comes from
+	# receive_player_sync → apply_authoritative_snapshot.
+	# _send_network_state() is kept below as a legacy stub but is never called.
 	_state_machine.transition_from_player_context()
 
 func reset_to_spawn(spawn_position: Vector2) -> void:
@@ -244,7 +247,26 @@ var _last_sent_flip_h: bool = false
 func _network_manager() -> Node:
 	return get_node_or_null("/root/" + "Network" + "Manager")
 
+# ==================================================================
+# LEGACY — never called in authorized server mode.
+# ==================================================================
+# In the authorized model the server simulates position from received
+# inputs and broadcasts state via receive_player_sync.  This function
+# must NOT be called from _physics_process or any live code path.
+# It is kept here only so legacy tooling / offline debug can be toggled
+# with a one-line change; never commit with it re-enabled.
+#
+# Authoritative data flow:
+#   InputReader → _send_prediction_input → send_player_input
+#   → server rpc_submit_input → server simulate
+#   → receive_player_sync → apply_authoritative_snapshot
+# ==================================================================
 func _send_network_state() -> void:
+	# Guard: disabled in authorized server mode.
+	# Re-enable ONLY for offline debug; never commit enabled.
+	return
+
+	# --- unreachable legacy body kept for reference ---
 	var network_manager := _network_manager()
 	if network_manager == null or not bool(network_manager.call("is_connected_to_server")):
 		return

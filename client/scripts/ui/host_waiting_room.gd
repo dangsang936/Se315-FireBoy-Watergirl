@@ -118,10 +118,10 @@ func _on_start_game_pressed() -> void:
 	NetworkManager.start_game()
 
 func _on_fireboy_pressed() -> void:
-	NetworkManager.request_role(FIREBOY_ROLE)
+	NetworkManager.rpc_request_role(FIREBOY_ROLE)
 
 func _on_watergirl_pressed() -> void:
-	NetworkManager.request_role(WATERGIRL_ROLE)
+	NetworkManager.rpc_request_role(WATERGIRL_ROLE)
 
 func _on_connected() -> void:
 	_refresh_lobby()

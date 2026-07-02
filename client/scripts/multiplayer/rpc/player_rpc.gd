@@ -1,20 +1,21 @@
 extends Node
 
 # ---------------------------------------------------------
-# CLIENT GỬI LÊN SERVER (Input)
+# CLIENT -> SERVER (Input)
+# Prefix rpc_request_* vì đây là yêu cầu client gửi lên server.
 # Any_peer: Bất kỳ client nào cũng gọi được
 # Call_remote: Chỉ chạy trên máy nhận (Server), không chạy trên máy gọi
 # Unreliable: Nhanh, không cần chờ xác nhận (phù hợp cho di chuyển)
 # ---------------------------------------------------------
 @rpc("any_peer", "call_remote", "unreliable")
-func request_movement(input_dir: Vector2, jump_pressed: bool):
+func rpc_request_movement(input_dir: Vector2, jump_pressed: bool):
 	if multiplayer.is_server():
 		var sender_id = multiplayer.get_remote_sender_id()
 		# TODO trên Server: Lấy input này -> Đưa vào PlayerModel -> Tính toán logic vật lý thật
 		pass
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_interact(puzzle_id: String):
+func rpc_request_interact(puzzle_id: String):
 	# Reliable: Đảm bảo gói tin tương tác công tắc không bị rớt mạng
 	if multiplayer.is_server():
 		var sender_id = multiplayer.get_remote_sender_id()
@@ -22,7 +23,8 @@ func request_interact(puzzle_id: String):
 		pass
 
 # ---------------------------------------------------------
-# SERVER GỬI VỀ CLIENT (Đồng bộ)
+# SERVER -> CLIENT (Đồng bộ)
+# Prefix sync_* vì đây là server đồng bộ trạng thái xuống client.
 # Authority: Chỉ Server (chủ phòng) mới có quyền gọi hàm này
 # Call_local: Chạy trên cả các máy Client và cả máy Server (nếu Server là host kiêm client)
 # ---------------------------------------------------------
