@@ -17,7 +17,7 @@ foreach ($linkPath in $linkPaths) {
         if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
             throw "$linkPath exists but is not a link/junction. Refusing to remove a real directory."
         }
-        Remove-Item -LiteralPath $linkPath -Force -Confirm:$false
+        Remove-Item -LiteralPath $linkPath -Recurse -Force -Confirm:$false
     }
 
     try {

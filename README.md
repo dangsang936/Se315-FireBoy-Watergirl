@@ -24,7 +24,7 @@ Online co-op puzzle platformer inspired by Fireboy and Watergirl.
 
 ## Shared Folder Setup
 
-`shared/` is the single source of truth for code and resources used by both the client and the server. The Godot projects access it through directory symbolic links:
+`shared/` is the single source of truth for code and resources used by both the client and the server. The Godot projects access it through local directory links:
 
 ```text
 client/shared -> ../shared
@@ -40,55 +40,61 @@ preload("res://shared/packets/input_packet.gd")
 preload("res://shared/scripts/gameplay/objects/push_block.gd")
 ```
 
-Do not recreate physical copies of `client/shared` or `server/shared`; they should be symlinks.
+Do not create physical copies of `client/shared` or `server/shared`. They are ignored by Git and should be generated locally.
 
-### Creating the symlinks on Windows
+### One-time setup after clone
 
-Windows may require Developer Mode or an Administrator PowerShell to create directory symlinks.
-
-From the repository root:
+After cloning the repository, run this once from the repository root:
 
 ```powershell
-New-Item -ItemType SymbolicLink -Path "client\shared" -Target "..\shared"
-New-Item -ItemType SymbolicLink -Path "server\shared" -Target "..\shared"
+.\scripts\setup_git_hooks.ps1
 ```
 
-If the paths already exist but are not symlinks, remove them first after confirming there is no unmerged work inside:
+This installs local Git hooks into `.git/hooks/`:
+
+- `post-merge` recreates shared links after a normal `git pull` / merge.
+- `post-rewrite` recreates shared links after `git pull --rebase`.
+
+Then create the links immediately:
 
 ```powershell
-Remove-Item "client\shared" -Recurse -Force
-Remove-Item "server\shared" -Recurse -Force
-New-Item -ItemType SymbolicLink -Path "client\shared" -Target "..\shared"
-New-Item -ItemType SymbolicLink -Path "server\shared" -Target "..\shared"
+.\scripts\setup_shared_links.ps1
 ```
 
-Verify the links:
+After this setup, future pulls will automatically refresh `client/shared` and `server/shared`.
+
+### Manual refresh
+
+If the links are missing or Godot cannot load `res://shared/...`, run:
+
+```powershell
+.\scripts\setup_shared_links.ps1
+```
+
+The script creates:
+
+```text
+client/shared -> shared
+server/shared -> shared
+```
+
+On Windows, it first tries to create directory symbolic links. If symlink creation is not allowed, it falls back to directory junctions, which usually do not require Administrator privileges or Developer Mode.
+
+The script is safe around real folders: if `client/shared` or `server/shared` exists but is not a link/junction, it stops instead of deleting the folder.
+
+### Verify the links
 
 ```powershell
 Get-Item "client\shared" -Force | Format-List FullName,LinkType,Target
 Get-Item "server\shared" -Force | Format-List FullName,LinkType,Target
 ```
 
-Expected result:
+Expected result is `LinkType : SymbolicLink` or `LinkType : Junction`.
 
-```text
-LinkType : SymbolicLink
-```
+### Notes
 
-### GitHub / clone notes
-
-Git should track the links as symlinks, not as copied folders. Before committing, verify:
+Git hooks are local files and are not committed to the repository, so each teammate needs to run this once on their own machine:
 
 ```powershell
-git ls-files -s client/shared server/shared
+.\scripts\setup_git_hooks.ps1
 ```
-
-The mode should be `120000` for both entries.
-
-On Windows, enable symlink support before cloning/checking out if needed:
-
-```powershell
-git config --global core.symlinks true
-```
-
-If a fresh clone creates plain files/folders instead of symlinks, recreate the links with the commands above.
