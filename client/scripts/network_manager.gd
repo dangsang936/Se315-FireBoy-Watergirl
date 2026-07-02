@@ -472,10 +472,6 @@ func _notification(what: int) -> void:
 # RPC DEFINITIONS
 # ==================================================================
 
-@rpc("any_peer", "call_remote", "reliable")
-func server_request_restart() -> void:
-	pass
-
 @rpc("authority", "call_remote", "reliable")
 func receive_level_restart() -> void:
 	restart_level_received.emit()

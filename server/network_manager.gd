@@ -335,22 +335,6 @@ func s_print(msg: String) -> void:
 # RPC DEFINITIONS
 # ==================================================================
 
-@rpc("any_peer", "call_remote", "reliable")
-func server_request_restart() -> void:
-	s_print("[Server] Restarting world.")
-	if is_instance_valid(_world_root):
-		_world_root.queue_free()
-	server_players.clear()
-	_create_movement_world()
-	for pid in connected_players:
-		if player_roles.has(pid):
-			var role = player_roles[pid]
-			latest_inputs[pid] = _neutral_input()
-			_spawn_server_player(pid, role)
-	for pid in connected_players:
-		rpc_id(pid, "receive_level_restart")
-		rpc_id(pid, "sync_restart_level")
-
 @rpc("authority", "call_remote", "reliable")
 func receive_level_restart() -> void:
 	pass
@@ -449,7 +433,21 @@ func sync_level_completed() -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_restart_level() -> void:
-	server_request_restart()
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id != 0 and not (sender_id in connected_players):
+		return
+	s_print("[Server] Restart requested by peer %d. Resetting world." % sender_id)
+	if is_instance_valid(_world_root):
+		_world_root.queue_free()
+	server_players.clear()
+	_create_movement_world()
+	for pid in connected_players:
+		if player_roles.has(pid):
+			var role = player_roles[pid]
+			latest_inputs[pid] = _neutral_input()
+			_spawn_server_player(pid, role)
+	for pid in connected_players:
+		rpc_id(pid, "sync_restart_level")
 
 @rpc("authority", "call_local", "reliable")
 func sync_restart_level() -> void:
