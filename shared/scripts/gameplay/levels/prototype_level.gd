@@ -15,6 +15,7 @@ signal gem_progress_changed(collected: int, required: int)
 @export var exit_door_path: NodePath = ^"Goals/ExitDoor"
 
 var _is_completed: bool = false
+var _safe_frames: int = 5 # Prevents instant-death from spawn overlaps during load
 
 @onready var _players: Node2D = get_node(players_path) as Node2D
 @onready var _player_spawn: Marker2D = get_node(player_spawn_path) as Marker2D
@@ -25,17 +26,17 @@ var _is_completed: bool = false
 @onready var _exit_door: ExitDoor = get_node(exit_door_path) as ExitDoor
 
 func _ready() -> void:
-	# Hazard and door signals only matter on the server — those nodes already
-	# have monitoring disabled on clients (see hazard_zone.gd / exit_door.gd),
-	# but we guard here too so no accidental offline path slips through.
 	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
 		_connect_hazards()
 		_exit_door.player_entered.connect(_on_exit_door_player_entered)
 		_exit_door.both_players_entered.connect(_on_exit_door_both_players_entered)
 	_connect_collectibles()
 
+func _physics_process(_delta: float) -> void:
+	if _safe_frames > 0:
+		_safe_frames -= 1
+
 func _on_exit_door_player_entered(_player: Node2D) -> void:
-	# Warn player if gems missing
 	if _gem_manager != null and not _gem_manager.is_unlocked():
 		exit_locked.emit(_gem_manager.get_remaining_count(), _gem_manager.get_active_gem_element())
 		return
@@ -43,7 +44,6 @@ func _on_exit_door_player_entered(_player: Node2D) -> void:
 		_complete_level()
 
 func _on_exit_door_both_players_entered() -> void:
-	# Win level if gems done
 	if _gem_manager != null and not _gem_manager.is_unlocked():
 		return
 	_complete_level()
@@ -84,7 +84,10 @@ func _connect_collectibles() -> void:
 		_gem_manager.gem_progress_changed.connect(_on_gem_progress_changed)
 
 func _on_hazard_zone_player_entered(player: Node2D) -> void:
-	# Server detected the collision — broadcast to all clients then emit locally.
+	# Ignore hazards for the first few frames to prevent boot-up death loops
+	if _safe_frames > 0:
+		return 
+		
 	var failed_id := _get_player_peer_id(player)
 	_broadcast_player_failed(failed_id)
 	player_failed.emit(player)
@@ -110,13 +113,8 @@ func _complete_level() -> void:
 		return
 	_is_completed = true
 	print("[Server] Exit condition satisfied. Level complete!")
-	# Broadcast to all clients first, then emit locally for server-side listeners.
 	_broadcast_level_completed()
 	level_completed.emit()
-
-# ------------------------------------------------------------------
-# Helpers — resolve player peer ID from the body node
-# ------------------------------------------------------------------
 
 func _get_player_peer_id(player: Node2D) -> int:
 	if player == null:
@@ -127,16 +125,11 @@ func _get_player_peer_id(player: Node2D) -> int:
 		return int(player.get("player_id"))
 	return 0
 
-# ------------------------------------------------------------------
-# RPC broadcast helpers — use GameplayRPC autoload when available
-# ------------------------------------------------------------------
-
 func _broadcast_player_failed(failed_player_id: int) -> void:
 	var rpc_node := _get_gameplay_rpc()
 	if rpc_node and rpc_node.has_method("sync_player_failed"):
 		rpc_node.rpc("sync_player_failed", failed_player_id)
 	else:
-		# Fallback: use NetworkManager stubs if GameplayRPC not present
 		var nm := get_node_or_null("/root/NetworkManager")
 		if nm and nm.has_method("_broadcast_player_failed_rpc"):
 			nm.call("_broadcast_player_failed_rpc", failed_player_id)

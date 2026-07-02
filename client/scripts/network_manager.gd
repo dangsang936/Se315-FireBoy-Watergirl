@@ -152,12 +152,6 @@ func send_collect_gem(gem_path: String) -> void:
 		return
 	rpc_id(1, "rpc_request_collect_gem", gem_path)
 
-# send_player_failed and send_level_completed have been REMOVED.
-# In authorized-server mode the server detects these events from its own
-# physics simulation (prototype_level.gd) and broadcasts them to clients
-# via GameplayRpc.sync_player_failed / sync_level_completed.
-# Clients must not self-report game outcomes.
-
 func send_restart_level() -> void:
 	if not is_connected_to_server():
 		return
@@ -237,7 +231,7 @@ func _on_host_room_connection_failed() -> void:
 func _send_api_request(endpoint: String, method: int, body: Dictionary, callback: Callable) -> void:
 	var http_request = HTTPRequest.new()
 	add_child(http_request)
-	http_request.request_completed.connect(func(result: int, response_code: int, headers: PackedStringArray, response_body: PackedByteArray):
+	http_request.request_completed.connect(func(_result: int, response_code: int, _headers: PackedStringArray, response_body: PackedByteArray):
 		var response_data = {}
 		if response_code == 200 or response_code == 201:
 			var json = JSON.new()
@@ -297,7 +291,7 @@ func _send_heartbeat() -> void:
 		"room_id": current_room_id,
 		"players": connected_players.size()
 	}
-	_send_api_request("/api/rooms/heartbeat", HTTPClient.METHOD_POST, body, func(status: int, response: Dictionary):
+	_send_api_request("/api/rooms/heartbeat", HTTPClient.METHOD_POST, body, func(status: int, _response: Dictionary):
 		if status != 200:
 			print("[NetworkManager] Heartbeat failed, status: ", status)
 	)
@@ -308,7 +302,7 @@ func unregister_room() -> void:
 	var body = {
 		"room_id": current_room_id
 	}
-	_send_api_request("/api/rooms/remove", HTTPClient.METHOD_DELETE, body, func(status: int, response: Dictionary):
+	_send_api_request("/api/rooms/remove", HTTPClient.METHOD_DELETE, body, func(status: int, _response: Dictionary):
 		print("[NetworkManager] Room unregistered, status: ", status)
 	)
 	current_room_id = ""
@@ -497,10 +491,8 @@ func receive_all_roles(roles: Dictionary) -> void:
 	player_list_updated.emit(connected_players)
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_role(role: int) -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "request_role", role)
+func request_role(_role: int) -> void:
+	pass
 
 @rpc("authority", "call_remote", "reliable")
 func notify_game_start() -> void:
@@ -576,6 +568,14 @@ func rpc_request_level_completed() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func sync_level_completed() -> void:
+	level_completed_received.emit()
+
+@rpc("authority", "call_remote", "reliable")
+func receive_player_failed_event(_failed_player_id: int) -> void:
+	player_failed_received.emit()
+
+@rpc("authority", "call_remote", "reliable")
+func receive_level_completed_event() -> void:
 	level_completed_received.emit()
 
 @rpc("any_peer", "call_remote", "reliable")

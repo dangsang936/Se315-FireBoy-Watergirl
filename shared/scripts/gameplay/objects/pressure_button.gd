@@ -28,7 +28,8 @@ const PRESSURE_BUTTON_COLLISION_MASK: int = 2
 		_sync_visual_state()
 @export var collision_shape_path: NodePath = ^"TriggerArea/CollisionShape2D"
 
-var _tracked_players: Array[PrototypePlayer] = []
+# Changed from PrototypePlayer to Node2D to support server dummy bodies
+var _tracked_players: Array[Node2D] = []
 var _is_pressed: bool = false
 
 @onready var _trigger_area: Area2D = get_node_or_null(trigger_area_path) as Area2D
@@ -67,7 +68,7 @@ func _physics_process(_delta: float) -> void:
 	# Only the server reaches here (clients have physics_process disabled).
 	var should_press: bool = false
 	for player_index: int in range(_tracked_players.size() - 1, -1, -1):
-		var player: PrototypePlayer = _tracked_players[player_index]
+		var player: Node2D = _tracked_players[player_index]
 		if not is_instance_valid(player):
 			_tracked_players.remove_at(player_index)
 			continue
@@ -120,29 +121,41 @@ func _sync_visual_state() -> void:
 	_visual.frame_progress = 0.0
 
 func _on_body_entered(body: Node2D) -> void:
-	var player := body as PrototypePlayer
-	if player == null:
+	if not body.is_in_group("player"):
 		return
-	if not _tracked_players.has(player):
-		_tracked_players.append(player)
+	if not _tracked_players.has(body):
+		_tracked_players.append(body)
 
 func _on_body_exited(body: Node2D) -> void:
-	var player := body as PrototypePlayer
-	if player == null:
+	if not body.is_in_group("player"):
 		return
-	_tracked_players.erase(player)
+	_tracked_players.erase(body)
 
-func _can_press_with_player(player: PrototypePlayer) -> bool:
+func _can_press_with_player(player: Node2D) -> bool:
 	if not _matches_required_element(player):
 		return false
-	if require_player_on_floor and not player.is_on_floor():
-		return false
+		
+	# Duck-type check for is_on_floor so both full player class and basic bodies work
+	if require_player_on_floor:
+		if player.has_method("is_on_floor") and not player.call("is_on_floor"):
+			return false
+			
 	return true
 
-func _matches_required_element(player: PrototypePlayer) -> bool:
+func _matches_required_element(player: Node2D) -> bool:
 	if required_element == ElementRequirement.ANY:
 		return true
-	return int(player.get_element()) == int(required_element)
+		
+	var el: int = -1
+	# Check the ways an element might be defined (server dummy metadata vs real class property)
+	if player.has_meta("element"):
+		el = int(player.get_meta("element"))
+	elif player.has_method("get_element"):
+		el = int(player.call("get_element"))
+	elif "element" in player:
+		el = int(player.get("element"))
+		
+	return el == int(required_element)
 
 func _set_pressed_state(next_pressed: bool) -> void:
 	if _is_pressed == next_pressed:

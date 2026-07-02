@@ -172,8 +172,8 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 
 	var parent := _players_root if _players_root != null else _world_root
 	parent.add_child(body)
-	collision.force_update_transform()
 	
+	# SET POSITION BEFORE UPDATING PHYSICS TRANSFORM
 	var spawn := _player_spawn
 	if role == 1 and _player_spawn_2 != null:
 		spawn = _player_spawn_2
@@ -181,6 +181,9 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 		body.global_position = spawn.global_position
 	else:
 		body.global_position = Vector2.ZERO
+		
+	# Now it is safe to force the physics transform!
+	collision.force_update_transform()
 
 	server_players[peer_id] = {
 		"body": body,
@@ -190,6 +193,7 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 	}
 	latest_inputs[peer_id] = _neutral_input()
 	_authoritative_states[peer_id] = _create_authoritative_snapshot(peer_id)
+	
 	
 func _despawn_server_player(peer_id: int) -> void:
 	if not server_players.has(peer_id):
@@ -346,17 +350,26 @@ func s_print(msg: String) -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func server_request_restart() -> void:
 	s_print("[Server] Restarting world.")
+	
+	# Instantly disable and remove the old world so it doesn't bleed 
+	# physics overlaps into the newly generated world!
 	if is_instance_valid(_world_root):
+		_world_root.process_mode = Node.PROCESS_MODE_DISABLED
+		if _world_root.is_inside_tree():
+			remove_child(_world_root)
 		_world_root.queue_free()
+		
 	server_players.clear()
 	_create_movement_world()
+	
 	for pid in connected_players:
 		if player_roles.has(pid):
 			var role = player_roles[pid]
 			latest_inputs[pid] = _neutral_input()
 			_spawn_server_player(pid, role)
+			
 	for pid in connected_players:
-		rpc_id(pid, "receive_level_restart")
+		# Only send ONE restart command to prevent double-loading on clients
 		rpc_id(pid, "sync_restart_level")
 
 @rpc("authority", "call_remote", "reliable")
