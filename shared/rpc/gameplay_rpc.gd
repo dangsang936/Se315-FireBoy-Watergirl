@@ -1,16 +1,29 @@
 class_name GameplayRPC
 extends Node
 
+# ------------------------------------------------------------------
+# SERVER -> ALL CLIENTS: load a level by ID.
+# Server calls this to tell all clients which level to load.
+# ------------------------------------------------------------------
 @rpc("authority", "call_local", "reliable")
-func rpc_load_level(level_id: String):
+func notify_load_level(level_id: String):
 	print("Load màn chơi: ", level_id)
 
+# ------------------------------------------------------------------
+# SERVER -> ALL CLIENTS: a player died from a hazard (legacy stub).
+# Superseded by sync_player_failed; kept for backwards compatibility.
+# Legacy listen-server flow; do not use in authorized server mode.
+# ------------------------------------------------------------------
 @rpc("authority", "call_local", "reliable")
-func rpc_player_died(player_id: int, hazard_type: String):
+func notify_player_died(player_id: int, hazard_type: String):
 	print("Player ", player_id, " vừa chết do: ", hazard_type)
 
+# ------------------------------------------------------------------
+# Legacy listen-server flow; do not use in authorized server mode.
+# Superseded by sync_level_completed below.
+# ------------------------------------------------------------------
 @rpc("authority", "call_local", "reliable")
-func rpc_level_completed(time_taken: float):
+func notify_level_completed(time_taken: float):
 	print("Màn chơi hoàn thành trong ", time_taken, " giây!")
 
 # ------------------------------------------------------------------
@@ -113,5 +126,3 @@ func sync_button_state(button_node_path: String, is_pressed: bool) -> void:
 	if button == null:
 		return
 	button.client_apply_pressed_state(is_pressed)
-			
-	
