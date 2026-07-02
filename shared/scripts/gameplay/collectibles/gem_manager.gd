@@ -4,7 +4,7 @@ extends Node2D
 signal gem_progress_changed(collected: int, required: int)
 
 var _required_gems: Array[CollectibleGem] = []
-var _collected_gems: Array[Variant] = [] # Use Variant to hold nulls on client
+var _collected_gems: Array[Variant] = [] 
 var _is_configured: bool = false
 var _active_gem_element: int = 0
 var required_count: int:
@@ -52,10 +52,13 @@ func _on_gem_collected(gem: CollectibleGem, _player: Node2D) -> void:
 	if _collected_gems.has(gem):
 		return
 	_collected_gems.append(gem)
-	
+
+	# Emit locally so prototype_level._on_gem_progress_changed fires on server
+	# (which drives exit door unlock checks).
+	_emit_progress()
+
+	# Broadcast count to clients so their GemManager mirrors the server state.
 	var rpc_node := get_node_or_null("/root/GameplayRpc")
-	if rpc_node == null:
-		rpc_node = get_node_or_null("/root/GameplayRPC")
 	if rpc_node:
 		rpc_node.rpc("sync_gem_progress", _collected_gems.size())
 

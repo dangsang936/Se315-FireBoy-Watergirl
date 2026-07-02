@@ -4,7 +4,6 @@
 [ext_resource type="Script" uid="uid://f726xissaotg" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
 [ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://shared/scripts/gameplay/doors/exit_door.gd" id="3_exit"]
 
-
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(240, 24)
 
@@ -17,79 +16,79 @@ size = Vector2(48, 18)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
 size = Vector2(34, 62)
 
-[node name="RealLevelBlank" type="Node2D"]
+[node name="RealLevelBlank" type="Node2D" unique_id=1085559053]
 script = ExtResource("1_level")
 
-[node name="Players" type="Node2D" parent="."]
+[node name="Players" type="Node2D" parent="." unique_id=1417239821]
 
-[node name="PlayerSpawn" type="Marker2D" parent="Players"]
+[node name="PlayerSpawn" type="Marker2D" parent="Players" unique_id=1885450433]
 position = Vector2(-96, -31)
 
-[node name="Terrain" type="Node2D" parent="."]
+[node name="Terrain" type="Node2D" parent="." unique_id=1045408160]
 
-[node name="Floor" type="StaticBody2D" parent="Terrain"]
+[node name="Floor" type="StaticBody2D" parent="Terrain" unique_id=1845869462]
 
-[node name="FloorVisual" type="Polygon2D" parent="Terrain/Floor"]
+[node name="FloorVisual" type="Polygon2D" parent="Terrain/Floor" unique_id=1848938956]
 color = Color(0.28, 0.22, 0.16, 1)
 polygon = PackedVector2Array(-120, -12, 120, -12, 120, 12, -120, 12)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/Floor"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/Floor" unique_id=167271899]
 shape = SubResource("RectangleShape2D_floor")
 
-[node name="FallBoundary" type="StaticBody2D" parent="Terrain"]
+[node name="FallBoundary" type="StaticBody2D" parent="Terrain" unique_id=1211811064]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/FallBoundary"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/FallBoundary" unique_id=288385630]
 position = Vector2(0, 85)
 shape = SubResource("WorldBoundaryShape2D_fall")
 
-[node name="Objects" type="Node2D" parent="."]
+[node name="Objects" type="Node2D" parent="." unique_id=1758682122]
 
-[node name="Hazards" type="Node2D" parent="."]
+[node name="Hazards" type="Node2D" parent="." unique_id=787108884]
 
-[node name="LavaPool" type="Area2D" parent="Hazards"]
+[node name="LavaPool" type="Area2D" parent="Hazards" unique_id=171246448]
 position = Vector2(-48, 40)
 script = ExtResource("2_hazard")
 pool_type = 0
 
-[node name="LavaVisual" type="Polygon2D" parent="Hazards/LavaPool"]
+[node name="LavaVisual" type="Polygon2D" parent="Hazards/LavaPool" unique_id=756013248]
 color = Color(0.95, 0.28, 0.08, 0.78)
 polygon = PackedVector2Array(-24, -9, 24, -9, 24, 9, -24, 9)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/LavaPool"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=1642635076]
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="HazardZone" type="Area2D" parent="Hazards"]
+[node name="HazardZone" type="Area2D" parent="Hazards" unique_id=1733917685]
 position = Vector2(0, 40)
 script = ExtResource("2_hazard")
 
-[node name="HazardVisual" type="Polygon2D" parent="Hazards/HazardZone"]
+[node name="HazardVisual" type="Polygon2D" parent="Hazards/HazardZone" unique_id=1518925463]
 color = Color(0.1, 0.48, 0.95, 0.75)
 polygon = PackedVector2Array(-24, -9, 24, -9, 24, 9, -24, 9)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/HazardZone"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/HazardZone" unique_id=1476485706]
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="PoisonPool" type="Area2D" parent="Hazards"]
+[node name="PoisonPool" type="Area2D" parent="Hazards" unique_id=1212812847]
 position = Vector2(48, 40)
 script = ExtResource("2_hazard")
 pool_type = 2
 
-[node name="PoisonVisual" type="Polygon2D" parent="Hazards/PoisonPool"]
+[node name="PoisonVisual" type="Polygon2D" parent="Hazards/PoisonPool" unique_id=68559359]
 color = Color(0.32, 0.85, 0.18, 0.78)
 polygon = PackedVector2Array(-24, -9, 24, -9, 24, 9, -24, 9)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/PoisonPool"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/PoisonPool" unique_id=857152180]
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="Goals" type="Node2D" parent="."]
+[node name="Goals" type="Node2D" parent="." unique_id=1997189736]
 
-[node name="ExitDoor" type="Area2D" parent="Goals"]
+[node name="ExitDoor" type="Area2D" parent="Goals" unique_id=1468759989]
 position = Vector2(96, -42)
 script = ExtResource("3_exit")
 
-[node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor"]
+[node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor" unique_id=114176549]
 color = Color(0.95, 0.72, 0.18, 0.85)
 polygon = PackedVector2Array(-17, -31, 17, -31, 17, 31, -17, 31)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Goals/ExitDoor"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Goals/ExitDoor" unique_id=1705126402]
 shape = SubResource("RectangleShape2D_exit")

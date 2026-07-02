@@ -126,41 +126,39 @@ func _snapshot_from_player_sync(packet: Dictionary) -> Dictionary:
 		"flip_h": bool(packet.get("flip_h", false)),
 	}
 
-func send_snapshot(snapshot: Dictionary, tick: int) -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "relay_player_snapshot", multiplayer.get_unique_id(), snapshot, tick)
+# ==================================================================
+# LEGACY — send_snapshot / relay_player_snapshot
+# ==================================================================
+# These functions were part of the old client-authoritative flow where
+# the client pushed its own position to the server for relay to peers.
+# In the authorized server model:
+#   - The server derives world state from rpc_submit_input alone.
+#   - Clients must NOT send position data.
+#   - send_player_input() is the only valid movement RPC from client.
+#
+# send_snapshot() is a no-op so that any stray call site fails silently
+# instead of sending bogus data.  relay_player_snapshot on the server
+# is also a documented no-op stub.
+# ==================================================================
+
+# LEGACY no-op — do NOT call in authorized server mode.
+func send_snapshot(_snapshot: Dictionary, _tick: int) -> void:
+	pass  # Intentional no-op: server ignores client-supplied position.
 
 func send_player_input(packet: Dictionary) -> void:
 	if not is_connected_to_server():
 		return
-	rpc_id(1, "receive_player_input", multiplayer.get_unique_id(), packet)
+	rpc_id(1, "rpc_submit_input", packet)
 
+# LEGACY no-op — do NOT call in authorized server mode.
+# Movement stop is handled server-side when no input arrives.
 func send_stop_movement() -> void:
-	if not is_connected_to_server():
-		return
-	var stop_snapshot := {
-		"pos": Vector2.ZERO,
-		"vel": Vector2.ZERO,
-		"anim": "idle",
-		"flip_h": false,
-	}
-	rpc_id(1, "relay_player_snapshot", multiplayer.get_unique_id(), stop_snapshot, current_tick)
+	pass  # Intentional no-op.
 
 func send_collect_gem(gem_path: String) -> void:
 	if not is_connected_to_server():
 		return
 	rpc_id(1, "rpc_request_collect_gem", gem_path)
-
-func send_player_failed() -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "rpc_request_player_failed")
-
-func send_level_completed() -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "rpc_request_level_completed")
 
 func send_restart_level() -> void:
 	if not is_connected_to_server():
@@ -191,7 +189,7 @@ func host_room(port: int = DEFAULT_PORT) -> void:
 func start_game() -> void:
 	if not is_connected_to_server():
 		return
-	rpc_id(1, "request_start_game")
+	rpc_id(1, "rpc_request_start_game")
 
 func _start_server_process(port: int) -> Error:
 	if hosted_server_pid > 0:
@@ -241,7 +239,7 @@ func _on_host_room_connection_failed() -> void:
 func _send_api_request(endpoint: String, method: int, body: Dictionary, callback: Callable) -> void:
 	var http_request = HTTPRequest.new()
 	add_child(http_request)
-	http_request.request_completed.connect(func(result: int, response_code: int, headers: PackedStringArray, response_body: PackedByteArray):
+	http_request.request_completed.connect(func(_result: int, response_code: int, _headers: PackedStringArray, response_body: PackedByteArray):
 		var response_data = {}
 		if response_code == 200 or response_code == 201:
 			var json = JSON.new()
@@ -269,8 +267,35 @@ func fetch_rooms() -> void:
 			rooms_list_received.emit([])
 	)
 
+## Returns the best LAN IPv4 address of this machine.
+## Filters out loopback (127.x) and IPv6 addresses.
+## Prefers private ranges: 192.168.x.x, 10.x.x.x, 172.16–31.x.x.
+## Falls back to the first non-loopback IPv4 found, or "" if none.
+func get_lan_ip() -> String:
+	var fallback: String = ""
+	for addr: String in IP.get_local_addresses():
+		if ":" in addr:
+			continue  # skip IPv6
+		if addr.begins_with("127."):
+			continue  # skip loopback
+		# Prefer common private ranges — return immediately
+		if addr.begins_with("192.168.") or addr.begins_with("10."):
+			return addr
+		if addr.begins_with("172."):
+			var parts := addr.split(".")
+			if parts.size() == 4:
+				var second := parts[1].to_int()
+				if second >= 16 and second <= 31:
+					return addr
+		# Keep as fallback (public or other address)
+		if fallback == "":
+			fallback = addr
+	return fallback
+
 func register_room_to_master(room_name: String, port: int, use_lan: bool = false) -> void:
-	var ip_to_send = "127.0.0.1" if use_lan else ""
+	# For LAN rooms send the host's real LAN IPv4 so other machines can connect.
+	# For internet rooms leave ip empty; master server will use the TCP source IP.
+	var ip_to_send: String = get_lan_ip() if use_lan else ""
 	var body = {
 		"name": room_name,
 		"port": port,
@@ -301,7 +326,7 @@ func _send_heartbeat() -> void:
 		"room_id": current_room_id,
 		"players": connected_players.size()
 	}
-	_send_api_request("/api/rooms/heartbeat", HTTPClient.METHOD_POST, body, func(status: int, response: Dictionary):
+	_send_api_request("/api/rooms/heartbeat", HTTPClient.METHOD_POST, body, func(status: int, _response: Dictionary):
 		if status != 200:
 			print("[NetworkManager] Heartbeat failed, status: ", status)
 	)
@@ -312,7 +337,7 @@ func unregister_room() -> void:
 	var body = {
 		"room_id": current_room_id
 	}
-	_send_api_request("/api/rooms/remove", HTTPClient.METHOD_DELETE, body, func(status: int, response: Dictionary):
+	_send_api_request("/api/rooms/remove", HTTPClient.METHOD_DELETE, body, func(status: int, _response: Dictionary):
 		print("[NetworkManager] Room unregistered, status: ", status)
 	)
 	current_room_id = ""
@@ -324,7 +349,17 @@ func unregister_room() -> void:
 func request_matchmake(callback: Callable) -> void:
 	_send_api_request("/api/rooms/matchmake", HTTPClient.METHOD_POST, {}, callback)
 
-func host_game(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = false) -> Error:
+# ==================================================================
+# LEGACY — LISTEN-SERVER (không gọi từ UI production)
+# ==================================================================
+# Mô hình này biến client thành server trực tiếp (listen-server).
+# Xung đột với authorized-server model của project:
+#   host_room() → spawn server project headless → cả host lẫn joiner
+#   đều connect vào server đó như client bình thường.
+# Giữ lại chỉ để tham khảo / debug offline.
+# Dùng host_room() cho mọi flow thật.
+# ==================================================================
+func host_game_listen_server_legacy(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = false) -> Error:
 	if peer:
 		_reset_connection_state(true)
 
@@ -332,21 +367,21 @@ func host_game(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = fals
 		setup_upnp(port)
 
 	peer = ENetMultiplayerPeer.new()
-	var error = peer.create_server(port, 2) 
+	var error = peer.create_server(port, 2)
 	if error != OK:
-		printerr("[NetworkManager] Failed to host server on port %d: %s" % [port, error_string(error)])
+		printerr("[NetworkManager][LEGACY] Failed to host listen-server on port %d: %s" % [port, error_string(error)])
 		_reset_connection_state(false)
 		return error
 
 	multiplayer.multiplayer_peer = peer
-	
+
 	if not multiplayer.peer_connected.is_connected(_on_client_peer_connected):
 		multiplayer.peer_connected.connect(_on_client_peer_connected)
 	if not multiplayer.peer_disconnected.is_connected(_on_client_peer_disconnected):
 		multiplayer.peer_disconnected.connect(_on_client_peer_disconnected)
 
-	print("[NetworkManager] Hosted server on port %d" % port)
-	
+	print("[NetworkManager][LEGACY] Hosted listen-server on port %d" % port)
+
 	my_role = 0
 	connected_players.append(1)
 	player_roles[1] = my_role
@@ -473,9 +508,12 @@ func _notification(what: int) -> void:
 # ==================================================================
 
 @rpc("any_peer", "call_remote", "reliable")
-func server_request_restart() -> void:
+func rpc_request_restart() -> void:
 	pass
 
+# Legacy stub — server never calls receive_level_restart in authorized server mode.
+# All restart notifications go through sync_restart_level.
+# Legacy listen-server flow; do not use in authorized server mode.
 @rpc("authority", "call_remote", "reliable")
 func receive_level_restart() -> void:
 	restart_level_received.emit()
@@ -501,10 +539,8 @@ func receive_all_roles(roles: Dictionary) -> void:
 	player_list_updated.emit(connected_players)
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_role(role: int) -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "request_role", role)
+func rpc_request_role(_role: int) -> void:
+	pass
 
 @rpc("authority", "call_remote", "reliable")
 func notify_game_start() -> void:
@@ -515,7 +551,7 @@ func notify_game_start() -> void:
 	game_started.emit()
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_start_game() -> void:
+func rpc_request_start_game() -> void:
 	pass
 
 @rpc("authority", "call_remote", "reliable")
@@ -546,17 +582,33 @@ func receive_player_sync(packet: Dictionary) -> void:
 	if player_id == multiplayer.get_unique_id():
 		authoritative_player_snapshot_received.emit(player_id, snapshot)
 
+# Batched world snapshot — sent by the server at SNAPSHOT_SEND_RATE Hz instead
+# of a separate receive_player_sync call per player per frame.
+# packet = { "players": [ { "id", "t", "ack_tick", "pos", "vel", "on_floor",
+#                            "anim", "flip_h" }, … ] }
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_world_snapshot(packet: Dictionary) -> void:
+	var my_id := multiplayer.get_unique_id()
+	var entries: Array = packet.get("players", [])
+	for entry in entries:
+		var player_id := int(entry.get("id", 0))
+		if player_id == 0:
+			continue
+		var snapshot := _snapshot_from_player_sync(entry)
+		var tick := int(snapshot.get("ack_tick", entry.get("t", current_tick)))
+		remote_player_snapshot_received.emit(player_id, snapshot, tick)
+		if player_id == my_id:
+			authoritative_player_snapshot_received.emit(player_id, snapshot)
+
+# Legacy listen-server flow; do not use in authorized server mode.
+# Client-authoritative position relay — superseded by rpc_submit_input.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func server_receive_movement_input(_packet: Dictionary) -> void:
-	pass
-
-@rpc("any_peer", "call_remote", "unreliable_ordered")
-func receive_player_input(_player_id: int, _packet: Dictionary) -> void:
-	pass
+func rpc_submit_input(_packet: Dictionary) -> void:
+	pass  # Sent to server; no-op stub on client side.
 
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_collect_gem(_gem_path: String) -> void:
@@ -582,6 +634,14 @@ func rpc_request_level_completed() -> void:
 func sync_level_completed() -> void:
 	level_completed_received.emit()
 
+@rpc("authority", "call_remote", "reliable")
+func receive_player_failed_event(_failed_player_id: int) -> void:
+	player_failed_received.emit()
+
+@rpc("authority", "call_remote", "reliable")
+func receive_level_completed_event() -> void:
+	level_completed_received.emit()
+
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_restart_level() -> void:
 	pass
@@ -590,6 +650,8 @@ func rpc_request_restart_level() -> void:
 func sync_restart_level() -> void:
 	restart_level_received.emit()
 
+# LEGACY RPC COMPAT — listen-server/client-authoritative relays.
+# Do not call in authorized server mode; active state arrives via receive_world_snapshot.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_position(_player_id: int, _pos: Vector2) -> void:
 	pass
@@ -607,9 +669,9 @@ func receive_player_state(_player_id: int, _state: Dictionary) -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "reliable")
-func server_teleport_player(_pos: Vector2) -> void:
+func rpc_request_teleport_player(_pos: Vector2) -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "reliable")
-func server_stop_movement() -> void:
+func rpc_request_stop_movement() -> void:
 	pass

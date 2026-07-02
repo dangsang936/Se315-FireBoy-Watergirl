@@ -28,7 +28,8 @@ const PRESSURE_BUTTON_COLLISION_MASK: int = 2
 		_sync_visual_state()
 @export var collision_shape_path: NodePath = ^"TriggerArea/CollisionShape2D"
 
-var _tracked_players: Array[PrototypePlayer] = []
+# Changed from PrototypePlayer to Node2D to support server dummy bodies
+var _tracked_players: Array[Node2D] = []
 var _is_pressed: bool = false
 
 @onready var _trigger_area: Area2D = get_node_or_null(trigger_area_path) as Area2D
@@ -36,17 +37,27 @@ var _is_pressed: bool = false
 @onready var _visual: AnimatedSprite2D = get_node_or_null(visual_path) as AnimatedSprite2D
 
 func _ready() -> void:
+	add_to_group("pressure_button")
 	collision_layer = WORLD_COLLISION_LAYER
 	collision_mask = WORLD_COLLISION_MASK
 	_ensure_trigger_area()
-	_trigger_area.collision_layer = PRESSURE_BUTTON_COLLISION_LAYER
-	_trigger_area.collision_mask = PRESSURE_BUTTON_COLLISION_MASK
 	_ensure_collision_shape()
 	_resolve_visual()
 	_sync_visual_state()
-	_trigger_area.body_entered.connect(_on_body_entered)
-	_trigger_area.body_exited.connect(_on_body_exited)
-	set_physics_process(true)
+
+	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+		# Server runs physics and is the sole authority on pressed state.
+		_trigger_area.collision_layer = PRESSURE_BUTTON_COLLISION_LAYER
+		_trigger_area.collision_mask = PRESSURE_BUTTON_COLLISION_MASK
+		_trigger_area.monitoring = true
+		_trigger_area.body_entered.connect(_on_body_entered)
+		_trigger_area.body_exited.connect(_on_body_exited)
+		set_physics_process(true)
+	else:
+		# Clients do not run physics for this object — state arrives via RPC.
+		if _trigger_area != null:
+			_trigger_area.monitoring = false
+		set_physics_process(false)
 
 func is_pressed() -> bool:
 	return _is_pressed
@@ -54,10 +65,10 @@ func is_pressed() -> bool:
 func _physics_process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
-
+	# Only the server reaches here (clients have physics_process disabled).
 	var should_press: bool = false
 	for player_index: int in range(_tracked_players.size() - 1, -1, -1):
-		var player: PrototypePlayer = _tracked_players[player_index]
+		var player: Node2D = _tracked_players[player_index]
 		if not is_instance_valid(player):
 			_tracked_players.remove_at(player_index)
 			continue
@@ -110,29 +121,41 @@ func _sync_visual_state() -> void:
 	_visual.frame_progress = 0.0
 
 func _on_body_entered(body: Node2D) -> void:
-	var player := body as PrototypePlayer
-	if player == null:
+	if not body.is_in_group("player"):
 		return
-	if not _tracked_players.has(player):
-		_tracked_players.append(player)
+	if not _tracked_players.has(body):
+		_tracked_players.append(body)
 
 func _on_body_exited(body: Node2D) -> void:
-	var player := body as PrototypePlayer
-	if player == null:
+	if not body.is_in_group("player"):
 		return
-	_tracked_players.erase(player)
+	_tracked_players.erase(body)
 
-func _can_press_with_player(player: PrototypePlayer) -> bool:
+func _can_press_with_player(player: Node2D) -> bool:
 	if not _matches_required_element(player):
 		return false
-	if require_player_on_floor and not player.is_on_floor():
-		return false
+		
+	# Duck-type check for is_on_floor so both full player class and basic bodies work
+	if require_player_on_floor:
+		if player.has_method("is_on_floor") and not player.call("is_on_floor"):
+			return false
+			
 	return true
 
-func _matches_required_element(player: PrototypePlayer) -> bool:
+func _matches_required_element(player: Node2D) -> bool:
 	if required_element == ElementRequirement.ANY:
 		return true
-	return int(player.get_element()) == int(required_element)
+		
+	var el: int = -1
+	# Check the ways an element might be defined (server dummy metadata vs real class property)
+	if player.has_meta("element"):
+		el = int(player.get_meta("element"))
+	elif player.has_method("get_element"):
+		el = int(player.call("get_element"))
+	elif "element" in player:
+		el = int(player.get("element"))
+		
+	return el == int(required_element)
 
 func _set_pressed_state(next_pressed: bool) -> void:
 	if _is_pressed == next_pressed:
@@ -140,6 +163,26 @@ func _set_pressed_state(next_pressed: bool) -> void:
 		return
 
 	_is_pressed = next_pressed
+	_sync_visual_state()
+	_sync_bridge_target()
+	pressed_state_changed.emit(_is_pressed)
+
+	# Broadcast new state to all clients so they update visuals and bridge.
+	_broadcast_state()
+
+func _broadcast_state() -> void:
+	var rpc_node := get_node_or_null("/root/GameplayRpc")
+	if rpc_node and rpc_node.has_method("sync_button_state"):
+		rpc_node.rpc("sync_button_state", get_path(), _is_pressed)
+
+# ------------------------------------------------------------------
+# Called on clients by GameplayRpc.sync_button_state — applies the
+# authoritative pressed state without running any local physics logic.
+# ------------------------------------------------------------------
+func client_apply_pressed_state(pressed: bool) -> void:
+	if _is_pressed == pressed:
+		return
+	_is_pressed = pressed
 	_sync_visual_state()
 	_sync_bridge_target()
 	pressed_state_changed.emit(_is_pressed)

@@ -1,0 +1,185 @@
+[gd_scene format=4 uid="uid://c6s76g8r3d4os"]
+
+[ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://shared/scripts/gameplay/levels/prototype_level.gd" id="1_tbdl3"]
+[ext_resource type="Texture2D" uid="uid://bktksl4tet7u8" path="res://assets/sprites/environment/background.png" id="2_yby3h"]
+[ext_resource type="Texture2D" uid="uid://dmrryf0n21bh8" path="res://assets/sprites/environment/midground.png" id="3_xpug2"]
+[ext_resource type="Texture2D" uid="uid://s31g3j2nk0q" path="res://assets/sprites/environment/foreground.png" id="4_sqhcu"]
+[ext_resource type="Script" uid="uid://f726xissaotg" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="5_amp5k"]
+[ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://shared/scripts/gameplay/doors/exit_door.gd" id="6_v0kbq"]
+[ext_resource type="PackedScene" uid="uid://dna1u41hm35q5" path="res://scenes/gameplay/objects/bridge_platform.tscn" id="7_ml5xf"]
+[ext_resource type="TileSet" uid="uid://d4axx7k7dkrm4" path="res://assets/tilesets/tileset.tres" id="8_j61lg"]
+[ext_resource type="Script" uid="uid://cvmrbef7tkkam" path="res://scripts/core/scene_loader/foreground.gd" id="9_h36x3"]
+[ext_resource type="PackedScene" uid="uid://dqlxrcj1uh05n" path="res://scenes/gameplay/objects/pressure_button.tscn" id="10_orjg7"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hazard"]
+size = Vector2(128, 27)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
+size = Vector2(34, 62)
+
+[sub_resource type="Environment" id="Environment_7tvm4"]
+background_mode = 3
+tonemap_mode = 1
+tonemap_white = 1.2
+glow_enabled = true
+glow_intensity = 1.0
+glow_bloom = 0.2
+
+[node name="RealLevelBlank" type="Node2D" unique_id=2094822713]
+script = ExtResource("1_tbdl3")
+players_path = NodePath("tilemap/Players")
+player_spawn_path = NodePath("SpawnPoints/PlayerSpawn")
+
+[node name="parallaxlayers" type="Node2D" parent="." unique_id=163411141]
+z_index = -15
+position = Vector2(391, 496)
+
+[node name="background" type="Parallax2D" parent="parallaxlayers" unique_id=1299752094]
+scroll_scale = Vector2(0.15, 1)
+repeat_size = Vector2(320, 0)
+repeat_times = 4
+
+[node name="Sprite2D" type="Sprite2D" parent="parallaxlayers/background" unique_id=458292250]
+texture_repeat = 2
+scale = Vector2(1, 1.2)
+texture = ExtResource("2_yby3h")
+centered = false
+
+[node name="midground" type="Parallax2D" parent="parallaxlayers" unique_id=92766918]
+scroll_scale = Vector2(0.35, 1)
+repeat_size = Vector2(320, 0)
+repeat_times = 4
+
+[node name="Sprite2D" type="Sprite2D" parent="parallaxlayers/midground" unique_id=1429356739]
+z_index = 1
+texture_repeat = 2
+scale = Vector2(1, 1.2)
+texture = ExtResource("3_xpug2")
+centered = false
+
+[node name="foreground" type="Parallax2D" parent="parallaxlayers" unique_id=272202258]
+scroll_scale = Vector2(0.6, 1)
+repeat_size = Vector2(320, 0)
+repeat_times = 4
+
+[node name="Sprite2D" type="Sprite2D" parent="parallaxlayers/foreground" unique_id=833692166]
+z_index = 2
+texture_repeat = 2
+scale = Vector2(1, 1.2)
+texture = ExtResource("4_sqhcu")
+centered = false
+
+[node name="Hazards" type="Node2D" parent="." unique_id=591894627]
+
+[node name="LavaPool" type="Area2D" parent="Hazards" unique_id=1038535333]
+position = Vector2(-5, -62)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("5_amp5k")
+pool_type = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=1861931717]
+position = Vector2(445, 719)
+shape = SubResource("RectangleShape2D_hazard")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=634877222]
+position = Vector2(629, 736.5)
+shape = SubResource("RectangleShape2D_hazard")
+
+[node name="HazardZone" type="Area2D" parent="Hazards" unique_id=993619337]
+position = Vector2(9, -62)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("5_amp5k")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/HazardZone" unique_id=937581071]
+position = Vector2(334, 716)
+shape = SubResource("RectangleShape2D_hazard")
+
+[node name="PoisonPool" type="Area2D" parent="Hazards" unique_id=566607842]
+position = Vector2(45, -63)
+collision_layer = 16
+collision_mask = 2
+script = ExtResource("5_amp5k")
+pool_type = 2
+
+[node name="PoisonVisual" type="Polygon2D" parent="Hazards/PoisonPool" unique_id=1385295729]
+color = Color(0.32, 0.85, 0.18, 0.78)
+polygon = PackedVector2Array(-24, -9, 24, -9, 24, 9, -24, 9)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/PoisonPool" unique_id=1984233923]
+shape = SubResource("RectangleShape2D_hazard")
+
+[node name="Goals" type="Node2D" parent="." unique_id=1090063674]
+
+[node name="ExitDoor" type="Area2D" parent="Goals" unique_id=1861265908]
+position = Vector2(96, -42)
+collision_layer = 64
+collision_mask = 2
+script = ExtResource("6_v0kbq")
+
+[node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor" unique_id=1758419958]
+color = Color(0.95, 0.72, 0.18, 0.85)
+polygon = PackedVector2Array(-17, -31, 17, -31, 17, 31, -17, 31)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Goals/ExitDoor" unique_id=1751659209]
+shape = SubResource("RectangleShape2D_exit")
+
+[node name="Puzzles" type="Node2D" parent="." unique_id=634451493]
+
+[node name="LavaBridge" parent="Puzzles" unique_id=23184816 instance=ExtResource("7_ml5xf")]
+position = Vector2(640, 656)
+bridge_size = Vector2(182, 14)
+editor_preview_alpha = 0.18
+visual_layer_path = NodePath("Visual")
+
+[node name="Terrain" type="Node2D" parent="." unique_id=182746802]
+
+[node name="Objects" type="Node2D" parent="." unique_id=182746803]
+
+[node name="tilemap" type="Node2D" parent="." unique_id=1481712616]
+
+[node name="Background" type="TileMapLayer" parent="tilemap" unique_id=1495634537]
+z_index = -20
+tile_map_data = PackedByteArray("AAADACQAAAABAAoAAAADACUAAAABAAsAAAADACYAAAABAAwAAAADACcAAAABAA0AAAAEACQAAAACAAoAAAAEACUAAAACAAsAAAAEACYAAAACAAwAAAAEACcAAAACAA0AAAAFACQAAAADAAoAAAAFACUAAAADAAsAAAAFACYAAAADAAwAAAAFACcAAAADAA0AAAACACIAAAAFAAoAAAACACMAAAAFAAsAAAADACIAAAAGAAoAAAADACMAAAAGAAsAAAAEACIAAAAHAAoAAAAEACMAAAAHAAsAAAAFACIAAAAIAAoAAAAFACMAAAAIAAsAAAA=")
+tile_set = ExtResource("8_j61lg")
+
+[node name="Midground" type="TileMapLayer" parent="tilemap" unique_id=367856715]
+tile_map_data = PackedByteArray("AAABACcAAAAbAAoAAAAEACcAAAAdAAoAAAADACcAAAAcAAoAAAACACcAAAAcAAoAAAACACYAAAAbAAoAAAADACYAAAAcAAoAAAAEACYAAAAcAAoAAAAFACYAAAAcAAoAAAAGACYAAAAcAAoAAAAHACYAAAAcAAoAAAAFACcAAAAbAAsAAAAGACcAAAAcAAsAAAAIACcAAAAdAAsAAAAHACcAAAAdAAcAAAAIACYAAAAdAAoAAAAIACgAAAAdAAwAAAAHACgAAAAcAAwAAAAGACgAAAAcAAwAAAAFACgAAAAbAAwAAAApACUAAAAXAAcAAAApACQAAAAcAAsAAAAoACUAAAAcAAsAAAAoACQAAAAcAAoAAAAnACUAAAAYAAcAAAAnACQAAAAcAAoAAAAmACUAAAAcAAwAAAAmACQAAAAcAAoAAAAlACUAAAAbAAwAAAAlACQAAAAbAAoAAAApACYAAAAdAAwAAAAoACYAAAAcAAwAAAAnACYAAAAbAAwAAAAqACQAAAAdAAsAAAAqACMAAAAdAAoAAAApACMAAAAcAAoAAAAqACUAAAAdAAwAAAAjACMAAAAdAAwAAAAjACIAAAAdAAoAAAAiACMAAAAbAAwAAAAiACIAAAAbAAoAAAACACQAAAABAAgAAAACACUAAAABAAgAAAACACMAAAABAAcAAAADACMAAAACAAcAAAAGACIAAAAEAAgAABAFACMAAAADAAcAAAAFACQAAAADAAgAAAAFACUAAAADAAgAAAAEACMAAAACAAcAAAACACIAAAASAAkAAAADACIAAAATAAkAAAACACEAAAATAAkAAAAEACIAAAATAAkAAAAFACIAAAATAAkAAAACACAAAAAUAAkAAAADACEAAAAVAAkAAAAJACMAAAAEAAgAAAAdACIAAAAEAAgAABAgACEAAAAEAAgAAAASACIAAAAEAAgAAAAPACMAAAAEAAgAABAkACkAAAALAAcAAAAlACkAAAALAAcAAAAmACkAAAALAAcAAAAnACkAAAALAAcAAAAoACkAAAALAAcAAAApACkAAAALAAcAAAAqACkAAAALAAcAAAAjACkAAAALAAcAAAAtACAAAwAAAAAABAAtACEAAwAAAAAABAAtACIAAwAAAAAABAAtACMAAwAAAAAABAAtACQAAwAAAAAABAAtACUAAwAAAAAABAAtACYAAwAAAAAABAAtACcAAwAAAAAABAAtACgAAwAAAAAABAAsACgAAAABAAgAAAAsACcAAAABAAgAAAAsACYAAAABAAgAAAAsACEAAAABAAgAAAAsACIAAAABAAgAAAAsACMAAAABAAgAAAAsACQAAAABAAgAAAAsACUAAAABAAgAAAAsACAAAAABAAcAAAA=")
+tile_set = ExtResource("8_j61lg")
+
+[node name="Foreground" type="TileMapLayer" parent="tilemap" unique_id=691087066]
+z_index = 20
+tile_map_data = PackedByteArray("AAAUACgAAAAGAAcAAAAUACkAAAAGAAgAAAAVACgAAAAGAAcAAAAVACkAAAAGAAgAAAAZACsAAAAHAAUAAAAZACoAAAAVAAMAAAAZACkAAAATAAMAAAAZACgAAAAaAAMAAAAYACsAAAAaAAEAAAAYACoAAAATAAcAAAAYACkAAAACAAIAAAAYACgAAAATAAEAAAAXACoAAAAVAAUAAAAXACkAAAAVAAUAAAAXACgAAAAcAAMAAAATACoAAAAUAAMAAAATACkAAAAVAAMAAAATACgAAAADAAEAAAASACsAAAAaAAEAAAASACoAAAACAAIAAAASACkAAAATAAcAAAASACgAAAATAAEAAAARACsAAAAZAAEAAAARACoAAAACAAIAAAARACkAAAAUAAcAAAARACgAAAAWAAEAAAAQACsAAAAdAAEAAAAQACoAAAATAAcAAAAQACkAAAAUAAcAAAAQACgAAAAXAAEAAAAPACsAAAACAAMAAAAPACoAAAACAAIAAAAPACkAAAACAAIAAAAPACgAAAAHAAIAAAAKACsAAAAZAAUAAAAKACoAAAAVAAMAAAAKACkAAAAVAAMAAAAKACgAAAATAAMAAAAJACsAAAAZAAEAAAAJACoAAAATAAcAAAAJACkAAAACAAIAAAAJACgAAAACAAIAAAAIACsAAAACAAMAAAAIACoAAAACAAIAAAAIACkAAAACAAIAAAAIACgAAAAVAAcAAAAHACsAAAAaAAEAAAAHACoAAAACAAIAAAAHACkAAAACAAIAAAAHACgAAAAIAAIAAAAGACsAAAACAAMAAAAGACoAAAACAAIAAAAGACkAAAACAAIAAAAGACgAAAAXAAEAAAAWACgAAAAGAAcAAAAWACkAAAAGAAgAAAAaACgAAAALAAcAAAAbACgAAAALAAcAAAAcACgAAAALAAcAAAAaACkAAAALAAgAAAAbACkAAAALAAgAAAAcACkAAAALAAgAAAAeACsAAAAbAAEAAAAeACoAAAACAAIAAAAeACkAAAAVAAcAAAAeACgAAAAIAAIAAAAdACsAAAAIAAUAAAAdACoAAAATAAUAAAAdACkAAAAVAAUAAAAdACgAAAAdAAMAAAAFACsAAAAZAAEAAAAFACoAAAACAAIAAAAFACkAAAAVAAcAAAAFACgAAAAUAAEAAAAEACsAAAAbAAEAAAAEACoAAAAUAAcAAAAEACkAAAAVAAcAAAAEACgAAAAWAAEAAAADACsAAAAbAAEAAAADACoAAAACAAIAAAADACkAAAACAAIAAAADACgAAAAWAAEAAAACACsAAAAcAAEAAAACACoAAAACAAIAAAACACkAAAACAAIAAAACACgAAAAVAAEAAAABACsAAAAaAAEAAAABACoAAAAUAAcAAAABACkAAAACAAIAAAABACgAAAAVAAEAAAAAACsAAAAaAAEAAAAAACoAAAACAAIAAAAAACkAAAACAAIAAAAAACgAAAATAAEAAAD//ysAAAAQAAUAAAD//yoAAAATAAUAAAD//ykAAAAWAAUAAAD//ygAAAAdAAMAAAAKACcAAAAZAAMAAAAJACcAAAACAAEAAAAIACcAAAAVAAEAAAAPACcAAAADAAEAAAAHACcAAAAcAAMAAAAOACsAAAAdAAUAAAAOACoAAAABAAIAAAAOACkAAAATAAUAAAAOACgAAAAUAAUAAAAOACcAAAAdAAMAAAAhACsAAAAbAAEAAAAhACoAAAACAAIAAAAhACkAAAAHAAIAAAAhACgAAAAZAAMAAAAgACsAAAAaAAEAAAAgACoAAAACAAIAAAAgACkAAAACAAIAAAAgACgAAAAHAAIAAAAgACcAAAADAAEAAAAfACsAAAAaAAEAAAAfACoAAAAVAAcAAAAfACkAAAACAAIAAAAfACgAAAACAAIAAAAfACcAAAACAAEAAAAUACoAAAAGAAgAAAAVACoAAAAGAAgAAAAWACoAAAAGAAgAAAAaACoAAAALAAgAAAAbACoAAAALAAgAAAAcACoAAAALAAgAAAAcACsAAAACAAUAAAAbACsAAAACAAUAAAAaACsAAAACAAUAAAAXACsAAAAIAAUAAAATACsAAAAHAAUAAAAUACsAAAACAAUAAAAVACsAAAACAAUAAAAWACsAAAACAAUAAAAkACsAAAACAAUAAAAjACsAAAAHAAUAAAAjACoAAAARAAQAAAAiACsAAAAaAAEAAAAiACoAAAAHAAIAAAAiACkAAAAaAAMAAAApACQAAAARAAUAAAApACMAAAAHAAEAAAApACIAAAACAAIAAAApACEAAAACAAIAAAAoACQAAAAdAAEAAAAoACMAAAACAAIAAAAoACIAAAACAAIAAAAoACEAAAACAAIAAAAnACQAAAAcAAEAAAAnACMAAAACAAIAAAAnACIAAAACAAIAAAAnACEAAAAIAAIAAAAmACQAAAAcAAEAAAAmACMAAAACAAIAAAAmACIAAAATAAcAAAAmACEAAAACAAEAAAAlACQAAAAZAAEAAAAlACMAAAACAAIAAAAlACIAAAACAAIAAAAlACEAAAATAAEAAAAkACQAAAAdAAEAAAAkACMAAAAVAAcAAAAkACIAAAATAAcAAAAkACEAAAATAAEAAAAjACQAAAAcAAUAAAAjACMAAAAUAAUAAAAjACIAAAAIAAEAAAAjACEAAAATAAEAAAArACIAAAAVAAMAAAArACEAAAAWAAMAAAArACAAAAAZAAMAAAAqACIAAAATAAcAAAAqACEAAAACAAIAAAAqACAAAAAHAAIAAAArACMAAAAZAAUAAAAqACMAAAAbAAEAAAAqAB8AAAAaAAMAAAApACAAAAACAAIAAAApAB8AAAAXAAEAAAAoACAAAAACAAIAAAAoAB8AAAATAAEAAAAnACAAAAATAAUAAAAnAB8AAAABAAEAAAAiACIAAAAZAAEAAAAiACEAAAAWAAEAAAAhACIAAAABAAMAAAAhACEAAAAQAAQAAAAwACsAAAAZAAUAAAAwACoAAAAVAAMAAAAwACkAAAAZAAMAAAAvACsAAAAaAAEAAAAvACoAAAAUAAcAAAAvACkAAAAXAAEAAAAuACsAAAACAAMAAAAuACoAAAACAAIAAAAuACkAAAAWAAEAAAAtACsAAAAdAAEAAAAtACoAAAACAAIAAAAtACkAAAAVAAEAAAAsACsAAAAaAAEAAAAsACoAAAATAAcAAAAsACkAAAATAAEAAAArACsAAAAdAAEAAAArACoAAAAIAAIAAAAcACQAAAAZAAUAAAAcACMAAAAWAAMAAAAcACIAAAADAAEAAAAbACQAAAAdAAEAAAAbACMAAAATAAcAAAAbACIAAAAWAAEAAAAaACQAAAAcAAEAAAAaACMAAAACAAIAAAAaACIAAAAHAAIAAAAZACQAAAAdAAEAAAAZACMAAAACAAIAAAAZACIAAAACAAIAAAAYACQAAAAcAAEAAAAYACMAAAACAAIAAAAYACIAAAACAAIAAAAXACQAAAAaAAEAAAAXACMAAAACAAIAAAAXACIAAAAIAAIAAAAWACQAAAAZAAEAAAAWACMAAAACAAIAAAAWACIAAAATAAEAAAAVACQAAAAcAAEAAAAVACMAAAAVAAcAAAAVACIAAAACAAEAAAAUACQAAAACAAMAAAAUACMAAAACAAIAAAAUACIAAAAWAAEAAAATACQAAAABAAMAAAATACMAAAABAAIAAAATACIAAAAQAAQAAAAaACEAAAARAAQAAAAZACEAAAAUAAEAAAAYACEAAAACAAEAAAAXACEAAAABAAEAAAABACMAAAATAAMAAAABACIAAAATAAMAAAABACEAAAAUAAMAAAABACAAAAAXAAMAAAABAB8AAAAaAAMAAAAAACMAAAACAAIAAAAAACIAAAACAAIAAAAAACEAAAACAAIAAAAAACAAAAACAAIAAAAAAB8AAAATAAEAAAD//yMAAAAUAAUAAAD//yIAAAAWAAUAAAD//yEAAAABAAIAAAD//yAAAAAWAAUAAAD//x8AAAAcAAMAAAAOACMAAAADAAUAAAANACMAAAACAAUAAAAMACMAAAACAAUAAAALACMAAAACAAUAAAAKACMAAAABAAUAAAABACQAAAAZAAUAAAAAACQAAAAZAAEAAAD//yQAAAABAAMAAAAJACYAAwAAAAAAAgAEACEAAwAAAAAAAQADACAAAwAAAAAAAQAqACsAAAAIAAUAAAApACsAAAACAAUAAAAoACsAAAACAAUAAAAnACsAAAACAAUAAAAmACsAAAACAAUAAAAlACsAAAACAAUAAAArACkAAAAcAAMAAAAqACoAAAAdAAMAAAAeACcAAAAQAAQAAAAqACkAAAAEAAgAAAAjACkAAAAEAAgAABAkACoAAAALAAgAAAAlACoAAAALAAgAAAAmACoAAAALAAgAAAAnACoAAAALAAgAAAAoACoAAAALAAgAAAApACoAAAALAAgAAAALACQAAAAQAAcAACAMACQAAAAQAAcAADANACQAAAAQAAcAADAYACYAAwAAAAAAAQAPACYAAwAAAAAAAwA=")
+tile_set = ExtResource("8_j61lg")
+script = ExtResource("9_h36x3")
+
+[node name="Players" type="Node2D" parent="tilemap" unique_id=496550713]
+position = Vector2(26, 618)
+
+[node name="PressureButton" parent="tilemap" unique_id=859789714 instance=ExtResource("10_orjg7")]
+position = Vector2(765, 656)
+collision_layer = 128
+collision_mask = 2
+bridge_path = NodePath("../../Puzzles/LavaBridge")
+
+[node name="SpawnPoints" type="Node2D" parent="." unique_id=1453074696]
+
+[node name="PlayerSpawn" type="Marker2D" parent="SpawnPoints" unique_id=906776050]
+position = Vector2(41, 618)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=377752583]
+environment = SubResource("Environment_7tvm4")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=120806549]
+position = Vector2(16, 4)
+color = Color(0.28162947, 0.51476526, 0.53207594, 1)
+
+[node name="DirectionalLight2D" type="DirectionalLight2D" parent="." unique_id=757165895]
+position = Vector2(-5.722046e-06, -7.6293945e-06)
+rotation = -0.31205624
+color = Color(0.71040076, 0.7216921, 0.41666624, 1)
+energy = 1.8
+shadow_enabled = true
+shadow_filter = 2
+shadow_filter_smooth = 7.0

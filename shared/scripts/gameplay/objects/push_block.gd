@@ -54,7 +54,7 @@ func _ready() -> void:
 		return
 
 	lock_rotation = false
-	can_sleep = false # <--- NO SLEEP ON SERVER!
+	can_sleep = false
 	contact_monitor = true
 	max_contacts_reported = 8
 	linear_damp = idle_damping
@@ -95,8 +95,6 @@ func _physics_process(delta: float) -> void:
 	if _sync_timer >= SYNC_RATE:
 		_sync_timer = 0.0
 		var rpc_node := get_node_or_null("/root/GameplayRpc")
-		if rpc_node == null:
-			rpc_node = get_node_or_null("/root/GameplayRPC")
 		if rpc_node:
 			rpc_node.rpc("sync_push_block", name, global_position, rotation)
 

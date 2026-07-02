@@ -151,37 +151,52 @@ func _update_ui_state(in_room: bool) -> void:
 # --- Button Handlers ---
 
 func _on_quick_match_pressed() -> void:
-	status_label.text = "Finding a match on master server..."
+	status_label_2.text = "Finding a match on master server..."
 	quick_match_btn.disabled = true
-	
+
 	NetworkManager.request_matchmake(func(status: int, response: Dictionary):
 		quick_match_btn.disabled = false
 		if status == 200:
 			var action = response.get("action", "")
 			if action == "host":
-				status_label.text = "No empty rooms found. Hosting a new matchmaking room..."
-				var name_to_use = name_input.text + "'s Match"
-				var err = NetworkManager.host_game(name_to_use, 9999, lan_checkbox.button_pressed)
-				if err != OK:
-					status_label.text = "Failed to host matchmaking lobby."
+				status_label_2.text = "No empty rooms found. Starting authorized server..."
+				if not NetworkManager.room_created.is_connected(_on_lobby_room_created):
+					NetworkManager.room_created.connect(_on_lobby_room_created, CONNECT_ONE_SHOT)
+				if not NetworkManager.room_creation_failed.is_connected(_on_lobby_room_failed):
+					NetworkManager.room_creation_failed.connect(_on_lobby_room_failed, CONNECT_ONE_SHOT)
+				NetworkManager.host_room(9999)
 			elif action == "join":
 				var ip = response.get("ip", "127.0.0.1")
 				var port = int(response.get("port", 9999))
-				status_label.text = "Match found! Connecting to " + ip + ":" + str(port) + "..."
+				status_label_2.text = "Match found! Connecting to " + ip + ":" + str(port) + "..."
 				NetworkManager.connect_to_server(ip, port)
 		else:
-			status_label.text = "Matchmaking failed. Is the Master Server running?"
+			status_label_2.text = "Matchmaking failed. Is the Master Server running?"
 	)
 
 func _on_host_pressed() -> void:
-	var rname = room_name_input.text.strip_edges()
-	if rname == "":
-		rname = name_input.text + "'s Lobby"
-	
-	status_label.text = "Hosting room: " + rname + "..."
-	var err = NetworkManager.host_game(rname, 9999, lan_checkbox.button_pressed)
-	if err != OK:
-		status_label.text = "Failed to host lobby."
+	host_btn.disabled = true
+	status_label_2.text = "Starting authorized server..."
+
+	# Kết nối one-shot trước khi gọi host_room() để bắt kết quả.
+	if not NetworkManager.room_created.is_connected(_on_lobby_room_created):
+		NetworkManager.room_created.connect(_on_lobby_room_created, CONNECT_ONE_SHOT)
+	if not NetworkManager.room_creation_failed.is_connected(_on_lobby_room_failed):
+		NetworkManager.room_creation_failed.connect(_on_lobby_room_failed, CONNECT_ONE_SHOT)
+
+	NetworkManager.host_room(9999)
+
+func _on_lobby_room_created() -> void:
+	if NetworkManager.room_creation_failed.is_connected(_on_lobby_room_failed):
+		NetworkManager.room_creation_failed.disconnect(_on_lobby_room_failed)
+	host_btn.disabled = false
+	status_label_2.text = "Waiting for opponent..."
+
+func _on_lobby_room_failed(reason: String) -> void:
+	if NetworkManager.room_created.is_connected(_on_lobby_room_created):
+		NetworkManager.room_created.disconnect(_on_lobby_room_created)
+	host_btn.disabled = false
+	status_label_2.text = "Failed to host: " + reason
 
 func _on_refresh_pressed() -> void:
 	status_label.text = "Refreshing room list..."
@@ -323,7 +338,7 @@ func _get_role_button_text(label: String, role: int, my_peer_id: int) -> String:
 	return label
 
 func _on_fireboy_pressed() -> void:
-	NetworkManager.request_role(FIREBOY_ROLE)
+	NetworkManager.rpc_request_role(FIREBOY_ROLE)
 
 func _on_watergirl_pressed() -> void:
-	NetworkManager.request_role(WATERGIRL_ROLE)
+	NetworkManager.rpc_request_role(WATERGIRL_ROLE)
