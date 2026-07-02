@@ -36,17 +36,27 @@ var _is_pressed: bool = false
 @onready var _visual: AnimatedSprite2D = get_node_or_null(visual_path) as AnimatedSprite2D
 
 func _ready() -> void:
+	add_to_group("pressure_button")
 	collision_layer = WORLD_COLLISION_LAYER
 	collision_mask = WORLD_COLLISION_MASK
 	_ensure_trigger_area()
-	_trigger_area.collision_layer = PRESSURE_BUTTON_COLLISION_LAYER
-	_trigger_area.collision_mask = PRESSURE_BUTTON_COLLISION_MASK
 	_ensure_collision_shape()
 	_resolve_visual()
 	_sync_visual_state()
-	_trigger_area.body_entered.connect(_on_body_entered)
-	_trigger_area.body_exited.connect(_on_body_exited)
-	set_physics_process(true)
+
+	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+		# Server runs physics and is the sole authority on pressed state.
+		_trigger_area.collision_layer = PRESSURE_BUTTON_COLLISION_LAYER
+		_trigger_area.collision_mask = PRESSURE_BUTTON_COLLISION_MASK
+		_trigger_area.monitoring = true
+		_trigger_area.body_entered.connect(_on_body_entered)
+		_trigger_area.body_exited.connect(_on_body_exited)
+		set_physics_process(true)
+	else:
+		# Clients do not run physics for this object — state arrives via RPC.
+		if _trigger_area != null:
+			_trigger_area.monitoring = false
+		set_physics_process(false)
 
 func is_pressed() -> bool:
 	return _is_pressed
@@ -54,7 +64,7 @@ func is_pressed() -> bool:
 func _physics_process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
-
+	# Only the server reaches here (clients have physics_process disabled).
 	var should_press: bool = false
 	for player_index: int in range(_tracked_players.size() - 1, -1, -1):
 		var player: PrototypePlayer = _tracked_players[player_index]
@@ -140,6 +150,28 @@ func _set_pressed_state(next_pressed: bool) -> void:
 		return
 
 	_is_pressed = next_pressed
+	_sync_visual_state()
+	_sync_bridge_target()
+	pressed_state_changed.emit(_is_pressed)
+
+	# Broadcast new state to all clients so they update visuals and bridge.
+	_broadcast_state()
+
+func _broadcast_state() -> void:
+	var rpc_node := get_node_or_null("/root/GameplayRpc")
+	if rpc_node == null:
+		rpc_node = get_node_or_null("/root/GameplayRPC")
+	if rpc_node and rpc_node.has_method("sync_button_state"):
+		rpc_node.rpc("sync_button_state", get_path(), _is_pressed)
+
+# ------------------------------------------------------------------
+# Called on clients by GameplayRpc.sync_button_state — applies the
+# authoritative pressed state without running any local physics logic.
+# ------------------------------------------------------------------
+func client_apply_pressed_state(pressed: bool) -> void:
+	if _is_pressed == pressed:
+		return
+	_is_pressed = pressed
 	_sync_visual_state()
 	_sync_bridge_target()
 	pressed_state_changed.emit(_is_pressed)

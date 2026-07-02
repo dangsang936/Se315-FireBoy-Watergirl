@@ -152,15 +152,11 @@ func send_collect_gem(gem_path: String) -> void:
 		return
 	rpc_id(1, "rpc_request_collect_gem", gem_path)
 
-func send_player_failed() -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "rpc_request_player_failed")
-
-func send_level_completed() -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "rpc_request_level_completed")
+# send_player_failed and send_level_completed have been REMOVED.
+# In authorized-server mode the server detects these events from its own
+# physics simulation (prototype_level.gd) and broadcasts them to clients
+# via GameplayRpc.sync_player_failed / sync_level_completed.
+# Clients must not self-report game outcomes.
 
 func send_restart_level() -> void:
 	if not is_connected_to_server():

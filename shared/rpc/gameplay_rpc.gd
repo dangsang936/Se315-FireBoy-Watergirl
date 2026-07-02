@@ -13,49 +13,105 @@ func rpc_player_died(player_id: int, hazard_type: String):
 func rpc_level_completed(time_taken: float):
 	print("Màn chơi hoàn thành trong ", time_taken, " giây!")
 
+# ------------------------------------------------------------------
+# SERVER -> ALL CLIENTS: player fell into a hazard — game over.
+# Server calls this after verifying collision on its physics world.
+# Clients react by entering LOST state; they do NOT self-trigger this.
+# ------------------------------------------------------------------
+@rpc("authority", "call_remote", "reliable")
+func sync_player_failed(failed_player_id: int) -> void:
+	# Forward to NetworkManager signal so GameManager._on_player_failed_received fires.
+	var nm := get_node_or_null("/root/NetworkManager")
+	if nm != null and nm.has_signal("player_failed_received"):
+		nm.emit_signal("player_failed_received")
+	print("[Client] Player %d failed (server-authoritative)." % failed_player_id)
+
+# ------------------------------------------------------------------
+# SERVER -> ALL CLIENTS: both players reached the exit with all gems.
+# Server calls this after verifying exit-door and gem conditions.
+# Clients react by entering WON state; they do NOT self-trigger this.
+# ------------------------------------------------------------------
+@rpc("authority", "call_remote", "reliable")
+func sync_level_completed() -> void:
+	# Forward to NetworkManager signal so GameManager._on_level_completed_received fires.
+	var nm := get_node_or_null("/root/NetworkManager")
+	if nm != null and nm.has_signal("level_completed_received"):
+		nm.emit_signal("level_completed_received")
+	print("[Client] Level completed (server-authoritative).")
+
 @rpc("authority", "call_remote", "unreliable_ordered")
 func sync_push_block(block_name: String, pos: Vector2, rot: float) -> void:
 	var blocks := get_tree().get_nodes_in_group("push_block")
-	var best_block: Node2D = null
-	var best_dist: float = 999999.0
-	
-	for b in blocks:
-		var d = b.global_position.distance_to(pos)
-		if d < best_dist:
-			best_dist = d
-			best_block = b
-			
-	if best_block != null and best_dist < 200.0:
-		best_block.global_position = pos
-		best_block.rotation = rot
-		if best_block is RigidBody2D:
-			best_block.linear_velocity = Vector2.ZERO
-			best_block.angular_velocity = 0.0
+	# Primary: match by name — unambiguous and O(n).
+	var target_block: Node2D = null
+	for b: Node in blocks:
+		if b.name == block_name:
+			target_block = b as Node2D
+			break
+	# Fallback: nearest block by position (handles legacy scenes with unnamed blocks).
+	if target_block == null:
+		var best_dist: float = 200.0
+		for b: Node in blocks:
+			if "global_position" in b:
+				var d: float = (b as Node2D).global_position.distance_to(pos)
+				if d < best_dist:
+					best_dist = d
+					target_block = b as Node2D
+	if target_block == null:
+		return
+	target_block.global_position = pos
+	target_block.rotation = rot
+	if target_block is RigidBody2D:
+		(target_block as RigidBody2D).linear_velocity = Vector2.ZERO
+		(target_block as RigidBody2D).angular_velocity = 0.0
 
 @rpc("authority", "call_remote", "reliable")
 func sync_gem_collected(gem_name: String, pos: Vector2 = Vector2.ZERO) -> void:
-	var root = get_tree().root
-	var best_gem = _find_closest_gem(root, pos, 99999.0, null)
-	if best_gem:
-		best_gem.client_collect_gem()
+	# Primary: look up by name within the collectible_gem group — O(n), reliable.
+	var gems := get_tree().get_nodes_in_group("collectible_gem")
+	var target_gem: Node = null
+	for g: Node in gems:
+		if g.name == gem_name:
+			target_gem = g
+			break
+	# Fallback: nearest gem by position if name lookup fails (e.g. duplicate names).
+	if target_gem == null and pos != Vector2.ZERO:
+		var best_dist: float = 200.0  # max snap distance
+		for g: Node in gems:
+			if "global_position" in g:
+				var d: float = g.get("global_position").distance_to(pos)
+				if d < best_dist:
+					best_dist = d
+					target_gem = g
+	if target_gem != null and target_gem.has_method("client_collect_gem"):
+		target_gem.client_collect_gem()
 
-func _find_closest_gem(node: Node, pos: Vector2, best_dist: float, best_gem: Node) -> Node:
-	if node.has_method("client_collect_gem") and "global_position" in node:
-		var d = node.get("global_position").distance_to(pos)
-		if d < best_dist:
-			best_dist = d
-			best_gem = node
-	for child in node.get_children():
-		best_gem = _find_closest_gem(child, pos, best_dist, best_gem)
-		if best_gem and "global_position" in best_gem:
-			best_dist = best_gem.get("global_position").distance_to(pos)
-	return best_gem
-
-@rpc("authority", "call_local", "reliable")
+@rpc("authority", "call_remote", "reliable")
 func sync_gem_progress(collected_count: int) -> void:
 	var managers = get_tree().get_nodes_in_group("gem_manager")
 	for gm in managers:
 		if gm.has_method("client_sync_progress_rpc"):
 			gm.client_sync_progress_rpc(collected_count)
+
+# ------------------------------------------------------------------
+# SERVER -> ALL CLIENTS: a pressure button's pressed state changed.
+# Server calls this whenever _is_pressed flips after physics update.
+# Clients apply the visual state and update the linked bridge.
+# button_node_path is the scene-tree path relative to scene root so
+# clients can look up the correct node without ambiguity.
+# ------------------------------------------------------------------
+@rpc("authority", "call_remote", "reliable")
+func sync_button_state(button_node_path: String, is_pressed: bool) -> void:
+	var button := get_tree().root.get_node_or_null(button_node_path) as PressureButton
+	if button == null:
+		# Try direct node name search as a fallback
+		var buttons := get_tree().get_nodes_in_group("pressure_button")
+		for b: Node in buttons:
+			if b.name == button_node_path.get_file():
+				button = b as PressureButton
+				break
+	if button == null:
+		return
+	button.client_apply_pressed_state(is_pressed)
 			
 	

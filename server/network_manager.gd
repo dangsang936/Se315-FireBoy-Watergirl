@@ -432,49 +432,125 @@ func receive_player_input(player_id: int, packet: Dictionary) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_collect_gem(gem_path: String) -> void:
+	# NOTE: This path is the LEGACY client-request flow kept for offline/debug
+	# compatibility only.  In multiplayer, gem collection is driven entirely by
+	# server-side physics (CollectibleGem._on_body_entered runs on server,
+	# calls GameplayRpc.sync_gem_collected).  A client should never need to
+	# call this in a live game.
+	#
+	# If called, validate that the gem actually exists and is not yet collected
+	# on the server world before relaying — never trust the client blindly.
 	var sender_id := multiplayer.get_remote_sender_id()
-	if not server_players.has(sender_id):
+	if sender_id != 0 and not (sender_id in connected_players):
 		return
-	var body = server_players[sender_id]["body"]
-	if _world_root == null:
+
+	# Find the gem node in the authoritative world and check its collected flag.
+	var gem_node: Node = null
+	if is_instance_valid(_world_root):
+		gem_node = _world_root.get_node_or_null(gem_path)
+	
+	if gem_node == null:
+		s_print("[Server] rpc_request_collect_gem: gem not found '%s' (ignored)" % gem_path)
 		return
-	var gem = _world_root.get_node_or_null(gem_path)
-	if gem != null and gem.has_method("can_collect"):
-		if gem.get("_is_collected"):
+		
+	# Reject if already collected according to server state.
+	if "_is_collected" in gem_node and bool(gem_node.get("_is_collected")):
+		s_print("[Server] rpc_request_collect_gem: gem already collected '%s' (ignored)" % gem_path)
+		return
+
+	# Enforce server-side distance and functionality validation to prevent exploits
+	if server_players.has(sender_id):
+		var body = server_players[sender_id]["body"]
+		if gem_node.has_method("can_collect") and not gem_node.can_collect(body):
 			return
-		if not gem.can_collect(body):
+		var dist = body.global_position.distance_to(gem_node.global_position)
+		if dist >= 60.0:
 			return
-		var dist = body.global_position.distance_to(gem.global_position)
-		if dist < 60.0:
-			gem.set("_is_collected", true)
-			for pid in connected_players:
-				rpc_id(pid, "sync_collect_gem", gem_path)
+	
+	# Mark collected internally so it can't be double collected before deletion
+	if "_is_collected" in gem_node:
+		gem_node.set("_is_collected", true)
+
+	# Server-side gem state is authoritative; this relay is only reached in
+	# offline/debug mode.  In online play the gem node triggers its own RPC.
+	s_print("[Server] rpc_request_collect_gem: relaying '%s' from peer %d" % [gem_path, sender_id])
+	for pid: int in connected_players:
+		rpc_id(pid, "sync_collect_gem", gem_path)
 
 @rpc("authority", "call_local", "reliable")
 func sync_collect_gem(_gem_path: String) -> void:
 	pass
 
+# ------------------------------------------------------------------
+# DISABLED — server now drives player_failed via prototype_level.gd
+# which calls GameplayRpc.sync_player_failed after verifying the
+# collision on its own physics world.  Clients must NOT self-report
+# failure; any such call is ignored with a warning.
+# ------------------------------------------------------------------
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_player_failed() -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
-	if not server_players.has(sender_id):
-		return
-	for pid in connected_players:
-		rpc_id(pid, "sync_player_failed")
+	s_print("[Server] WARNING: rpc_request_player_failed called by peer %d — ignored (server-authoritative)." % sender_id)
+	# No-op: server determines player failure from its own physics simulation.
 
 @rpc("authority", "call_local", "reliable")
 func sync_player_failed() -> void:
 	pass
 
+# ------------------------------------------------------------------
+# DISABLED — server now drives level_completed via prototype_level.gd
+# which calls GameplayRpc.sync_level_completed after verifying exit
+# door and gem conditions on the server world.  Client requests are
+# ignored to prevent spoofing.
+# ------------------------------------------------------------------
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_level_completed() -> void:
-	if _world_root != null and _world_root.get("_is_completed") == true:
-		for pid in connected_players:
-			rpc_id(pid, "sync_level_completed")
+	var sender_id := multiplayer.get_remote_sender_id()
+	s_print("[Server] WARNING: rpc_request_level_completed called by peer %d — ignored (server-authoritative)." % sender_id)
+	# No-op: server determines level completion from its own physics simulation.
 
 @rpc("authority", "call_local", "reliable")
 func sync_level_completed() -> void:
 	pass
+
+# ------------------------------------------------------------------
+# Fallback broadcast helpers — called by prototype_level.gd when
+# GameplayRPC autoload is not in the scene tree (e.g. headless server
+# that has not added GameplayRPC as an autoload).  These forward the
+# event to every connected client using the NetworkManager's own
+# registered RPC stubs.
+# ------------------------------------------------------------------
+
+func _broadcast_player_failed_rpc(failed_player_id: int) -> void:
+	var rpc_node := get_node_or_null("/root/GameplayRpc")
+	if rpc_node == null:
+		rpc_node = get_node_or_null("/root/GameplayRPC")
+	if rpc_node != null:
+		rpc_node.rpc("sync_player_failed", failed_player_id)
+		return
+	# GameplayRPC not present — use NetworkManager stubs as last resort.
+	for pid: int in connected_players:
+		rpc_id(pid, "receive_player_failed_event", failed_player_id)
+
+func _broadcast_level_completed_rpc() -> void:
+	var rpc_node := get_node_or_null("/root/GameplayRpc")
+	if rpc_node == null:
+		rpc_node = get_node_or_null("/root/GameplayRPC")
+	if rpc_node != null:
+		rpc_node.rpc("sync_level_completed")
+		return
+	# GameplayRPC not present — use NetworkManager stubs as last resort.
+	for pid: int in connected_players:
+		rpc_id(pid, "receive_level_completed_event")
+
+# Client-side receive stubs for the last-resort path above.
+@rpc("authority", "call_remote", "reliable")
+func receive_player_failed_event(_failed_player_id: int) -> void:
+	pass  # Handled by client NetworkManager signal → GameManager
+
+@rpc("authority", "call_remote", "reliable")
+func receive_level_completed_event() -> void:
+	pass  # Handled by client NetworkManager signal → GameManager
 
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_restart_level() -> void:
