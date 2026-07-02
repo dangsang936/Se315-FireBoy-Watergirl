@@ -339,6 +339,14 @@ func sync_level_completed() -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "reliable")
+func rpc_request_next_level(level_index: int) -> void:
+	rpc("sync_next_level", level_index)
+
+@rpc("authority", "call_local", "reliable")
+func sync_next_level(_level_index: int) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
 func rpc_request_restart_level() -> void:
 	rpc("sync_restart_level")
 

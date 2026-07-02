@@ -3,16 +3,20 @@ extends CanvasLayer
 
 signal restart_requested
 signal resume_requested
+signal next_level_requested
 
 @onready var _status_label: Label = $Root/MarginContainer/VBoxContainer/StatusLabel as Label
 @onready var _gem_label: Label = $Root/MarginContainer/VBoxContainer/GemLabel as Label
 @onready var _hint_label: Label = $Root/MarginContainer/VBoxContainer/HintLabel as Label
 @onready var _pause_menu: PrototypePauseMenu = $PauseMenu as PrototypePauseMenu
+@onready var _level_complete_overlay: LevelCompleteOverlay = $LevelCompleteOverlay as LevelCompleteOverlay
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_pause_menu.restart_requested.connect(_on_pause_menu_restart_requested)
 	_pause_menu.resume_requested.connect(_on_pause_menu_resume_requested)
+	_level_complete_overlay.play_again_requested.connect(_on_level_complete_play_again_requested)
+	_level_complete_overlay.next_level_requested.connect(_on_level_complete_next_level_requested)
 	set_paused(false)
 	set_gem_progress(0, 0)
 	show_status("Loading prototype...", false)
@@ -33,8 +37,21 @@ func set_gem_progress(collected: int, required: int) -> void:
 	_gem_label.visible = true
 	_gem_label.text = "Gems: %s/%s" % [collected, required]
 
+func show_level_complete(has_next_level: bool) -> void:
+	_level_complete_overlay.show_complete(has_next_level)
+	_hint_label.visible = false
+
+func hide_level_complete() -> void:
+	_level_complete_overlay.hide_complete()
+
 func _on_pause_menu_restart_requested() -> void:
 	restart_requested.emit()
 
 func _on_pause_menu_resume_requested() -> void:
 	resume_requested.emit()
+
+func _on_level_complete_play_again_requested() -> void:
+	restart_requested.emit()
+
+func _on_level_complete_next_level_requested() -> void:
+	next_level_requested.emit()

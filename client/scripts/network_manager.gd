@@ -17,6 +17,7 @@ signal peer_disconnected(peer_id: int)
 signal gem_collected_received(gem_path: String)
 signal player_failed_received
 signal level_completed_received
+signal next_level_received(level_index: int)
 signal restart_level_received
 signal pressure_button_state_received(button_path: String, is_pressed: bool)
 signal push_block_state_received(block_path: String, pos: Vector2, rot: float, linear_velocity: Vector2, angular_velocity: float)
@@ -253,6 +254,19 @@ func rpc_request_level_completed() -> void:
 @rpc("authority", "call_local", "reliable")
 func sync_level_completed() -> void:
 	level_completed_received.emit()
+
+func send_next_level(level_index: int) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "rpc_request_next_level", level_index)
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_next_level(_level_index: int) -> void:
+	pass
+
+@rpc("authority", "call_local", "reliable")
+func sync_next_level(level_index: int) -> void:
+	next_level_received.emit(level_index)
 
 func send_restart_level() -> void:
 	if not is_connected_to_server():

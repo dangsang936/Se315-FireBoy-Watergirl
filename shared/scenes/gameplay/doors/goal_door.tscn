@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://shared/scripts/gameplay/doors/goal_door.gd" id="1_goal_door"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_goal_door"]
+size = Vector2(34, 62)
+
+[node name="GoalDoor" type="Area2D"]
+collision_layer = 64
+collision_mask = 2
+script = ExtResource("1_goal_door")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_goal_door")

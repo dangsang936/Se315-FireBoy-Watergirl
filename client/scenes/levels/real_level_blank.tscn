@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://shared/scripts/gameplay/levels/prototype_level.gd" id="1_level"]
 [ext_resource type="Script" uid="uid://f726xissaotg" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
-[ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://shared/scripts/gameplay/doors/exit_door.gd" id="3_exit"]
+[ext_resource type="PackedScene" path="res://shared/scenes/gameplay/doors/goal_door.tscn" id="3_goal_door"]
 [ext_resource type="Texture2D" uid="uid://bktksl4tet7u8" path="res://assets/sprites/environment/background.png" id="4_drtrc"]
 [ext_resource type="TileSet" uid="uid://d4axx7k7dkrm4" path="res://assets/tilesets/tileset.tres" id="4_gkpaa"]
 [ext_resource type="Texture2D" uid="uid://dmrryf0n21bh8" path="res://assets/sprites/environment/midground.png" id="5_7tvm4"]
@@ -17,9 +17,6 @@
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hazard"]
 size = Vector2(128, 27)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
-size = Vector2(34, 62)
 
 [sub_resource type="Environment" id="Environment_7tvm4"]
 background_mode = 3
@@ -116,18 +113,17 @@ shape = SubResource("RectangleShape2D_hazard")
 
 [node name="Goals" type="Node2D" parent="." unique_id=1090063674]
 
-[node name="ExitDoor" type="Area2D" parent="Goals" unique_id=1861265908]
+[node name="FireDoor" parent="Goals" instance=ExtResource("3_goal_door")]
 position = Vector2(96, -42)
 collision_layer = 64
 collision_mask = 2
-script = ExtResource("3_exit")
+required_element = 0
 
-[node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor" unique_id=1758419958]
-color = Color(0.95, 0.72, 0.18, 0.85)
-polygon = PackedVector2Array(-17, -31, 17, -31, 17, 31, -17, 31)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Goals/ExitDoor" unique_id=1751659209]
-shape = SubResource("RectangleShape2D_exit")
+[node name="WaterDoor" parent="Goals" instance=ExtResource("3_goal_door")]
+position = Vector2(144, -42)
+collision_layer = 64
+collision_mask = 2
+required_element = 1
 
 [node name="Puzzles" type="Node2D" parent="." unique_id=634451493]
 

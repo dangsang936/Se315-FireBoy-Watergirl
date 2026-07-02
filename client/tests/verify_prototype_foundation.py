@@ -17,6 +17,7 @@ REQUIRED_FILES = [
 	"scenes/players/watergirl.tscn",
 	"scenes/levels/prototype_level.tscn",
 	"scenes/levels/real_level_blank.tscn",
+	"scenes/ui/level_complete_overlay.tscn",
 	"scenes/ui/hud.tscn",
 	"scenes/ui/host_waiting_room.tscn",
 	"scenes/menus/pause_menu.tscn",
@@ -37,6 +38,7 @@ REQUIRED_FILES = [
 	"scripts/player/states/climb_state.gd",
 	"scripts/player/states/disabled_state.gd",
 	"scripts/ui/hud/hud.gd",
+	"scripts/ui/level_complete_overlay.gd",
 	"scripts/ui/host_waiting_room.gd",
 	"scripts/ui/menus/pause_menu.gd",
 	"scenes/gameplay/objects/ladder.tscn",
@@ -59,12 +61,14 @@ REQUIRED_REPO_FILES = [
 	"shared/scripts/gameplay/levels/prototype_level.gd",
 	"shared/scripts/gameplay/hazards/hazard_zone.gd",
 	"shared/scripts/gameplay/doors/exit_door.gd",
+	"shared/scripts/gameplay/doors/goal_door.gd",
 	"shared/scripts/gameplay/collectibles/collectible_gem.gd",
 	"shared/scripts/gameplay/collectibles/gem_manager.gd",
 	"shared/scripts/gameplay/objects/push_block.gd",
 	"shared/scripts/gameplay/objects/ladder.gd",
 	"shared/scenes/gameplay/collectibles/collectible_gem.tscn",
 	"shared/scenes/gameplay/objects/push_block.tscn",
+	"shared/scenes/gameplay/doors/goal_door.tscn",
 ]
 
 REQUIRED_ACTIONS = ["move_left", "move_right", "jump", "pause", "restart"]
@@ -224,10 +228,10 @@ def check_scene_contracts(failures: list[str]) -> None:
 			require(f'name="{state_name}"' in player_text, f"{player_scene_name} missing additive {state_name}", failures)
 
 	level_text = read(CLIENT_ROOT / "scenes" / "levels" / "prototype_level.tscn")
-	for node_name in ["Players", "PlayerSpawn", "Terrain", "Objects", "Collectibles", "Hazards", "Goals", "ExitDoor", "HazardZone", "LavaPool", "PoisonPool"]:
+	for node_name in ["Players", "PlayerSpawn", "Terrain", "Objects", "Collectibles", "Hazards", "Goals", "HazardZone", "LavaPool", "PoisonPool"]:
 		require(f'name="{node_name}"' in level_text, f"Level missing {node_name}", failures)
 	real_level_text = read(CLIENT_ROOT / "scenes" / "levels" / "real_level_blank.tscn")
-	for node_name in ["Players", "PlayerSpawn", "Terrain", "Objects", "Hazards", "Goals", "ExitDoor", "HazardZone", "LavaPool", "PoisonPool"]:
+	for node_name in ["Players", "PlayerSpawn", "Terrain", "Objects", "Hazards", "Goals", "FireDoor", "WaterDoor", "HazardZone", "LavaPool", "PoisonPool"]:
 		require(f'name="{node_name}"' in real_level_text, f"Real blank level missing {node_name}", failures)
 	require("res://shared/scripts/gameplay/levels/prototype_level.gd" in real_level_text, "Real blank level missing level script", failures)
 	require("res://shared/scripts/gameplay/hazards/hazard_zone.gd" in real_level_text, "Real blank level missing hazard script", failures)
@@ -241,6 +245,40 @@ def check_scene_contracts(failures: list[str]) -> None:
 	require('type="CanvasLayer"' in hud_text, "HUD root is not CanvasLayer", failures)
 	require("res://scenes/menus/pause_menu.tscn" in hud_text, "HUD missing pause menu", failures)
 	require('name="GemLabel"' in hud_text, "HUD missing persistent gem count label", failures)
+
+
+def check_goal_door_contracts(failures: list[str]) -> None:
+	for level_name in ["real_level_blank.tscn", "real_level_blank_2.tscn"]:
+		level_path = CLIENT_ROOT / "scenes" / "levels" / level_name
+		require(level_path.exists(), f"Missing {level_name}", failures)
+		if not level_path.exists():
+			continue
+		text = read(level_path)
+		for snippet in [
+			'path="res://shared/scenes/gameplay/doors/goal_door.tscn"',
+			'name="FireDoor"',
+			'name="WaterDoor"',
+			"required_element = 0",
+			"required_element = 1",
+			'name="Collectibles"',
+			'name="FireGem"',
+			'name="WaterGem"',
+			'name="PlayerSpawn"',
+		]:
+			require(snippet in text, f"{level_name} missing goal door contract snippet: {snippet}", failures)
+		require("ExitDoor" not in text, f"{level_name} must use FireDoor/WaterDoor, not legacy ExitDoor", failures)
+		require("PlayerSpawn2" not in text, f"{level_name} must use the shared PlayerSpawn, not PlayerSpawn2", failures)
+		require("player_spawn_2_path" not in text, f"{level_name} must not override player_spawn_2_path", failures)
+
+	prototype_text = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "levels" / "prototype_level.gd")
+	for snippet in [
+		"fire_goal_door_path",
+		"water_goal_door_path",
+		"_try_complete_level",
+		"_fire_door_ready",
+		"_water_door_ready",
+	]:
+		require(snippet in prototype_text, f"PrototypeLevel missing dual-door logic: {snippet}", failures)
 
 	host_waiting_room_text = read(CLIENT_ROOT / "scenes" / "ui" / "host_waiting_room.tscn")
 	require("res://scripts/ui/host_waiting_room.gd" in host_waiting_room_text, "Host waiting room missing script", failures)
@@ -658,6 +696,7 @@ def main() -> int:
 	check_shared_project_links(failures)
 	if not failures:
 		check_scene_contracts(failures)
+		check_goal_door_contracts(failures)
 		check_scripts(failures)
 		check_collision_contracts(failures)
 		check_multiplayer_gameplay_sync_contracts(failures)

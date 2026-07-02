@@ -5,17 +5,17 @@
 [ext_resource type="Texture2D" uid="uid://dmrryf0n21bh8" path="res://assets/sprites/environment/midground.png" id="3_x0fpl"]
 [ext_resource type="Texture2D" uid="uid://s31g3j2nk0q" path="res://assets/sprites/environment/foreground.png" id="4_f2bob"]
 [ext_resource type="Script" uid="uid://f726xissaotg" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="5_bd8vq"]
-[ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://shared/scripts/gameplay/doors/exit_door.gd" id="6_iu5ms"]
+[ext_resource type="PackedScene" path="res://shared/scenes/gameplay/doors/goal_door.tscn" id="6_goal_door"]
 [ext_resource type="PackedScene" uid="uid://dna1u41hm35q5" path="res://scenes/gameplay/objects/bridge_platform.tscn" id="7_caf0q"]
 [ext_resource type="TileSet" uid="uid://d4axx7k7dkrm4" path="res://assets/tilesets/tileset.tres" id="8_cjp6q"]
 [ext_resource type="Script" uid="uid://cvmrbef7tkkam" path="res://scripts/core/scene_loader/foreground.gd" id="9_mwk3u"]
 [ext_resource type="PackedScene" uid="uid://dqlxrcj1uh05n" path="res://scenes/gameplay/objects/pressure_button.tscn" id="10_kof2x"]
+[ext_resource type="PackedScene" uid="uid://cft0awxeimp16" path="res://scenes/gameplay/collectibles/fire_gem.tscn" id="11_fire_gem"]
+[ext_resource type="PackedScene" uid="uid://dkg4y5xxe05qk" path="res://scenes/gameplay/collectibles/water_gem.tscn" id="12_water_gem"]
+[ext_resource type="Script" uid="uid://d0g6k1xxrbf0y" path="res://shared/scripts/gameplay/collectibles/gem_manager.gd" id="13_gem_manager"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hazard"]
 size = Vector2(128, 27)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
-size = Vector2(34, 62)
 
 [sub_resource type="Environment" id="Environment_7tvm4"]
 background_mode = 3
@@ -94,19 +94,17 @@ shape = SubResource("RectangleShape2D_hazard")
 
 [node name="Goals" type="Node2D" parent="." unique_id=1090063674]
 
-[node name="ExitDoor" type="Area2D" parent="Goals" unique_id=1861265908]
+[node name="FireDoor" parent="Goals" instance=ExtResource("6_goal_door")]
 position = Vector2(96, -42)
 collision_layer = 64
 collision_mask = 2
-script = ExtResource("6_iu5ms")
+required_element = 0
 
-[node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor" unique_id=1758419958]
-color = Color(0.95, 0.72, 0.18, 0.85)
-polygon = PackedVector2Array(-17, -31, 17, -31, 17, 31, -17, 31)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Goals/ExitDoor" unique_id=1751659209]
-position = Vector2(-5, -31)
-shape = SubResource("RectangleShape2D_exit")
+[node name="WaterDoor" parent="Goals" instance=ExtResource("6_goal_door")]
+position = Vector2(144, -42)
+collision_layer = 64
+collision_mask = 2
+required_element = 1
 
 [node name="Puzzles" type="Node2D" parent="." unique_id=634451493]
 
@@ -125,6 +123,15 @@ visual_layer_path = NodePath("Visual")
 [node name="Terrain" type="Node2D" parent="." unique_id=182746802]
 
 [node name="Objects" type="Node2D" parent="." unique_id=182746803]
+
+[node name="Collectibles" type="Node2D" parent="."]
+script = ExtResource("13_gem_manager")
+
+[node name="FireGem" parent="Collectibles" instance=ExtResource("11_fire_gem")]
+position = Vector2(520, 560)
+
+[node name="WaterGem" parent="Collectibles" instance=ExtResource("12_water_gem")]
+position = Vector2(888, 560)
 
 [node name="tilemap" type="Node2D" parent="." unique_id=1481712616]
 
