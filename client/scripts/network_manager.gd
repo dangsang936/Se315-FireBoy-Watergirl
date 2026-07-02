@@ -190,17 +190,6 @@ func send_stop_movement() -> void:
 	}
 	rpc_id(1, "relay_player_snapshot", multiplayer.get_unique_id(), stop_snapshot, current_tick)
 
-func send_stop_movement() -> void:
-	if not is_connected_to_server():
-		return
-	var stop_snapshot := {
-		"pos": Vector2.ZERO,
-		"vel": Vector2.ZERO,
-		"anim": "idle",
-		"flip_h": false,
-	}
-	rpc_id(1, "relay_player_snapshot", multiplayer.get_unique_id(), stop_snapshot, current_tick)
-
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
 	pass

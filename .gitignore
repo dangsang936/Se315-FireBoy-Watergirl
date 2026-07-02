@@ -376,7 +376,11 @@ MigrationBackup/
 FodyWeavers.xsd
 /README.md
 
-#toll 
+# Shared source is canonical at /shared; client/server shared are local links.
+/client/shared/
+/server/shared/
+
+#toll
 .codegraph/
 # AI/ML generated artifacts
 # Model checkpoints, weights, serialized tensors
