@@ -397,16 +397,9 @@ func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -
 	pass  # No-op: server does not trust client-supplied position data.
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func server_receive_movement_input(packet: Dictionary) -> void:
-	var sender := multiplayer.get_remote_sender_id()
-	if sender == 0 or not (sender in connected_players):
-		return
-	latest_inputs[sender] = _sanitize_input_packet(packet)
-
-@rpc("any_peer", "call_remote", "unreliable_ordered")
-func receive_player_input(player_id: int, packet: Dictionary) -> void:
+func rpc_submit_input(packet: Dictionary) -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
-	if sender_id == 0 or sender_id != player_id or not (sender_id in connected_players):
+	if sender_id == 0 or not (sender_id in connected_players):
 		return
 	latest_inputs[sender_id] = _sanitize_input_packet(packet)
 

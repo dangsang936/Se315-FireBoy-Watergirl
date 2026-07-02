@@ -140,7 +140,7 @@ func send_snapshot(snapshot: Dictionary, tick: int) -> void:
 func send_player_input(packet: Dictionary) -> void:
 	if not is_connected_to_server():
 		return
-	rpc_id(1, "receive_player_input", multiplayer.get_unique_id(), packet)
+	rpc_id(1, "rpc_submit_input", packet)
 
 func send_stop_movement() -> void:
 	if not is_connected_to_server():
@@ -598,11 +598,7 @@ func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -
 	pass
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func server_receive_movement_input(_packet: Dictionary) -> void:
-	pass
-
-@rpc("any_peer", "call_remote", "unreliable_ordered")
-func receive_player_input(_player_id: int, _packet: Dictionary) -> void:
+func rpc_submit_input(_packet: Dictionary) -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "reliable")
