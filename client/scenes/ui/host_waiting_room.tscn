@@ -78,3 +78,8 @@ layout_mode = 2
 focus_mode = 2
 disabled = true
 text = "Start Game"
+
+[node name="LeaveRoomButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+focus_mode = 2
+text = "Leave Room"

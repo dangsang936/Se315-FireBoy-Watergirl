@@ -10,6 +10,7 @@ const WATERGIRL_ROLE: int = 1
 @onready var watergirl_button: Button = $VBoxContainer/RoleButtons/WatergirlButton
 @onready var player_list_label: Label = $VBoxContainer/PlayerList
 @onready var start_game_button: Button = $VBoxContainer/StartGameButton
+@onready var leave_room_button: Button = $VBoxContainer/LeaveRoomButton
 
 func _ready() -> void:
 	if not fireboy_button.pressed.is_connected(_on_fireboy_pressed):
@@ -18,6 +19,8 @@ func _ready() -> void:
 		watergirl_button.pressed.connect(_on_watergirl_pressed)
 	if not start_game_button.pressed.is_connected(_on_start_game_pressed):
 		start_game_button.pressed.connect(_on_start_game_pressed)
+	if not leave_room_button.pressed.is_connected(_on_leave_room_pressed):
+		leave_room_button.pressed.connect(_on_leave_room_pressed)
 	_connect_network_signals()
 	fireboy_button.grab_focus()
 	_refresh_lobby()
@@ -116,6 +119,12 @@ func _on_start_game_pressed() -> void:
 	start_game_button.disabled = true
 	status_label.text = "Starting game..."
 	NetworkManager.start_game()
+
+func _on_leave_room_pressed() -> void:
+	leave_room_button.disabled = true
+	status_label.text = "Leaving room..."
+	NetworkManager.disconnect_from_server()
+	SceneLoader.load_scene("res://scenes/menus/main_menu.tscn")
 
 func _on_fireboy_pressed() -> void:
 	NetworkManager.rpc_request_role(FIREBOY_ROLE)

@@ -82,8 +82,9 @@ func _reset_connection_state(close_peer: bool = true) -> void:
 	if is_host:
 		unregister_room()
 		cleanup_upnp()
+		_stop_hosted_server_process()
 		is_host = false
-	
+
 	if multiplayer.peer_connected.is_connected(_on_client_peer_connected):
 		multiplayer.peer_connected.disconnect(_on_client_peer_connected)
 	if multiplayer.peer_disconnected.is_connected(_on_client_peer_disconnected):
@@ -212,6 +213,14 @@ func _start_server_process(port: int) -> Error:
 		return FAILED
 	return OK
 
+func _stop_hosted_server_process() -> void:
+	if hosted_server_pid <= 0:
+		return
+	var kill_error := OS.kill(hosted_server_pid)
+	if kill_error != OK:
+		printerr("[Client] Failed to stop hosted server process %d: %s" % [hosted_server_pid, error_string(kill_error)])
+	hosted_server_pid = -1
+
 func _get_server_project_path() -> String:
 	var client_project_path := ProjectSettings.globalize_path("res://")
 	return client_project_path.path_join("../server").simplify_path()
@@ -230,6 +239,7 @@ func _disconnect_host_room_result_signals() -> void:
 
 func _on_host_room_connected() -> void:
 	_disconnect_host_room_result_signals()
+	is_host = true
 	room_created.emit()
 
 func _on_host_room_connection_failed() -> void:
@@ -500,6 +510,7 @@ func cleanup_upnp() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
 		cleanup_upnp()
+		_stop_hosted_server_process()
 		if _upnp_thread and _upnp_thread.is_started():
 			_upnp_thread.wait_to_finish()
 
