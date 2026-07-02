@@ -588,6 +588,24 @@ func receive_player_sync(packet: Dictionary) -> void:
 	if player_id == multiplayer.get_unique_id():
 		authoritative_player_snapshot_received.emit(player_id, snapshot)
 
+# Batched world snapshot — sent by the server at SNAPSHOT_SEND_RATE Hz instead
+# of a separate receive_player_sync call per player per frame.
+# packet = { "players": [ { "id", "t", "ack_tick", "pos", "vel", "on_floor",
+#                            "anim", "flip_h" }, … ] }
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_world_snapshot(packet: Dictionary) -> void:
+	var my_id := multiplayer.get_unique_id()
+	var entries: Array = packet.get("players", [])
+	for entry in entries:
+		var player_id := int(entry.get("id", 0))
+		if player_id == 0:
+			continue
+		var snapshot := _snapshot_from_player_sync(entry)
+		var tick := int(snapshot.get("ack_tick", entry.get("t", current_tick)))
+		remote_player_snapshot_received.emit(player_id, snapshot, tick)
+		if player_id == my_id:
+			authoritative_player_snapshot_received.emit(player_id, snapshot)
+
 # LEGACY — relay_player_snapshot is the old client-authoritative RPC where
 # clients pushed their own position to be relayed to peers.  In authorized
 # server mode the server never reads this; it only processes receive_player_input.
