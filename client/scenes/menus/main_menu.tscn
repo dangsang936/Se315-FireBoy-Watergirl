@@ -1,48 +1,46 @@
 [gd_scene format=3 uid="uid://dkyup2e3ns66t"]
 
 [ext_resource type="PackedScene" uid="uid://c6k5nnpbypshi" path="res://addons/maaacks_game_template/base/nodes/menus/main_menu/main_menu.tscn" id="1_v1muj"]
-[ext_resource type="Script" path="res://scenes/menus/main_menu.gd" id="2_u25km"]
+[ext_resource type="Script" uid="uid://8nicxtfpp5hn" path="res://scenes/menus/main_menu.gd" id="2_u25km"]
 [ext_resource type="PackedScene" uid="uid://dum2pujhh1w4g" path="res://addons/maaacks_game_template/examples/scenes/windows/main_menu_options_window.tscn" id="3_s4jhm"]
 
-[node name="MainMenu" instance=ExtResource("1_v1muj")]
+[node name="MainMenu" unique_id=1206329648 instance=ExtResource("1_v1muj")]
 script = ExtResource("2_u25km")
 game_scene_path = "res://scenes/bootstrap/game.tscn"
 options_packed_scene = ExtResource("3_s4jhm")
-confirm_exit = true
 
-[node name="NewGameButton" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer"]
-text = "Create Room"
+[node name="TitleLabel" parent="MenuContainer/TitleMargin/TitleContainer" parent_id_path=PackedInt32Array(556427956) index="0" unique_id=359406872]
+text = "client"
+
+[node name="SubTitleLabel" parent="MenuContainer/SubTitleMargin/SubTitleContainer" parent_id_path=PackedInt32Array(930520368) index="0" unique_id=1037003361]
+text = "Co-op Puzzle Platformer"
+
+[node name="NewGameButton" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer" parent_id_path=PackedInt32Array(2017477786) index="0" unique_id=2044537792]
 focus_neighbor_bottom = NodePath("../JoinRoomButton")
+text = "Create Room"
 
-[node name="JoinRoomButton" type="Button" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer" parent_id_path=PackedInt32Array(2017477786) index="1"]
+[node name="JoinRoomButton" type="Button" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer" parent_id_path=PackedInt32Array(2017477786) index="1" unique_id=475875664]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Join Room"
 focus_neighbor_top = NodePath("../NewGameButton")
 focus_neighbor_bottom = NodePath("../OptionsButton")
+text = "Join Room"
 
-[node name="OptionsButton" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer"]
-text = "Settings"
+[node name="OptionsButton" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer" parent_id_path=PackedInt32Array(2017477786) index="2" unique_id=1486236076]
 focus_neighbor_top = NodePath("../JoinRoomButton")
 focus_neighbor_bottom = NodePath("../ExitButton")
+text = "Settings"
 
-[node name="CreditsButton" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer"]
+[node name="CreditsButton" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer" parent_id_path=PackedInt32Array(2017477786) index="3" unique_id=301223169]
 visible = false
 
-[node name="ExitButton" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer"]
-text = "Exit"
+[node name="ExitButton" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer" parent_id_path=PackedInt32Array(2017477786) index="4" unique_id=1750454379]
 focus_neighbor_top = NodePath("../OptionsButton")
 
-[node name="StatusLabel" type="Label" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer"]
+[node name="StatusLabel" type="Label" parent="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer" parent_id_path=PackedInt32Array(2017477786) index="5" unique_id=1623671319]
 unique_name_in_owner = true
 layout_mode = 2
-horizontal_alignment = 1
 theme_override_font_sizes/font_size = 14
-
-[node name="TitleLabel" parent="MenuContainer/TitleMargin/TitleContainer"]
-text = "FireWater Online"
-
-[node name="SubTitleLabel" parent="MenuContainer/SubTitleMargin/SubTitleContainer"]
-text = "Co-op Puzzle Platformer"
+horizontal_alignment = 1
 
 [connection signal="pressed" from="MenuContainer/MenuButtonsMargin/MenuButtonsContainer/MenuButtonsBoxContainer/JoinRoomButton" to="." method="_on_join_room_button_pressed"]

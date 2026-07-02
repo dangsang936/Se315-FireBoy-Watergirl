@@ -17,7 +17,7 @@ const PLAYER_MAX_FALL_SPEED: float = 330.0
 const PLAYER_FAST_FALL_GRAVITY_MULTIPLIER: float = 1.25
 const PLAYER_ANIMATION_MOVE_THRESHOLD: float = 5.0
 const SNAPSHOT_SEND_RATE: float = 20.0  # Hz — server broadcasts world state at this rate
-const PROTOTYPE_LEVEL_PHYSICS_SCENE: PackedScene = preload("res://shared/scenes/levels/prototype_level.tscn")
+const REAL_LEVEL_BLANK_SCENE: PackedScene = preload("res://shared/scenes/levels/real_level_blank.tscn")
 const PLAYERS_PATH: NodePath = ^"Players"
 const PLAYER_SPAWN_PATH: NodePath = ^"Players/PlayerSpawn"
 const PLAYER_SPAWN_2_PATH: NodePath = ^"Players/PlayerSpawn2"
@@ -155,9 +155,9 @@ func _assign_role(sender_id: int, role: int) -> void:
 	_broadcast_player_list()
 
 func _create_movement_world() -> void:
-	_world_root = PROTOTYPE_LEVEL_PHYSICS_SCENE.instantiate() as Node2D
+	_world_root = REAL_LEVEL_BLANK_SCENE.instantiate() as Node2D
 	if _world_root == null:
-		push_error("[Server] Failed to instantiate prototype level physics scene.")
+		push_error("[Server] Failed to instantiate shared real_level_blank scene.")
 		return
 
 	_world_root.name = "AuthoritativeMovementWorld"

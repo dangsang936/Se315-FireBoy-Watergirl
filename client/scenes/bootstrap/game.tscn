@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://c23o5l0s8gsmd"]
 
 [ext_resource type="Script" uid="uid://l5jrvc7f52j2" path="res://scripts/core/game_manager/game_manager.gd" id="1_game"]
-[ext_resource type="PackedScene" uid="uid://bnfjogf41hh0d" path="res://scenes/levels/real_level_blank.tscn" id="2_rieu5"]
+[ext_resource type="PackedScene" uid="uid://c6s76g8r3d4os" path="res://shared/scenes/levels/real_level_blank.tscn" id="2_rieu5"]
 [ext_resource type="PackedScene" uid="uid://ba5pkadh2vkec" path="res://scenes/players/fireboy.tscn" id="3_player"]
 [ext_resource type="PackedScene" uid="uid://bggypmshg45hf" path="res://scenes/ui/hud.tscn" id="4_hud"]
 [ext_resource type="PackedScene" uid="uid://bfpkwqm0ob8qb" path="res://scenes/players/watergirl.tscn" id="watergirl_res"]
