@@ -1,4 +1,3 @@
-# server/network_manager.gd
 extends Node
 
 const DEFAULT_PORT: int = 9999
@@ -150,22 +149,23 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 	var body := CharacterBody2D.new()
 	body.name = "ServerPlayer_%d" % peer_id
 	
-	body.collision_layer = 1
-	body.collision_mask = 1
+	body.collision_layer = 2 # Match client layer
+	body.collision_mask = 5  # Match client mask (1 for World + 4 for PushBlock)
 	body.add_to_group("player")
 	body.set_meta("player_id", peer_id)
 	body.set_meta("element", role)
 
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(10, 10)
+	shape.size = Vector2(16, 24) # Real player size
 	collision.shape = shape
-	collision.position = Vector2(0, -5)
+	collision.position = Vector2(0, -12) # Put feet on floor
 	body.add_child(collision) 
 
 	var parent := _players_root if _players_root != null else _world_root
 	parent.add_child(body)
 	collision.force_update_transform()
+	
 	var spawn := _player_spawn
 	if role == 1 and _player_spawn_2 != null:
 		spawn = _player_spawn_2
