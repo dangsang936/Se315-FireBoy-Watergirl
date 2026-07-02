@@ -269,8 +269,37 @@ func fetch_rooms() -> void:
 			rooms_list_received.emit([])
 	)
 
+## Returns the best LAN IPv4 address of this machine.
+## Skips loopback (127.x, ::1) and IPv6 addresses.
+## Prefers private ranges: 192.168.x.x, 10.x.x.x, 172.16-31.x.x.
+## Returns an empty string if no suitable address is found (master server
+## will then fall back to the TCP source address).
+func get_lan_ip() -> String:
+	var addresses: PackedStringArray = IP.get_local_addresses()
+	var best: String = ""
+	for addr in addresses:
+		# Skip IPv6 and loopback addresses
+		if ":" in addr:
+			continue
+		if addr.begins_with("127."):
+			continue
+		# Check for private IPv4 ranges (prefer these)
+		if addr.begins_with("192.168.") or addr.begins_with("10."):
+			return addr  # Best match – return immediately
+		# 172.16.0.0 – 172.31.255.255
+		if addr.begins_with("172."):
+			var parts := addr.split(".")
+			if parts.size() == 4:
+				var second := parts[1].to_int()
+				if second >= 16 and second <= 31:
+					return addr
+		# Keep as fallback (public / other private IP on this machine)
+		if best == "":
+			best = addr
+	return best
+
 func register_room_to_master(room_name: String, port: int, use_lan: bool = false) -> void:
-	var ip_to_send = "127.0.0.1" if use_lan else ""
+	var ip_to_send: String = get_lan_ip() if use_lan else ""
 	var body = {
 		"name": room_name,
 		"port": port,
