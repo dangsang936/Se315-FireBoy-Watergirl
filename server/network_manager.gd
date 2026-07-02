@@ -16,6 +16,7 @@ const PLAYER_JUMP_BUFFER_TIME: float = 0.10
 const PLAYER_MAX_FALL_SPEED: float = 330.0
 const PLAYER_FAST_FALL_GRAVITY_MULTIPLIER: float = 1.25
 const PLAYER_ANIMATION_MOVE_THRESHOLD: float = 5.0
+const SNAPSHOT_SEND_RATE: float = 20.0  # Hz — server broadcasts world state at this rate
 const PROTOTYPE_LEVEL_PHYSICS_SCENE: PackedScene = preload("res://shared/scenes/levels/prototype_level.tscn")
 const PLAYERS_PATH: NodePath = ^"Players"
 const PLAYER_SPAWN_PATH: NodePath = ^"Players/PlayerSpawn"
@@ -36,6 +37,7 @@ var _player_spawn: Marker2D = null
 var _player_spawn_2: Marker2D = null
 var _gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 var _log_box: RichTextLabel
+var _snapshot_accumulator: float = 0.0
 
 func _ready() -> void:
 	_read_command_line_args()
@@ -46,7 +48,12 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	for peer_id: int in server_players.keys():
 		_simulate_player(peer_id, delta)
-		_broadcast_player_sync(peer_id)
+
+	_snapshot_accumulator += delta
+	var send_interval: float = 1.0 / SNAPSHOT_SEND_RATE
+	if _snapshot_accumulator >= send_interval:
+		_snapshot_accumulator -= send_interval
+		_broadcast_world_snapshot()
 
 func _start_server() -> void:
 	peer = ENetMultiplayerPeer.new()
@@ -301,6 +308,39 @@ func _broadcast_player_sync(peer_id: int) -> void:
 	for pid in connected_players:
 		rpc_id(pid, "receive_player_sync", packet)
 
+# Builds one packet containing all player snapshots and broadcasts it once per
+# send interval.  Replaces the old per-player, per-frame _broadcast_player_sync
+# loop.  Reduces RPC count from (players × clients × 60) to (clients × 20) Hz.
+func _broadcast_world_snapshot() -> void:
+	if connected_players.is_empty() or server_players.is_empty():
+		return
+
+	var players_data: Array = []
+	for peer_id: int in server_players.keys():
+		var state: Dictionary = server_players.get(peer_id, {})
+		var body := state.get("body") as CharacterBody2D
+		if body == null:
+			continue
+		var input: Dictionary = latest_inputs.get(peer_id, _neutral_input())
+		var snapshot := _create_authoritative_snapshot(peer_id)
+		players_data.append({
+			"id": peer_id,
+			"t": int(input.get("t", 0)),
+			"ack_tick": int(snapshot.get("ack_tick", 0)),
+			"pos": snapshot.get("pos", body.global_position),
+			"vel": snapshot.get("vel", body.velocity),
+			"on_floor": bool(snapshot.get("on_floor", false)),
+			"anim": String(snapshot.get("anim", "idle")),
+			"flip_h": bool(snapshot.get("flip_h", false))
+		})
+
+	if players_data.is_empty():
+		return
+
+	var world_packet := { "players": players_data }
+	for pid: int in connected_players:
+		rpc_id(pid, "receive_world_snapshot", world_packet)
+
 func _create_authoritative_snapshot(peer_id: int) -> Dictionary:
 	var state: Dictionary = server_players.get(peer_id, {})
 	var body := state.get("body") as CharacterBody2D
@@ -342,22 +382,6 @@ func s_print(msg: String) -> void:
 # ==================================================================
 # RPC DEFINITIONS
 # ==================================================================
-
-@rpc("any_peer", "call_remote", "reliable")
-func server_request_restart() -> void:
-	s_print("[Server] Restarting world.")
-	if is_instance_valid(_world_root):
-		_world_root.queue_free()
-	server_players.clear()
-	_create_movement_world()
-	for pid in connected_players:
-		if player_roles.has(pid):
-			var role = player_roles[pid]
-			latest_inputs[pid] = _neutral_input()
-			_spawn_server_player(pid, role)
-	for pid in connected_players:
-		rpc_id(pid, "receive_level_restart")
-		rpc_id(pid, "sync_restart_level")
 
 @rpc("authority", "call_remote", "reliable")
 func receive_level_restart() -> void:
@@ -412,21 +436,24 @@ func receive_authoritative_player_snapshot(_player_id: int, _snapshot: Dictionar
 func receive_player_sync(_packet: Dictionary) -> void:
 	pass
 
-@rpc("any_peer", "call_remote", "unreliable_ordered")
-func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_world_snapshot(_packet: Dictionary) -> void:
 	pass
 
+# LEGACY — relay_player_snapshot is the old client-authoritative RPC.
+# In authorized server mode this handler is intentionally a no-op: the server
+# ignores any position data pushed by clients and derives world state solely
+# from receive_player_input → _simulate_player → _broadcast_player_sync.
+# Stub kept so the RPC signature stays registered and stray legacy calls do
+# not cause "unknown RPC" errors on the server.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func server_receive_movement_input(packet: Dictionary) -> void:
-	var sender := multiplayer.get_remote_sender_id()
-	if sender == 0 or not (sender in connected_players):
-		return
-	latest_inputs[sender] = _sanitize_input_packet(packet)
+func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
+	pass  # No-op: server does not trust client-supplied position data.
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func receive_player_input(player_id: int, packet: Dictionary) -> void:
+func rpc_submit_input(packet: Dictionary) -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
-	if sender_id == 0 or sender_id != player_id or not (sender_id in connected_players):
+	if sender_id == 0 or not (sender_id in connected_players):
 		return
 	latest_inputs[sender_id] = _sanitize_input_packet(packet)
 
@@ -479,8 +506,20 @@ func sync_level_completed() -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_restart_level() -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
-	if sender_id == host_peer_id:
-		server_request_restart()
+if sender_id != 0 and not (sender_id in connected_players):
+	return
+s_print("[Server] Restart requested by peer %d. Resetting world." % sender_id)
+if is_instance_valid(_world_root):
+	_world_root.queue_free()
+server_players.clear()
+_create_movement_world()
+for pid in connected_players:
+	if player_roles.has(pid):
+		var role = player_roles[pid]
+		latest_inputs[pid] = _neutral_input()
+		_spawn_server_player(pid, role)
+for pid in connected_players:
+	rpc_id(pid, "sync_restart_level")
 
 @rpc("authority", "call_local", "reliable")
 func sync_restart_level() -> void:

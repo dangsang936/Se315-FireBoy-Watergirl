@@ -105,7 +105,9 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_register_push_block_contacts()
 	_update_player_state(false)
-	_send_network_state()
+	# AUTHORIZED SERVER: position snapshots are NOT sent from client.
+	# Server simulates movement from received inputs and broadcasts
+	# authoritative state back. See _send_network_state() below (legacy/debug only).
 	_state_machine.transition_from_player_context()
 
 func reset_to_spawn(spawn_position: Vector2) -> void:
@@ -231,9 +233,26 @@ func play_motion_animation() -> void:
 func set_player_state_from_state_name(state_name: StringName) -> void:
 	_set_player_state(_enum_for_state_name(state_name))
 
-const NETWORK_SEND_RATE: int = 3
-const POSITION_SEND_THRESHOLD: float = 0.5
-const HEARTBEAT_INTERVAL: int = 60
+# ==================================================================
+# LEGACY — CLIENT SNAPSHOT SEND (do NOT call in authorized server mode)
+# ==================================================================
+# _send_network_state() was the old client-authoritative flow where the
+# client pushed its own position/velocity/animation to the server for
+# relay to peers.  In the authorized server model the server is the sole
+# source of truth: it simulates movement from received inputs and
+# broadcasts authoritative state back to all clients.
+#
+# This function is kept here ONLY for offline debugging or listen-server
+# legacy testing.  It is NEVER called from _physics_process.
+# To re-enable for debug purposes, set _LEGACY_SEND_SNAPSHOT_ENABLED = true
+# locally — do NOT commit that change.
+# ==================================================================
+
+const _LEGACY_SEND_SNAPSHOT_ENABLED: bool = false  # MUST stay false in authorized mode
+
+const NETWORK_SEND_RATE: int = 3           # (legacy) send every 3 physics frames → ~20 Hz
+const POSITION_SEND_THRESHOLD: float = 0.5 # (legacy) only send when moved > 0.5 px
+const HEARTBEAT_INTERVAL: int = 60         # (legacy) heartbeat every ~1 s when idle
 
 var _net_frame_counter: int = 0
 var _frames_since_last_send: int = 0
@@ -244,7 +263,13 @@ var _last_sent_flip_h: bool = false
 func _network_manager() -> Node:
 	return get_node_or_null("/root/" + "Network" + "Manager")
 
+# LEGACY — not called in authorized server flow.
+# Client must NOT send position/snapshot to decide world state.
+# Authoritative data flow: InputReader → send_player_input → server simulate → receive_player_sync → reconcile.
 func _send_network_state() -> void:
+	if not _LEGACY_SEND_SNAPSHOT_ENABLED:
+		return
+
 	var network_manager := _network_manager()
 	if network_manager == null or not bool(network_manager.call("is_connected_to_server")):
 		return

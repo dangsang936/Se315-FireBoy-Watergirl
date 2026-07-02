@@ -3,14 +3,6 @@ extends Control
 const FIREBOY_ROLE: int = 0
 const WATERGIRL_ROLE: int = 1
 
-@onready var ip_input: LineEdit = $VBoxContainer/IPContainer/IPInput
-@onready var port_input: LineEdit = $VBoxContainer/PortContainer/PortInput
-@onready var connect_button: Button = $VBoxContainer/ConnectButton
-@onready var fireboy_button: Button = $VBoxContainer/RoleButtons/FireboyButton
-@onready var watergirl_button: Button = $VBoxContainer/RoleButtons/WatergirlButton
-@onready var status_label: Label = $VBoxContainer/StatusLabel
-@onready var player_list_label: Label = $VBoxContainer/PlayerList
-
 @onready var name_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/NameSection/NameInput"
 @onready var tabs: TabContainer = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs"
 @onready var quick_match_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Matchmaking/VBox/QuickMatchBtn"
@@ -19,8 +11,8 @@ const WATERGIRL_ROLE: int = 1
 @onready var refresh_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Toolbar/RefreshBtn"
 @onready var room_list_container: VBoxContainer = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Server Browser/VBox/Scroll/RoomList"
 
-@onready var ip_input_2: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/IPRow/IPInput"
-@onready var port_input_2: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/PortRow/PortInput"
+@onready var ip_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/IPRow/IPInput"
+@onready var port_input: LineEdit = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/PortRow/PortInput"
 @onready var direct_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/TabPanel/Tabs/Direct Connect/VBox/DirectBtn"
 
 @onready var active_room: VBoxContainer = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom"
@@ -29,7 +21,7 @@ const WATERGIRL_ROLE: int = 1
 @onready var watergirl_name: Label = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom/Slots/WatergirlSlot/Margin/VBox/PlayerName"
 @onready var leave_btn: Button = $"CenterContainer/MainPanel/Margin/Layout/ActiveRoom/LeaveBtn"
 
-@onready var status_label_2: Label = $"CenterContainer/MainPanel/Margin/Layout/StatusLine/StatusLabel"
+@onready var status_label: Label = $"CenterContainer/MainPanel/Margin/Layout/StatusLine/StatusLabel"
 @onready var lan_checkbox: CheckBox = $"CenterContainer/MainPanel/Margin/Layout/StatusLine/LANCheckbox"
 
 # Themes & Styling
@@ -40,15 +32,12 @@ const WATERGIRL_ROLE: int = 1
 
 func _ready() -> void:
 	# Kết nối UI signals
-	connect_button.pressed.connect(_on_direct_pressed)
-	fireboy_button.pressed.connect(_on_fireboy_pressed)
-	watergirl_button.pressed.connect(_on_watergirl_pressed)
 	quick_match_btn.pressed.connect(_on_quick_match_pressed)
 	host_btn.pressed.connect(_on_host_pressed)
 	refresh_btn.pressed.connect(_on_refresh_pressed)
 	direct_btn.pressed.connect(_on_direct_pressed)
 	leave_btn.pressed.connect(_on_leave_pressed)
-	
+
 	# Kết nối NetworkManager signals
 	NetworkManager.connected_to_server.connect(_on_connected_to_server)
 	NetworkManager.connection_failed.connect(_on_connection_failed)
@@ -57,7 +46,7 @@ func _ready() -> void:
 	NetworkManager.role_assigned.connect(_on_role_assigned)
 	NetworkManager.game_started.connect(_on_game_started)
 	NetworkManager.rooms_list_received.connect(_on_rooms_list_received)
-	
+
 	# Apply premium glassmorphic UI styles programmatically
 	_apply_styling()
 	_update_ui_state(false)
@@ -142,7 +131,7 @@ func _update_ui_state(in_room: bool) -> void:
 	name_input.editable = not in_room
 	lan_checkbox.disabled = in_room
 	active_room.visible = in_room
-	
+
 	if not in_room:
 		# Reset slots text
 		fireboy_name.text = "Waiting for player..."
@@ -153,17 +142,18 @@ func _update_ui_state(in_room: bool) -> void:
 func _on_quick_match_pressed() -> void:
 	status_label.text = "Finding a match on master server..."
 	quick_match_btn.disabled = true
-	
-	NetworkManager.request_matchmake(func(status: int, response: Dictionary):
+
+	NetworkManager.request_matchmake(func(code: int, response: Dictionary):
 		quick_match_btn.disabled = false
-		if status == 200:
+		if code == 200:
 			var action = response.get("action", "")
 			if action == "host":
-				status_label.text = "No empty rooms found. Hosting a new matchmaking room..."
-				var name_to_use = name_input.text + "'s Match"
-				var err = NetworkManager.host_game(name_to_use, 9999, lan_checkbox.button_pressed)
-				if err != OK:
-					status_label.text = "Failed to host matchmaking lobby."
+				status_label.text = "No empty rooms found. Starting authorized server for matchmaking..."
+				if not NetworkManager.room_created.is_connected(_on_lobby_room_created):
+					NetworkManager.room_created.connect(_on_lobby_room_created, CONNECT_ONE_SHOT)
+				if not NetworkManager.room_creation_failed.is_connected(_on_lobby_room_failed):
+					NetworkManager.room_creation_failed.connect(_on_lobby_room_failed, CONNECT_ONE_SHOT)
+				NetworkManager.host_room(9999)
 			elif action == "join":
 				var ip = response.get("ip", "127.0.0.1")
 				var port = int(response.get("port", 9999))
@@ -174,14 +164,29 @@ func _on_quick_match_pressed() -> void:
 	)
 
 func _on_host_pressed() -> void:
-	var rname = room_name_input.text.strip_edges()
-	if rname == "":
-		rname = name_input.text + "'s Lobby"
-	
-	status_label.text = "Hosting room: " + rname + "..."
-	var err = NetworkManager.host_game(rname, 9999, lan_checkbox.button_pressed)
-	if err != OK:
-		status_label.text = "Failed to host lobby."
+	host_btn.disabled = true
+	status_label.text = "Starting server..."
+
+	# Connect one-shot signals before calling host_room so we catch the result.
+	if not NetworkManager.room_created.is_connected(_on_lobby_room_created):
+		NetworkManager.room_created.connect(_on_lobby_room_created, CONNECT_ONE_SHOT)
+	if not NetworkManager.room_creation_failed.is_connected(_on_lobby_room_failed):
+		NetworkManager.room_creation_failed.connect(_on_lobby_room_failed, CONNECT_ONE_SHOT)
+
+	NetworkManager.host_room(9999)
+
+func _on_lobby_room_created() -> void:
+	# room_creation_failed one-shot may still be connected if room_created fired first.
+	if NetworkManager.room_creation_failed.is_connected(_on_lobby_room_failed):
+		NetworkManager.room_creation_failed.disconnect(_on_lobby_room_failed)
+	host_btn.disabled = false
+	status_label.text = "Waiting for opponent..."
+
+func _on_lobby_room_failed(reason: String) -> void:
+	if NetworkManager.room_created.is_connected(_on_lobby_room_created):
+		NetworkManager.room_created.disconnect(_on_lobby_room_created)
+	host_btn.disabled = false
+	status_label.text = "Failed to host: " + reason
 
 func _on_refresh_pressed() -> void:
 	status_label.text = "Refreshing room list..."
@@ -234,41 +239,33 @@ func _on_direct_pressed() -> void:
 		ip = "127.0.0.1"
 	if port <= 0:
 		port = 9999
-		
+
 	status_label.text = "Connecting directly to " + ip + ":" + str(port) + "..."
 	NetworkManager.connect_to_server(ip, port)
 
 func _on_leave_pressed() -> void:
 	status_label.text = "Leaving lobby..."
 	NetworkManager.disconnect_from_server()
-
-func _on_connected() -> void:
-	status_label.text = "Connected! Waiting for players..."
-	_update_role_buttons()
+	_update_ui_state(false)
 
 func _on_connected_to_server() -> void:
 	status_label.text = "Connected!"
 	_update_ui_state(true)
-	
+
 	if NetworkManager.is_host:
 		room_title.text = "Lobby: " + room_name_input.text
 	else:
 		room_title.text = "Lobby Room (Connected)"
-	
+
 	# Initial slot rendering
 	_on_player_list_updated(NetworkManager.connected_players)
 
 func _on_connection_failed() -> void:
 	status_label.text = "Connection failed."
-	connect_button.disabled = false
-	player_list_label.text = ""
-	_update_role_buttons()
 
 func _on_disconnected_from_server() -> void:
 	status_label.text = "Disconnected from server."
-	connect_button.disabled = false
-	player_list_label.text = ""
-	_update_role_buttons()
+	_update_ui_state(false)
 
 func _on_player_list_updated(players: Array[int]) -> void:
 	# Clear slots
@@ -276,22 +273,14 @@ func _on_player_list_updated(players: Array[int]) -> void:
 	watergirl_name.text = "Waiting for player..."
 
 	# Determine player tags and update slots
-	var text := "Players:\n"
 	for pid in players:
-		var role := -1
-		var role_name := "Unassigned"
-		if NetworkManager.player_roles.has(pid):
-			role = NetworkManager.player_roles[pid]
-			role_name = "Fireboy" if role == FIREBOY_ROLE else "Watergirl"
+		var role := NetworkManager.player_roles.get(pid, -1)
 		var my_tag := " (You)" if pid == multiplayer.get_unique_id() else ""
 		var player_text := "Peer %d%s" % [pid, my_tag]
 		if role == FIREBOY_ROLE:
 			fireboy_name.text = player_text
 		elif role == WATERGIRL_ROLE:
 			watergirl_name.text = player_text
-		text += "- Peer %d: %s%s\n" % [pid, role_name, my_tag]
-	player_list_label.text = text
-	_update_role_buttons()
 
 func _on_role_assigned(_role: int) -> void:
 	# Force re-render of slot tags
@@ -300,30 +289,3 @@ func _on_role_assigned(_role: int) -> void:
 func _on_game_started() -> void:
 	print("[LobbyUI] Loading gameplay scene res://scenes/bootstrap/game.tscn")
 	SceneLoader.load_scene("res://scenes/bootstrap/game.tscn")
-
-func _update_role_buttons() -> void:
-	var my_peer_id := multiplayer.get_unique_id()
-	var is_connected := NetworkManager.is_connected_to_server()
-	fireboy_button.disabled = not is_connected or _is_role_taken_by_other(FIREBOY_ROLE, my_peer_id)
-	watergirl_button.disabled = not is_connected or _is_role_taken_by_other(WATERGIRL_ROLE, my_peer_id)
-	fireboy_button.text = _get_role_button_text("Fireboy", FIREBOY_ROLE, my_peer_id)
-	watergirl_button.text = _get_role_button_text("Watergirl", WATERGIRL_ROLE, my_peer_id)
-
-func _is_role_taken_by_other(role: int, my_peer_id: int) -> bool:
-	for peer_id in NetworkManager.player_roles:
-		if peer_id != my_peer_id and NetworkManager.player_roles[peer_id] == role:
-			return true
-	return false
-
-func _get_role_button_text(label: String, role: int, my_peer_id: int) -> String:
-	if NetworkManager.player_roles.get(my_peer_id, -1) == role:
-		return "%s (You)" % label
-	if _is_role_taken_by_other(role, my_peer_id):
-		return "%s (Taken)" % label
-	return label
-
-func _on_fireboy_pressed() -> void:
-	NetworkManager.request_role(FIREBOY_ROLE)
-
-func _on_watergirl_pressed() -> void:
-	NetworkManager.request_role(WATERGIRL_ROLE)
