@@ -3,8 +3,8 @@ extends Area2D
 
 enum GemElement { FIRE, WATER }
 
-signal collected(gem: CollectibleGem, player_id: int)
-signal wrong_element_touched(gem: CollectibleGem, player_id: int)
+signal collected(gem: CollectibleGem, player: Node2D)
+signal wrong_element_touched(gem: CollectibleGem, player: Node2D)
 
 const GEM_COLLISION_LAYER: int = 32
 const GEM_COLLISION_MASK: int = 2
@@ -24,31 +24,24 @@ func _ready() -> void:
 		monitoring = true
 		monitorable = true
 		collision_layer = GEM_COLLISION_LAYER
-		collision_mask = 1 # Force look at layer 1
+		collision_mask = GEM_COLLISION_MASK
 	_apply_element_color()
 
-func can_collect(player_element: int) -> bool:
-	return player_element == int(gem_element)
+func can_collect(player: Node2D) -> bool:
+	return _get_player_element(player) == int(gem_element)
 
 func _on_body_entered(body: Node2D) -> void:
 	if _is_collected or not body.is_in_group("player"):
 		return
 		
-	var pid: int = 0
-	var p_element: int = 0
-	
-	if body.has_meta("player_id"):
-		pid = body.get_meta("player_id")
-		p_element = body.get_meta("element")
-	elif "player_id" in body:
-		pid = body.get("player_id")
-		p_element = int(body.get("element"))
+	var player := body
+	var pid := _get_player_id(player)
 
 	if pid == 0:
 		return
 
-	if not can_collect(p_element):
-		wrong_element_touched.emit(self, pid)
+	if not can_collect(player):
+		wrong_element_touched.emit(self, player)
 		return 
 
 	var msg: String = "[Server] Player " + str(pid) + " collect gem: " + name
@@ -60,7 +53,7 @@ func _on_body_entered(body: Node2D) -> void:
 	set_deferred("monitoring", false)
 	set_deferred("monitorable", false)
 	visible = false
-	collected.emit(self, pid)
+	collected.emit(self, player)
 	
 	var rpc_node := get_node_or_null("/root/GameplayRpc")
 	if rpc_node == null:
@@ -96,3 +89,23 @@ func _play_wrong_element_feedback() -> void:
 	var tween := create_tween()
 	tween.tween_property(_visual, "modulate", Color(1.0, 1.0, 1.0, 0.35), 0.05)
 	tween.tween_property(_visual, "modulate", Color.WHITE, 0.12)
+
+func _get_player_id(player: Node2D) -> int:
+	if player == null:
+		return 0
+	if player.has_meta("player_id"):
+		return int(player.get_meta("player_id"))
+	if "player_id" in player:
+		return int(player.get("player_id"))
+	return 0
+
+func _get_player_element(player: Node2D) -> int:
+	if player == null:
+		return -1
+	if player.has_meta("element"):
+		return int(player.get_meta("element"))
+	if player.has_method("get_element"):
+		return int(player.call("get_element"))
+	if "element" in player:
+		return int(player.get("element"))
+	return -1

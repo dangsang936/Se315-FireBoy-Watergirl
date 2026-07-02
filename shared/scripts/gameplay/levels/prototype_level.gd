@@ -14,6 +14,8 @@ signal gem_progress_changed(collected: int, required: int)
 @export var hazard_zone_path: NodePath = ^"Hazards/HazardZone"
 @export var exit_door_path: NodePath = ^"Goals/ExitDoor"
 
+var _is_completed: bool = false
+
 @onready var _players: Node2D = get_node(players_path) as Node2D
 @onready var _player_spawn: Marker2D = get_node(player_spawn_path) as Marker2D
 @onready var _player_spawn_2: Marker2D = get_node_or_null(player_spawn_2_path) as Marker2D
@@ -32,14 +34,15 @@ func _on_exit_door_player_entered(_player: Node2D) -> void:
 	# Warn player if gems missing
 	if _gem_manager != null and not _gem_manager.is_unlocked():
 		exit_locked.emit(_gem_manager.get_remaining_count(), _gem_manager.get_active_gem_element())
+		return
+	if _get_required_exit_players() <= 1:
+		_complete_level()
 
 func _on_exit_door_both_players_entered() -> void:
 	# Win level if gems done
 	if _gem_manager != null and not _gem_manager.is_unlocked():
 		return
-		
-	print("[Server] Both players at door. Level complete!")
-	level_completed.emit()
+	_complete_level()
 
 func attach_player(player: Node2D, spawn_idx: int = 1) -> void:
 	var spawn_position: Vector2 = get_spawn_position() if spawn_idx == 1 else get_spawn_position_2()
@@ -48,10 +51,7 @@ func attach_player(player: Node2D, spawn_idx: int = 1) -> void:
 	player.global_position = spawn_position
 	
 	if _gem_manager != null:
-		if _gem_manager.has_method("configure_all"):
-			_gem_manager.configure_all()
-		elif _gem_manager.has_method("configure_for_player"):
-			_gem_manager.configure_for_player(player)
+		_configure_gems_for_attached_players(player)
 
 func get_spawn_position() -> Vector2:
 	return _player_spawn.global_position
@@ -84,3 +84,23 @@ func _on_hazard_zone_player_entered(player: Node2D) -> void:
 
 func _on_gem_progress_changed(collected: int, required: int) -> void:
 	gem_progress_changed.emit(collected, required)
+
+func _configure_gems_for_attached_players(fallback_player: Node2D) -> void:
+	if _gem_manager == null:
+		return
+	if _gem_manager.has_method("configure_for_players"):
+		_gem_manager.configure_for_players(_players.get_children())
+	elif _gem_manager.has_method("configure_for_player"):
+		_gem_manager.configure_for_player(fallback_player)
+	elif _gem_manager.has_method("configure_all"):
+		_gem_manager.configure_all()
+
+func _get_required_exit_players() -> int:
+	return maxi(_players.get_child_count(), 1)
+
+func _complete_level() -> void:
+	if _is_completed:
+		return
+	_is_completed = true
+	print("[Server] Exit condition satisfied. Level complete!")
+	level_completed.emit()

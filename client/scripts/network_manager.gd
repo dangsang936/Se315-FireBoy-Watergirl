@@ -165,9 +165,30 @@ func notify_peer_disconnected(peer_id: int) -> void:
 func receive_player_snapshot(player_id: int, snapshot: Dictionary, tick: int) -> void:
 	remote_player_snapshot_received.emit(player_id, snapshot, tick)
 
-@rpc("authority", "call_remote", "reliable")
+@rpc("authority", "call_remote", "unreliable_ordered")
 func receive_authoritative_player_snapshot(player_id: int, snapshot: Dictionary) -> void:
 	authoritative_player_snapshot_received.emit(player_id, snapshot)
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_sync(packet: Dictionary) -> void:
+	var player_id := int(packet.get("id", 0))
+	if player_id == 0:
+		return
+	var snapshot := _snapshot_from_player_sync(packet)
+	var tick := int(snapshot.get("ack_tick", packet.get("t", current_tick)))
+	remote_player_snapshot_received.emit(player_id, snapshot, tick)
+	if player_id == multiplayer.get_unique_id():
+		authoritative_player_snapshot_received.emit(player_id, snapshot)
+
+func _snapshot_from_player_sync(packet: Dictionary) -> Dictionary:
+	return {
+		"ack_tick": int(packet.get("ack_tick", packet.get("t", current_tick))),
+		"pos": packet.get("pos", packet.get("p", Vector2.ZERO)),
+		"vel": packet.get("vel", packet.get("v", Vector2.ZERO)),
+		"on_floor": bool(packet.get("on_floor", false)),
+		"anim": String(packet.get("anim", packet.get("a", "idle"))),
+		"flip_h": bool(packet.get("flip_h", false)),
+	}
 
 func send_snapshot(snapshot: Dictionary, tick: int) -> void:
 	if not is_connected_to_server():
@@ -194,7 +215,7 @@ func send_stop_movement() -> void:
 func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
 	pass
 
-@rpc("any_peer", "call_remote", "reliable")
+@rpc("any_peer", "call_remote", "unreliable_ordered")
 func receive_player_input(_player_id: int, _packet: Dictionary) -> void:
 	pass
 

@@ -333,8 +333,8 @@ def check_scripts(failures: list[str]) -> None:
 		"rpc_id(pid, \"notify_game_start\")",
 		"var _authoritative_states: Dictionary = {}",
 		"func receive_player_input(player_id: int, packet: Dictionary) -> void:",
-		"PlayerMovementSimulator.step",
-		"rpc_id(sender_id, \"receive_authoritative_player_snapshot\", player_id, snapshot)",
+		"func _simulate_player(peer_id: int, delta: float) -> void:",
+		"rpc_id(pid, \"receive_player_sync\", packet)",
 	]:
 		require(snippet in server_network_manager_text, f"Server host flow missing {snippet}", failures)
 
@@ -400,9 +400,9 @@ def check_scripts(failures: list[str]) -> None:
 		"class_name CollectibleGem",
 		"extends Area2D",
 		"enum GemElement { FIRE, WATER }",
-		"signal collected(gem: CollectibleGem, player: PrototypePlayer)",
-		"signal wrong_element_touched(gem: CollectibleGem, player: PrototypePlayer)",
-		"func can_collect(player: PrototypePlayer) -> bool:",
+		"signal collected(gem: CollectibleGem, player: Node2D)",
+		"signal wrong_element_touched(gem: CollectibleGem, player: Node2D)",
+		"func can_collect(player: Node2D) -> bool:",
 		'set_deferred("monitoring", false)',
 		'set_deferred("monitorable", false)',
 	]:
@@ -413,7 +413,7 @@ def check_scripts(failures: list[str]) -> None:
 		"class_name GemManager",
 		"extends Node2D",
 		"signal gem_progress_changed(collected: int, required: int)",
-		"func configure_for_player(player: PrototypePlayer) -> void:",
+		"func configure_for_player(player: Node2D) -> void:",
 		"func is_unlocked() -> bool:",
 		"func get_remaining_count() -> int:",
 		"required_count == 0",
@@ -605,7 +605,7 @@ def check_review_regressions(failures: list[str]) -> None:
 	gem_script = read(REPO_ROOT / "shared" / "scripts" / "gameplay" / "collectibles" / "collectible_gem.gd")
 	require(
 		"can_collect(player)" in gem_script,
-		"CollectibleGem._on_body_entered must call can_collect() with a PrototypePlayer",
+		"CollectibleGem._on_body_entered must call can_collect() with the player node",
 		failures,
 	)
 	require(

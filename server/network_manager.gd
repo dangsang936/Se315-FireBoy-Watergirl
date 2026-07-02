@@ -2,7 +2,7 @@
 # Dedicated server using Godot's built-in ENetMultiplayerPeer
 extends Node
 
-const PORT: int = 9999
+const DEFAULT_PORT: int = 9999
 const MAX_PLAYERS: int = 2
 
 const PLAYER_SPEED: float = 105.0
@@ -24,11 +24,13 @@ const PLAYER_SPAWN_PATH: NodePath = ^"Players/PlayerSpawn"
 const PLAYER_SPAWN_2_PATH: NodePath = ^"Players/PlayerSpawn2"
 
 var peer: ENetMultiplayerPeer = null
+var server_port: int = DEFAULT_PORT
 var connected_players: Array[int] = []
 var player_roles: Dictionary = {}
 
 var server_players: Dictionary = {}
 var latest_inputs: Dictionary = {}
+var _authoritative_states: Dictionary = {}
 var _world_root: Node2D = null
 var _players_root: Node2D = null
 var _player_spawn: Marker2D = null
@@ -37,6 +39,7 @@ var _gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 var _log_box: RichTextLabel
 
 func _ready() -> void:
+	_read_command_line_args()
 	_create_log_ui()
 	_create_movement_world()
 	_start_server()
@@ -48,31 +51,29 @@ func _physics_process(delta: float) -> void:
 
 func _start_server() -> void:
 	peer = ENetMultiplayerPeer.new()
-	var error := peer.create_server(PORT, MAX_PLAYERS)
+	var error := peer.create_server(server_port, MAX_PLAYERS)
 	if error != OK:
-		s_print("[Server] Failed to create server on port %d: %s" % [PORT, error_string(error)])
+		s_print("[Server] Failed to create server on port %d: %s" % [server_port, error_string(error)])
 		return
 
 	multiplayer.multiplayer_peer = peer
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
-	s_print("[Server] Server started on port %d (max %d players)" % [PORT, MAX_PLAYERS])
+	s_print("[Server] Server started on port %d (max %d players)" % [server_port, MAX_PLAYERS])
+
+func _read_command_line_args() -> void:
+	for arg: String in OS.get_cmdline_args():
+		if arg.begins_with("--port="):
+			var parsed_port := int(arg.split("=")[1])
+			if parsed_port > 0:
+				server_port = parsed_port
 
 func _on_peer_connected(id: int) -> void:
 	connected_players.append(id)
 	s_print("[Server] Player connected: %d (total: %d)" % [id, connected_players.size()])
 
-	var role: int = 0 # Default to Fireboy
-	if player_roles.values().has(0):
-		role = 1 # Watergirl
-
-	player_roles[id] = role
-	_spawn_server_player(id, role)
-	rpc_id(id, "receive_role_assignment", role)
-	s_print("[Server] Assigned role %d to player %d" % [role, id])
-
-	_broadcast_player_list()
+	_assign_role(id, _first_available_role())
 
 	if connected_players.size() == MAX_PLAYERS:
 		s_print("[Server] Lobby full, starting game!")
@@ -83,6 +84,7 @@ func _on_peer_disconnected(id: int) -> void:
 	connected_players.erase(id)
 	player_roles.erase(id)
 	latest_inputs.erase(id)
+	_authoritative_states.erase(id)
 	_despawn_server_player(id)
 	s_print("[Server] Player disconnected: %d (remaining: %d)" % [id, connected_players.size()])
 
@@ -95,6 +97,32 @@ func _broadcast_player_list() -> void:
 	for pid in connected_players:
 		rpc_id(pid, "receive_player_list", connected_players)
 		rpc_id(pid, "receive_all_roles", player_roles)
+
+func _first_available_role() -> int:
+	if player_roles.values().has(0):
+		return 1
+	return 0
+
+func _assign_role(sender_id: int, role: int) -> void:
+	if not (sender_id in connected_players):
+		return
+
+	var requested_role := clampi(role, 0, MAX_PLAYERS - 1)
+	for peer_id in player_roles.keys():
+		if int(peer_id) != sender_id and int(player_roles[peer_id]) == requested_role:
+			rpc_id(sender_id, "receive_role_assignment", int(player_roles.get(sender_id, _first_available_role())))
+			return
+
+	var previous_role := int(player_roles.get(sender_id, -1))
+	player_roles[sender_id] = requested_role
+	if previous_role != requested_role:
+		_despawn_server_player(sender_id)
+	if not server_players.has(sender_id):
+		_spawn_server_player(sender_id, requested_role)
+
+	rpc_id(sender_id, "receive_role_assignment", requested_role)
+	s_print("[Server] Assigned role %d to player %d" % [requested_role, sender_id])
+	_broadcast_player_list()
 
 func _create_movement_world() -> void:
 	_world_root = PROTOTYPE_LEVEL_PHYSICS_SCENE.instantiate() as Node2D
@@ -157,6 +185,7 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 		"anim": "idle"
 	}
 	latest_inputs[peer_id] = _neutral_input()
+	_authoritative_states[peer_id] = _create_authoritative_snapshot(peer_id)
 	
 func _despawn_server_player(peer_id: int) -> void:
 	if not server_players.has(peer_id):
@@ -244,6 +273,7 @@ func _simulate_player(peer_id: int, delta: float) -> void:
 	if jump_pressed:
 		input["j"] = false
 		latest_inputs[peer_id] = input
+	_authoritative_states[peer_id] = _create_authoritative_snapshot(peer_id)
 		
 		
 func _broadcast_player_sync(peer_id: int) -> void:
@@ -251,15 +281,45 @@ func _broadcast_player_sync(peer_id: int) -> void:
 	var body := state.get("body") as CharacterBody2D
 	if body == null:
 		return
+	var input: Dictionary = latest_inputs.get(peer_id, _neutral_input())
+	var snapshot := _create_authoritative_snapshot(peer_id)
 	var packet := {
-		"t": 1,
+		"t": int(input.get("t", 0)),
 		"id": peer_id,
 		"p": body.global_position,
 		"v": body.velocity,
-		"a": String(state.get("anim", "idle"))
+		"a": String(state.get("anim", "idle")),
+		"ack_tick": int(snapshot.get("ack_tick", 0)),
+		"pos": snapshot.get("pos", body.global_position),
+		"vel": snapshot.get("vel", body.velocity),
+		"on_floor": bool(snapshot.get("on_floor", false)),
+		"anim": String(snapshot.get("anim", "idle")),
+		"flip_h": bool(snapshot.get("flip_h", false))
 	}
 	for pid in connected_players:
 		rpc_id(pid, "receive_player_sync", packet)
+
+func _create_authoritative_snapshot(peer_id: int) -> Dictionary:
+	var state: Dictionary = server_players.get(peer_id, {})
+	var body := state.get("body") as CharacterBody2D
+	var input: Dictionary = latest_inputs.get(peer_id, _neutral_input())
+	if body == null:
+		return {
+			"ack_tick": int(input.get("t", 0)),
+			"pos": Vector2.ZERO,
+			"vel": Vector2.ZERO,
+			"on_floor": true,
+			"anim": "idle",
+			"flip_h": false
+		}
+	return {
+		"ack_tick": int(input.get("t", 0)),
+		"pos": body.global_position,
+		"vel": body.velocity,
+		"on_floor": body.is_on_floor(),
+		"anim": String(state.get("anim", "idle")),
+		"flip_h": body.velocity.x < 0.0
+	}
 		
 
 func _create_log_ui() -> void:
@@ -334,9 +394,28 @@ func notify_peer_disconnected(_peer_id: int) -> void:
 func receive_player_sync(_packet: Dictionary) -> void:
 	pass
 
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_authoritative_player_snapshot(_player_id: int, _snapshot: Dictionary) -> void:
+	pass
+
 # ------------------------------------------------------------------
 # Movement RPCs. Clients send input only; server owns positions.
 # ------------------------------------------------------------------
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_role(role: int) -> void:
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id == 0:
+		return
+	_assign_role(sender_id, role)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_start_game() -> void:
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id == 0 or not (sender_id in connected_players):
+		return
+	for pid in connected_players:
+		rpc_id(pid, "notify_game_start")
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func server_receive_movement_input(packet: Dictionary) -> void:
@@ -344,6 +423,13 @@ func server_receive_movement_input(packet: Dictionary) -> void:
 	if sender == 0 or not (sender in connected_players):
 		return
 	latest_inputs[sender] = _sanitize_input_packet(packet)
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func receive_player_input(player_id: int, packet: Dictionary) -> void:
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id == 0 or sender_id != player_id or not (sender_id in connected_players):
+		return
+	latest_inputs[sender_id] = _sanitize_input_packet(packet)
 
 # ------------------------------------------------------------------
 # Legacy relay RPCs kept as compatibility stubs during migration.
