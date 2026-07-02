@@ -141,8 +141,14 @@ func _load_level() -> void:
 	_remote_player = null
 
 	_current_level = level_scene.instantiate() as Node2D
-	_current_level.level_completed.connect(_on_level_completed)
-	_current_level.player_failed.connect(_on_player_failed)
+	# In multiplayer the server is the sole authority on level outcomes.
+	# Local level signals (level_completed, player_failed) are only connected
+	# in offline/singleplayer mode; online clients react to server RPCs instead.
+	var network_manager := _network_manager()
+	var is_online: bool = network_manager != null and bool(network_manager.call("is_connected_to_server"))
+	if not is_online:
+		_current_level.level_completed.connect(_on_level_completed)
+		_current_level.player_failed.connect(_on_player_failed)
 	_current_level.exit_locked.connect(_on_exit_locked)
 	_current_level.gem_progress_changed.connect(_on_gem_progress_changed)
 	_level_root.add_child(_current_level)
@@ -293,16 +299,23 @@ func _on_authoritative_player_snapshot_received(player_id: int, snapshot: Dictio
 	if _player.has_method("apply_authoritative_snapshot"):
 		_player.call("apply_authoritative_snapshot", snapshot)
 
-# --- Reliable Gameplay Event RPC Listeners ---
+# --- Server-driven gameplay event handlers (multiplayer only) ---
+# These are called when the server broadcasts an authoritative event via
+# GameplayRPC → NetworkManager signal.  They mirror the offline local-signal
+# handlers but are the only active path in multiplayer mode.
 
-func _on_gem_collected_received(gem_path: String) -> void:
-	var gem_node = get_node_or_null(gem_path)
-	if gem_node and gem_node.has_method("collect_remotely"):
-		gem_node.collect_remotely()
+func _on_gem_collected_received(_gem_path: String) -> void:
+	# Gem visuals are now handled directly by GameplayRpc.sync_gem_collected
+	# which calls client_collect_gem() on the gem node.  Nothing to do here.
+	pass
 
 func _on_player_failed_received() -> void:
 	if _state != ManagerState.PLAYING:
 		return
+	# Stop sending inputs immediately so the server doesn't keep simulating movement.
+	var network_manager := _network_manager()
+	if network_manager != null:
+		network_manager.call("send_stop_movement")
 	_set_player_control_enabled(false)
 	_set_state(ManagerState.LOST)
 

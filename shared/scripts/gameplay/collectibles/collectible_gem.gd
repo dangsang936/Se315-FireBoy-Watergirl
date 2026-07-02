@@ -19,12 +19,18 @@ var _base_color: Color = Color.WHITE
 
 func _ready() -> void:
 	add_to_group("collectible_gem")
-	if multiplayer.is_server():
+	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+		# Server (or offline) runs collision detection and is the sole authority
+		# on whether a gem is collected.
 		body_entered.connect(_on_body_entered)
 		monitoring = true
 		monitorable = true
 		collision_layer = GEM_COLLISION_LAYER
 		collision_mask = GEM_COLLISION_MASK
+	else:
+		# Clients never self-collect — state arrives via GameplayRpc.sync_gem_collected.
+		monitoring = false
+		monitorable = false
 	_apply_element_color()
 
 func can_collect(player: Node2D) -> bool:

@@ -52,7 +52,12 @@ func _on_gem_collected(gem: CollectibleGem, _player: Node2D) -> void:
 	if _collected_gems.has(gem):
 		return
 	_collected_gems.append(gem)
-	
+
+	# Emit locally so prototype_level._on_gem_progress_changed fires on server
+	# (which drives exit door unlock checks).
+	_emit_progress()
+
+	# Broadcast count to clients so their GemManager mirrors the server state.
 	var rpc_node := get_node_or_null("/root/GameplayRpc")
 	if rpc_node == null:
 		rpc_node = get_node_or_null("/root/GameplayRPC")

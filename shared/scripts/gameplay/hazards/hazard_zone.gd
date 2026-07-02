@@ -13,7 +13,14 @@ const HAZARD_COLLISION_MASK: int = 2
 func _ready() -> void:
 	collision_layer = HAZARD_COLLISION_LAYER
 	collision_mask = HAZARD_COLLISION_MASK
-	body_entered.connect(_on_body_entered)
+	# Only the server detects hazard collisions and emits player_entered.
+	# Clients never fire this signal locally to avoid desyncs.
+	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
+		body_entered.connect(_on_body_entered)
+		monitoring = true
+		monitorable = true
+	else:
+		monitoring = false
 
 
 func _on_body_entered(body: Node2D) -> void:
