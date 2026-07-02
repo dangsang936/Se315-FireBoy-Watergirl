@@ -432,8 +432,23 @@ func receive_player_input(player_id: int, packet: Dictionary) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_collect_gem(gem_path: String) -> void:
-	for pid in connected_players:
-		rpc_id(pid, "sync_collect_gem", gem_path)
+	var sender_id := multiplayer.get_remote_sender_id()
+	if not server_players.has(sender_id):
+		return
+	var body = server_players[sender_id]["body"]
+	if _world_root == null:
+		return
+	var gem = _world_root.get_node_or_null(gem_path)
+	if gem != null and gem.has_method("can_collect"):
+		if gem.get("_is_collected"):
+			return
+		if not gem.can_collect(body):
+			return
+		var dist = body.global_position.distance_to(gem.global_position)
+		if dist < 60.0:
+			gem.set("_is_collected", true)
+			for pid in connected_players:
+				rpc_id(pid, "sync_collect_gem", gem_path)
 
 @rpc("authority", "call_local", "reliable")
 func sync_collect_gem(_gem_path: String) -> void:
@@ -441,6 +456,9 @@ func sync_collect_gem(_gem_path: String) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_player_failed() -> void:
+	var sender_id := multiplayer.get_remote_sender_id()
+	if not server_players.has(sender_id):
+		return
 	for pid in connected_players:
 		rpc_id(pid, "sync_player_failed")
 
@@ -450,8 +468,9 @@ func sync_player_failed() -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_level_completed() -> void:
-	for pid in connected_players:
-		rpc_id(pid, "sync_level_completed")
+	if _world_root != null and _world_root.get("_is_completed") == true:
+		for pid in connected_players:
+			rpc_id(pid, "sync_level_completed")
 
 @rpc("authority", "call_local", "reliable")
 func sync_level_completed() -> void:
@@ -459,7 +478,9 @@ func sync_level_completed() -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_request_restart_level() -> void:
-	server_request_restart()
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id == host_peer_id:
+		server_request_restart()
 
 @rpc("authority", "call_local", "reliable")
 func sync_restart_level() -> void:

@@ -54,12 +54,6 @@ func _on_body_entered(body: Node2D) -> void:
 	set_deferred("monitorable", false)
 	visible = false
 	collected.emit(self, player)
-	
-	var rpc_node := get_node_or_null("/root/GameplayRpc")
-	if rpc_node == null:
-		rpc_node = get_node_or_null("/root/GameplayRPC")
-	if rpc_node:
-		rpc_node.rpc("sync_gem_collected", name, global_position)
 
 @rpc("authority", "call_local", "reliable")
 func client_collect_gem() -> void:
