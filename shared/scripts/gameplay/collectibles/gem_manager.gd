@@ -52,11 +52,13 @@ func _on_gem_collected(gem: CollectibleGem, player: PrototypePlayer) -> void:
 	if _collected_gems.has(gem):
 		return
 	_collected_gems.append(gem)
-	var rpc_node := get_node_or_null("/root/GameplayRpc")
-	if rpc_node == null:
-		rpc_node = get_node_or_null("/root/GameplayRPC")
-	if rpc_node:
-		rpc_node.rpc("sync_gem_progress", _collected_gems.size())
+	_emit_progress()
+
+func client_mark_collected_by_path(gem_path: String) -> void:
+	var gem := get_node_or_null(NodePath(gem_path)) as CollectibleGem
+	if gem != null and _required_gems.has(gem) and not _collected_gems.has(gem):
+		_collected_gems.append(gem)
+		_emit_progress()
 
 func client_sync_progress_rpc(collected_count: int) -> void:
 	_collected_gems.clear()

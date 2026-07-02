@@ -18,6 +18,8 @@ signal gem_collected_received(gem_path: String)
 signal player_failed_received
 signal level_completed_received
 signal restart_level_received
+signal pressure_button_state_received(button_path: String, is_pressed: bool)
+signal push_block_state_received(block_path: String, pos: Vector2, rot: float, linear_velocity: Vector2, angular_velocity: float)
 
 var peer: ENetMultiplayerPeer = null
 var my_role: int = -1
@@ -213,6 +215,19 @@ func rpc_request_collect_gem(_gem_path: String) -> void:
 func sync_collect_gem(gem_path: String) -> void:
 	gem_collected_received.emit(gem_path)
 
+func send_push_block_state(block_path: String, pos: Vector2, rot: float, linear_velocity: Vector2, angular_velocity: float) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "rpc_request_push_block_state", block_path, pos, rot, linear_velocity, angular_velocity)
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func rpc_request_push_block_state(_block_path: String, _pos: Vector2, _rot: float, _linear_velocity: Vector2, _angular_velocity: float) -> void:
+	pass
+
+@rpc("authority", "call_local", "unreliable_ordered")
+func sync_push_block_state(block_path: String, pos: Vector2, rot: float, linear_velocity: Vector2, angular_velocity: float) -> void:
+	push_block_state_received.emit(block_path, pos, rot, linear_velocity, angular_velocity)
+
 func send_player_failed() -> void:
 	if not is_connected_to_server():
 		return
@@ -251,6 +266,19 @@ func rpc_request_restart_level() -> void:
 @rpc("authority", "call_local", "reliable")
 func sync_restart_level() -> void:
 	restart_level_received.emit()
+
+func send_pressure_button_state(button_path: String, is_pressed: bool) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "rpc_request_pressure_button_state", button_path, is_pressed)
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_pressure_button_state(button_path: String, is_pressed: bool) -> void:
+	pass
+
+@rpc("authority", "call_local", "reliable")
+func sync_pressure_button_state(button_path: String, is_pressed: bool) -> void:
+	pressure_button_state_received.emit(button_path, is_pressed)
 
 # ============================================================
 # HOST ROOM (Create Room)

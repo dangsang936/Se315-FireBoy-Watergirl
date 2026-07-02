@@ -123,6 +123,8 @@ func _on_body_exited(body: Node2D) -> void:
 	_tracked_players.erase(player)
 
 func _can_press_with_player(player: PrototypePlayer) -> bool:
+	if player.get("is_local") == false:
+		return false
 	if not _matches_required_element(player):
 		return false
 	if require_player_on_floor and not player.is_on_floor():
@@ -134,7 +136,10 @@ func _matches_required_element(player: PrototypePlayer) -> bool:
 		return true
 	return int(player.get_element()) == int(required_element)
 
-func _set_pressed_state(next_pressed: bool) -> void:
+func apply_remote_pressed_state(next_pressed: bool) -> void:
+	_set_pressed_state(next_pressed, false)
+
+func _set_pressed_state(next_pressed: bool, should_emit_signal: bool = true) -> void:
 	if _is_pressed == next_pressed:
 		_sync_visual_state()
 		return
@@ -142,7 +147,8 @@ func _set_pressed_state(next_pressed: bool) -> void:
 	_is_pressed = next_pressed
 	_sync_visual_state()
 	_sync_bridge_target()
-	pressed_state_changed.emit(_is_pressed)
+	if should_emit_signal:
+		pressed_state_changed.emit(_is_pressed)
 
 func _sync_bridge_target() -> void:
 	if bridge_path.is_empty():

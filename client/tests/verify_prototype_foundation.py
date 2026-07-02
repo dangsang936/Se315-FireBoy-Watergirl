@@ -47,6 +47,8 @@ REQUIRED_FILES = [
 	"tests/button_ladder_interactions_probe.gd",
 	"tests/precision_player_movement_probe.gd",
 	"tests/client_prediction_contract_probe.gd",
+	"tests/multiplayer_hazard_sync_probe.gd",
+	"tests/multiplayer_puzzle_sync_probe.gd",
 ]
 
 REQUIRED_REPO_FILES = [
@@ -635,6 +637,18 @@ def check_review_regressions(failures: list[str]) -> None:
 	require("collision_mask = 3" in root_block, "PushBlock root must scan World and Player layers", failures)
 
 
+def check_multiplayer_gameplay_sync_contracts(failures: list[str]) -> None:
+	gameplay_files = [
+		REPO_ROOT / "shared" / "scripts" / "gameplay" / "collectibles" / "collectible_gem.gd",
+		REPO_ROOT / "shared" / "scripts" / "gameplay" / "collectibles" / "gem_manager.gd",
+		REPO_ROOT / "shared" / "scripts" / "gameplay" / "objects" / "push_block.gd",
+	]
+	for path in gameplay_files:
+		text = read(path)
+		require("/root/GameplayRpc" not in text, f"{path} must use NetworkManager gameplay relay, not GameplayRpc", failures)
+		require("/root/GameplayRPC" not in text, f"{path} must not use legacy GameplayRPC lookup", failures)
+
+
 def main() -> int:
 	failures: list[str] = []
 	check_required_files(failures)
@@ -646,6 +660,7 @@ def main() -> int:
 		check_scene_contracts(failures)
 		check_scripts(failures)
 		check_collision_contracts(failures)
+		check_multiplayer_gameplay_sync_contracts(failures)
 		check_res_paths(failures)
 		check_review_regressions(failures)
 	if failures:

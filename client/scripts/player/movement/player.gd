@@ -64,6 +64,7 @@ var _ladder_detector: Node
 var _state_machine: PlayerStateMachine
 var _prediction_controller: ClientPredictionController
 var _last_prediction_delta: float = 1.0 / 60.0
+var _spawn_debug_timer: float = 0.0
 
 @onready var _animated_sprite: AnimatedSprite2D = get_node_or_null(animated_sprite_path) as AnimatedSprite2D
 @onready var _camera: Camera2D = get_node_or_null(camera_path) as Camera2D
@@ -82,6 +83,18 @@ func _ready() -> void:
 	call_deferred("_refresh_camera")
 
 func _physics_process(delta: float) -> void:
+	_spawn_debug_timer += delta
+	if _spawn_debug_timer >= 1.0:
+		_spawn_debug_timer = 0.0
+		print("[SpawnDebug] %s root=%s local=%s velocity=%s camera=%s state=%s" % [
+			name,
+			global_position,
+			position,
+			velocity,
+			(_camera.global_position if _camera != null else Vector2.INF),
+			get_player_state_name(),
+		])
+
 	if not is_local:
 		return
 
@@ -104,6 +117,7 @@ func reset_to_spawn(spawn_position: Vector2) -> void:
 	global_position = spawn_position
 	_control_enabled = true
 	velocity = Vector2.ZERO
+	_spawn_debug_timer = 0.0
 	_clear_transient_state()
 	if _state_machine != null:
 		_state_machine.reset_to_initial()
@@ -201,8 +215,7 @@ func clear_player_motion() -> void:
 func apply_authoritative_snapshot(snapshot: Dictionary) -> void:
 	if _prediction_controller == null:
 		return
-	var corrected_state := _prediction_controller.reconcile(snapshot, _last_prediction_delta)
-	_apply_prediction_state(corrected_state)
+	_prediction_controller.reconcile(snapshot, _last_prediction_delta)
 
 func clear_precision_timers() -> void:
 	if _player_motor != null:
@@ -385,9 +398,8 @@ func _create_prediction_input_packet() -> Dictionary:
 func _send_prediction_input(packet: Dictionary) -> void:
 	if _prediction_controller != null:
 		_prediction_controller.predict(packet, _last_prediction_delta)
-	var network_manager := _network_manager()
-	if network_manager != null and network_manager.has_method("send_player_input"):
-		network_manager.call("send_player_input", packet)
+	# Server-side prediction currently uses a separate prototype physics map.
+	# Keep visual sync on client snapshots until the authoritative server map matches the gameplay level.
 
 func _apply_prediction_state(state: PlayerMovementState) -> void:
 	global_position = state.position

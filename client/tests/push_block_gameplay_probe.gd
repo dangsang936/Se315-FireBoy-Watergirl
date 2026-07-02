@@ -32,7 +32,7 @@ func _run() -> void:
 		_finish(game)
 		return
 	_disable_level_hazards(level)
-	_prepare_push_fixture(player, block)
+	_prepare_push_fixture(level, player, block)
 	for frame in 8:
 		await physics_frame
 
@@ -40,13 +40,29 @@ func _run() -> void:
 	await _push_block_to_target(player, block)
 	_finish(game)
 
-func _prepare_push_fixture(player: PrototypePlayer, block: RigidBody2D) -> void:
+func _prepare_push_fixture(level: PrototypeLevel, player: PrototypePlayer, block: RigidBody2D) -> void:
+	_ensure_push_fixture_floor(level)
 	player.global_position = Vector2(-120.0, -12.0)
 	player.velocity = Vector2.ZERO
 	block.global_position = Vector2(-78.0, -20.0)
 	block.linear_velocity = Vector2.ZERO
 	block.angular_velocity = 0.0
 	block.sleeping = false
+
+func _ensure_push_fixture_floor(level: PrototypeLevel) -> void:
+	if level.has_node("PushProbeFloor"):
+		return
+	var floor_body := StaticBody2D.new()
+	floor_body.name = "PushProbeFloor"
+	floor_body.collision_layer = 1
+	floor_body.collision_mask = 6
+	var floor_shape := CollisionShape2D.new()
+	var rectangle := RectangleShape2D.new()
+	rectangle.size = Vector2(260.0, 24.0)
+	floor_shape.shape = rectangle
+	floor_shape.position = Vector2(-70.0, 14.0)
+	floor_body.add_child(floor_shape)
+	level.add_child(floor_body)
 
 func _disable_level_hazards(level: PrototypeLevel) -> void:
 	var hazards := level.get_node_or_null("Hazards")

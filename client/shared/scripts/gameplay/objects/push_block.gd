@@ -43,18 +43,11 @@ func _ready() -> void:
 	add_to_group("push_block")
 	collision_layer = PUSH_BLOCK_COLLISION_LAYER
 	collision_mask = PUSH_BLOCK_COLLISION_MASK
-	
-	if not multiplayer.is_server():
-		freeze = true
-		freeze_mode = RigidBody2D.FREEZE_MODE_KINEMATIC
-		if _push_detector != null:
-			_push_detector.monitoring = false
-		if _ground_detector != null:
-			_ground_detector.enabled = false
-		return
+	freeze = false
+	freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
 
 	lock_rotation = false
-	can_sleep = false # <--- NO SLEEP ON SERVER!
+	can_sleep = false
 	contact_monitor = true
 	max_contacts_reported = 8
 	linear_damp = idle_damping
@@ -69,9 +62,9 @@ func _ready() -> void:
 		_ground_detector.enabled = true
 
 func register_push_attempt(body: Node2D, push_direction: float) -> void:
-	if not multiplayer.is_server():
-		return
 	if not body.is_in_group("player"):
+		return
+	if body.get("is_local") == false:
 		return
 	var direction: float = clampf(push_direction, -1.0, 1.0)
 	if direction == 0.0:
@@ -80,9 +73,6 @@ func register_push_attempt(body: Node2D, push_direction: float) -> void:
 	_push_attempts[body.get_instance_id()] = Vector2(direction, PUSH_ATTEMPT_TTL)
 
 func _physics_process(delta: float) -> void:
-	if not multiplayer.is_server():
-		return
-
 	if _ground_detector == null:
 		_is_grounded = get_contact_count() > 0
 	else:
@@ -92,18 +82,29 @@ func _physics_process(delta: float) -> void:
 		_is_grounded = _ground_detector.is_colliding()
 
 	_sync_timer += delta
-	if _sync_timer >= SYNC_RATE:
+	if _sync_timer >= SYNC_RATE and not sleeping:
 		_sync_timer = 0.0
-		var rpc_node := get_node_or_null("/root/GameplayRpc")
-		if rpc_node == null:
-			rpc_node = get_node_or_null("/root/GameplayRPC")
-		if rpc_node:
-			rpc_node.rpc("sync_push_block", name, global_position, rotation)
+		var network_manager := get_node_or_null("/root/NetworkManager")
+		if network_manager != null and bool(network_manager.call("is_connected_to_server")):
+			var level := _find_level_root()
+			var block_path := str(level.get_path_to(self)) if level != null else str(get_path())
+			network_manager.call("send_push_block_state", block_path, global_position, rotation, linear_velocity, angular_velocity)
+
+func _find_level_root() -> Node:
+	var node: Node = self
+	while node != null:
+		if node is PrototypeLevel:
+			return node
+		node = node.get_parent()
+	return null
+
+func apply_remote_state(pos: Vector2, rot: float, remote_linear_velocity: Vector2, remote_angular_velocity: float) -> void:
+	global_position = pos
+	rotation = rot
+	linear_velocity = remote_linear_velocity
+	angular_velocity = remote_angular_velocity
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
-	if not multiplayer.is_server():
-		return
-
 	var right_pushers: int = _count_pushers_for_direction(1.0)
 	var left_pushers: int = _count_pushers_for_direction(-1.0)
 	var push_direction: float = 0.0
@@ -176,8 +177,3 @@ func _on_push_detector_body_entered(body: Node2D) -> void:
 	if not body.is_in_group("player"):
 		return
 	sleeping = false
-
-@rpc("authority", "call_remote", "unreliable_ordered")
-func client_sync_block(pos: Vector2, rot: float) -> void:
-	global_position = pos
-	rotation = rot

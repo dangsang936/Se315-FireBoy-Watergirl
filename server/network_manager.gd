@@ -226,7 +226,17 @@ func _physics_process(delta: float) -> void:
 		if body == null:
 			continue
 		var packet: Dictionary = _pending_inputs.get(player_id, {})
-		_simulate_server_player(body, packet, delta)
+		var previous_state := _authoritative_states.get(player_id) as PlayerMovementState
+		if previous_state == null:
+			previous_state = PlayerMovementStateScript.new()
+			previous_state.position = body.global_position
+			previous_state.velocity = body.velocity
+			previous_state.on_floor = body.is_on_floor()
+		var next_state := PlayerMovementSimulator.step(previous_state, packet, _movement_config, delta)
+		_authoritative_states[player_id] = next_state
+		body.global_position = next_state.position
+		body.velocity = next_state.velocity
+		body.move_and_slide()
 		var ack_tick := int(packet.get("t", 0))
 		_publish_authoritative_snapshot(player_id, body, ack_tick)
 
@@ -295,8 +305,9 @@ func _publish_authoritative_snapshot(player_id: int, body: CharacterBody2D, ack_
 	_authoritative_states[player_id] = state
 
 	var snapshot := state.to_snapshot(ack_tick)
+	var sender_id := player_id
 	if connected_players.has(player_id):
-		rpc_id(player_id, "receive_authoritative_player_snapshot", player_id, snapshot)
+		rpc_id(sender_id, "receive_authoritative_player_snapshot", player_id, snapshot)
 	for pid in connected_players:
 		if pid != player_id:
 			rpc_id(pid, "receive_player_snapshot", player_id, snapshot, ack_tick)
@@ -333,4 +344,20 @@ func rpc_request_restart_level() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func sync_restart_level() -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_pressure_button_state(button_path: String, is_pressed: bool) -> void:
+	rpc("sync_pressure_button_state", button_path, is_pressed)
+
+@rpc("authority", "call_local", "reliable")
+func sync_pressure_button_state(_button_path: String, _is_pressed: bool) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func rpc_request_push_block_state(block_path: String, pos: Vector2, rot: float, linear_velocity: Vector2, angular_velocity: float) -> void:
+	rpc("sync_push_block_state", block_path, pos, rot, linear_velocity, angular_velocity)
+
+@rpc("authority", "call_local", "unreliable_ordered")
+func sync_push_block_state(_block_path: String, _pos: Vector2, _rot: float, _linear_velocity: Vector2, _angular_velocity: float) -> void:
 	pass

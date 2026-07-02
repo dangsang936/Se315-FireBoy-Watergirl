@@ -48,6 +48,8 @@ func _ready() -> void:
 		network_manager.player_failed_received.connect(_on_player_failed_received)
 		network_manager.level_completed_received.connect(_on_level_completed_received)
 		network_manager.restart_level_received.connect(_on_restart_level_received)
+		network_manager.pressure_button_state_received.connect(_on_pressure_button_state_received)
+		network_manager.push_block_state_received.connect(_on_push_block_state_received)
 
 		network_manager.role_assigned.connect(_on_role_assigned)
 		network_manager.player_list_updated.connect(_on_player_list_updated)
@@ -146,6 +148,7 @@ func _load_level() -> void:
 	_current_level.exit_locked.connect(_on_exit_locked)
 	_current_level.gem_progress_changed.connect(_on_gem_progress_changed)
 	_level_root.add_child(_current_level)
+	_connect_pressure_buttons(_current_level)
 	print("[GameManager] level_scene=%s instantiated=%s spawn=%s" % [
 		level_scene.resource_path,
 		_current_level.scene_file_path,
@@ -240,6 +243,8 @@ func _on_player_failed(_player_node: Node2D) -> void:
 		return
 	var network_manager := _network_manager()
 	if network_manager != null:
+		if bool(network_manager.call("is_connected_to_server")):
+			network_manager.call("send_player_failed")
 		network_manager.call("send_stop_movement")
 	_set_player_control_enabled(false)
 	_set_state(ManagerState.LOST)
@@ -296,9 +301,14 @@ func _on_authoritative_player_snapshot_received(player_id: int, snapshot: Dictio
 # --- Reliable Gameplay Event RPC Listeners ---
 
 func _on_gem_collected_received(gem_path: String) -> void:
-	var gem_node = get_node_or_null(gem_path)
+	if not is_instance_valid(_current_level):
+		return
+	var gem_node = _current_level.get_node_or_null(NodePath(gem_path))
 	if gem_node and gem_node.has_method("collect_remotely"):
 		gem_node.collect_remotely()
+		var manager := _current_level.get_node_or_null("Collectibles") as GemManager
+		if manager != null and manager.has_method("client_mark_collected_by_path"):
+			manager.call("client_mark_collected_by_path", gem_path)
 
 func _on_player_failed_received() -> void:
 	if _state != ManagerState.PLAYING:
@@ -314,6 +324,38 @@ func _on_level_completed_received() -> void:
 
 func _on_restart_level_received() -> void:
 	_restart_level()
+
+func _on_pressure_button_state_received(button_path: String, is_pressed: bool) -> void:
+	if not is_instance_valid(_current_level):
+		return
+	var button := _current_level.get_node_or_null(NodePath(button_path)) as PressureButton
+	if button == null or not button.has_method("apply_remote_pressed_state"):
+		return
+	button.call("apply_remote_pressed_state", is_pressed)
+
+func _on_push_block_state_received(block_path: String, pos: Vector2, rot: float, linear_velocity: Vector2, angular_velocity: float) -> void:
+	if not is_instance_valid(_current_level):
+		return
+	var block := _current_level.get_node_or_null(NodePath(block_path))
+	if block == null or not block.has_method("apply_remote_state"):
+		return
+	block.call("apply_remote_state", pos, rot, linear_velocity, angular_velocity)
+
+func _connect_pressure_buttons(root: Node) -> void:
+	for child: Node in root.get_children():
+		var button := child as PressureButton
+		if button != null:
+			button.pressed_state_changed.connect(_on_pressure_button_state_changed.bind(button))
+		_connect_pressure_buttons(child)
+
+func _on_pressure_button_state_changed(is_pressed: bool, button: PressureButton) -> void:
+	var network_manager := _network_manager()
+	if network_manager == null or not bool(network_manager.call("is_connected_to_server")):
+		return
+	if not is_instance_valid(_current_level) or not is_instance_valid(button):
+		return
+	var button_path := str(_current_level.get_path_to(button))
+	network_manager.call("send_pressure_button_state", button_path, is_pressed)
 
 func _set_player_control_enabled(is_enabled: bool) -> void:
 	if is_instance_valid(_player):

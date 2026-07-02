@@ -78,6 +78,8 @@ func _connect_collectibles() -> void:
 		_gem_manager.gem_progress_changed.connect(_on_gem_progress_changed)
 
 func _on_hazard_zone_player_entered(player: Node2D) -> void:
+	if player.get("is_local") == false:
+		return
 	player_failed.emit(player)
 
 

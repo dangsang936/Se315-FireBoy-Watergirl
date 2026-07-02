@@ -182,8 +182,8 @@ func _apply_state(is_active: bool, animate: bool) -> void:
 
 	_kill_piece_tweens()
 
-	if _collision_shape != null and not _is_active:
-		_collision_shape.disabled = true
+	if _collision_shape != null:
+		_collision_shape.disabled = not _is_active
 
 	var target_progress: float = 1.0 if _is_active else 0.0
 	var ordered_indices: Array[int] = _piece_order.duplicate()

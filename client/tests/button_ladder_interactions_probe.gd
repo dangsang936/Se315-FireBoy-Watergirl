@@ -3,6 +3,7 @@ extends SceneTree
 const PLAYER_SCENE: PackedScene = preload("res://scenes/players/fireboy.tscn")
 const WATERGIRL_SCENE: PackedScene = preload("res://scenes/players/watergirl.tscn")
 const PRESSURE_BUTTON_SCENE: PackedScene = preload("res://scenes/gameplay/objects/pressure_button.tscn")
+const BRIDGE_SCENE: PackedScene = preload("res://scenes/gameplay/objects/bridge_platform.tscn")
 const LADDER_SCENE: PackedScene = preload("res://scenes/gameplay/objects/ladder.tscn")
 const GEM_SCENE: PackedScene = preload("res://scenes/gameplay/collectibles/fire_gem.tscn")
 const HAZARD_SCRIPT: Script = preload("res://shared/scripts/gameplay/hazards/hazard_zone.gd")
@@ -25,6 +26,7 @@ func _run() -> void:
 	await process_frame
 	await _verify_pressure_button_artwork_states()
 	await _verify_pressure_button_supports_standing()
+	await _verify_bridge_collision_activates_with_button_state()
 	await _verify_ladder_climb_motion()
 	await _verify_ladder_boundaries_and_regressions()
 
@@ -91,6 +93,24 @@ func _verify_pressure_button_supports_standing() -> void:
 
 	player.queue_free()
 	button.queue_free()
+	await process_frame
+
+func _verify_bridge_collision_activates_with_button_state() -> void:
+	var bridge := BRIDGE_SCENE.instantiate() as BridgePlatform
+	bridge.start_active = false
+	bridge.reveal_duration = 1.0
+	bridge.tile_stagger = 0.5
+	root.add_child(bridge)
+	await process_frame
+
+	var collision_shape := bridge.get_node("CollisionShape2D") as CollisionShape2D
+	_require(collision_shape.disabled, "Inactive bridge should start with its collision disabled.")
+
+	bridge.set_active(true)
+	await physics_frame
+	_require(not collision_shape.disabled, "Activating a bridge should enable collision before the reveal animation finishes.")
+
+	bridge.queue_free()
 	await process_frame
 
 func _verify_ladder_climb_motion() -> void:
