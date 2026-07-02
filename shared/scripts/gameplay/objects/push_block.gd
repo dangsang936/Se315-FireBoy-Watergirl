@@ -54,7 +54,7 @@ func _ready() -> void:
 		return
 
 	lock_rotation = false
-	can_sleep = false # <--- NO SLEEP ON SERVER!
+	can_sleep = false
 	contact_monitor = true
 	max_contacts_reported = 8
 	linear_damp = idle_damping
