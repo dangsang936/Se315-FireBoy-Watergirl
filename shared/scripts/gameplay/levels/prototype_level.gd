@@ -26,14 +26,12 @@ func _ready() -> void:
 	_connect_hazards()
 	_connect_collectibles()
 	_exit_door.player_entered.connect(_on_exit_door_player_entered)
-	_exit_door.both_players_entered.connect(_on_exit_door_both_players_entered) # ADD THIS
+	_exit_door.both_players_entered.connect(_on_exit_door_both_players_entered)
 
 func _on_exit_door_player_entered(_player: Node2D) -> void:
 	# Warn player if gems missing
 	if _gem_manager != null and not _gem_manager.is_unlocked():
 		exit_locked.emit(_gem_manager.get_remaining_count(), _gem_manager.get_active_gem_element())
-		return
-	emit_signal("level_completed")
 
 func _on_exit_door_both_players_entered() -> void:
 	# Win level if gems done
@@ -41,23 +39,27 @@ func _on_exit_door_both_players_entered() -> void:
 		return
 		
 	print("[Server] Both players at door. Level complete!")
-	emit_signal("level_completed")
+	level_completed.emit()
+
 func attach_player(player: Node2D, spawn_idx: int = 1) -> void:
 	var spawn_position: Vector2 = get_spawn_position() if spawn_idx == 1 else get_spawn_position_2()
 	player.position = _players.to_local(spawn_position)
 	_players.add_child(player)
 	player.global_position = spawn_position
 	
-	if _gem_manager != null and _gem_manager.has_method("configure_for_player"):
-		_gem_manager.configure_for_player(player)
-		# NetworkManager.authoritative_player_snapshot_received.connect(_on_authoritative_player_snapshot_received)
+	if _gem_manager != null:
+		if _gem_manager.has_method("configure_all"):
+			_gem_manager.configure_all()
+		elif _gem_manager.has_method("configure_for_player"):
+			_gem_manager.configure_for_player(player)
+
 func get_spawn_position() -> Vector2:
 	return _player_spawn.global_position
 
 func get_spawn_position_2() -> Vector2:
 	if _player_spawn_2:
 		return _player_spawn_2.global_position
-	return get_spawn_position()
+	return get_spawn_position() + Vector2(50, 0)
 
 func _connect_hazards() -> void:
 	if _hazards == null:
@@ -79,7 +81,6 @@ func _connect_collectibles() -> void:
 
 func _on_hazard_zone_player_entered(player: Node2D) -> void:
 	player_failed.emit(player)
-
 
 func _on_gem_progress_changed(collected: int, required: int) -> void:
 	gem_progress_changed.emit(collected, required)

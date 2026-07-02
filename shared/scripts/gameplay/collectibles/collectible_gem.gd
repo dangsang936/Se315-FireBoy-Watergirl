@@ -3,8 +3,8 @@ extends Area2D
 
 enum GemElement { FIRE, WATER }
 
-signal collected(gem: CollectibleGem, player: PrototypePlayer)
-signal wrong_element_touched(gem: CollectibleGem, player: PrototypePlayer)
+signal collected(gem: CollectibleGem, player_id: int)
+signal wrong_element_touched(gem: CollectibleGem, player_id: int)
 
 const GEM_COLLISION_LAYER: int = 32
 const GEM_COLLISION_MASK: int = 2
@@ -24,31 +24,31 @@ func _ready() -> void:
 		monitoring = true
 		monitorable = true
 		collision_layer = GEM_COLLISION_LAYER
-		collision_mask = GEM_COLLISION_MASK
+		collision_mask = 1 # Force look at layer 1
 	_apply_element_color()
 
-func can_collect(player: PrototypePlayer) -> bool:
-	return player != null and int(player.element) == int(gem_element)
+func can_collect(player_element: int) -> bool:
+	return player_element == int(gem_element)
 
 func _on_body_entered(body: Node2D) -> void:
 	if _is_collected or not body.is_in_group("player"):
 		return
 		
 	var pid: int = 0
-	var player := body as PrototypePlayer
+	var p_element: int = 0
 	
 	if body.has_meta("player_id"):
 		pid = body.get_meta("player_id")
-	elif body.get("player_id") != null:
-		pid = int(body.get("player_id"))
+		p_element = body.get_meta("element")
 	elif "player_id" in body:
 		pid = body.get("player_id")
+		p_element = int(body.get("element"))
 
 	if pid == 0:
 		return
 
-	if not can_collect(player):
-		wrong_element_touched.emit(self, player)
+	if not can_collect(p_element):
+		wrong_element_touched.emit(self, pid)
 		return 
 
 	var msg: String = "[Server] Player " + str(pid) + " collect gem: " + name
@@ -60,7 +60,7 @@ func _on_body_entered(body: Node2D) -> void:
 	set_deferred("monitoring", false)
 	set_deferred("monitorable", false)
 	visible = false
-	collected.emit(self, player)
+	collected.emit(self, pid)
 	
 	var rpc_node := get_node_or_null("/root/GameplayRpc")
 	if rpc_node == null:
