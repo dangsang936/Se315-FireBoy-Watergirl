@@ -324,7 +324,18 @@ func unregister_room() -> void:
 func request_matchmake(callback: Callable) -> void:
 	_send_api_request("/api/rooms/matchmake", HTTPClient.METHOD_POST, {}, callback)
 
-func host_game(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = false) -> Error:
+# ==================================================================
+# LEGACY — LISTEN-SERVER MODEL (do NOT call from production UI)
+# ==================================================================
+# host_game_listen_server_legacy() turns the client itself into the
+# ENet server (listen-server).  This conflicts with the team's
+# authorized-server architecture where a dedicated server project is
+# spawned by host_room() and both players connect to it as plain
+# clients.  Keeping this function here only for reference / offline
+# debugging.  No UI should call this in the main flow.
+# Use host_room() instead.
+# ==================================================================
+func host_game_listen_server_legacy(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = false) -> Error:
 	if peer:
 		_reset_connection_state(true)
 
@@ -334,7 +345,7 @@ func host_game(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = fals
 	peer = ENetMultiplayerPeer.new()
 	var error = peer.create_server(port, 2) 
 	if error != OK:
-		printerr("[NetworkManager] Failed to host server on port %d: %s" % [port, error_string(error)])
+		printerr("[NetworkManager][LEGACY] Failed to host server on port %d: %s" % [port, error_string(error)])
 		_reset_connection_state(false)
 		return error
 
@@ -345,7 +356,7 @@ func host_game(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = fals
 	if not multiplayer.peer_disconnected.is_connected(_on_client_peer_disconnected):
 		multiplayer.peer_disconnected.connect(_on_client_peer_disconnected)
 
-	print("[NetworkManager] Hosted server on port %d" % port)
+	print("[NetworkManager][LEGACY] Hosted listen-server on port %d" % port)
 	
 	my_role = 0
 	connected_players.append(1)

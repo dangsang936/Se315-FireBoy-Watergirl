@@ -148,11 +148,12 @@ func _on_quick_match_pressed() -> void:
 		if code == 200:
 			var action = response.get("action", "")
 			if action == "host":
-				status_label.text = "No empty rooms found. Hosting a new matchmaking room..."
-				var name_to_use = name_input.text + "'s Match"
-				var err = NetworkManager.host_game(name_to_use, 9999, lan_checkbox.button_pressed)
-				if err != OK:
-					status_label.text = "Failed to host matchmaking lobby."
+				status_label.text = "No empty rooms found. Starting authorized server for matchmaking..."
+				if not NetworkManager.room_created.is_connected(_on_lobby_room_created):
+					NetworkManager.room_created.connect(_on_lobby_room_created, CONNECT_ONE_SHOT)
+				if not NetworkManager.room_creation_failed.is_connected(_on_lobby_room_failed):
+					NetworkManager.room_creation_failed.connect(_on_lobby_room_failed, CONNECT_ONE_SHOT)
+				NetworkManager.host_room(9999)
 			elif action == "join":
 				var ip = response.get("ip", "127.0.0.1")
 				var port = int(response.get("port", 9999))
@@ -163,14 +164,29 @@ func _on_quick_match_pressed() -> void:
 	)
 
 func _on_host_pressed() -> void:
-	var rname = room_name_input.text.strip_edges()
-	if rname == "":
-		rname = name_input.text + "'s Lobby"
+	host_btn.disabled = true
+	status_label.text = "Starting server..."
 
-	status_label.text = "Hosting room: " + rname + "..."
-	var err = NetworkManager.host_game(rname, 9999, lan_checkbox.button_pressed)
-	if err != OK:
-		status_label.text = "Failed to host lobby."
+	# Connect one-shot signals before calling host_room so we catch the result.
+	if not NetworkManager.room_created.is_connected(_on_lobby_room_created):
+		NetworkManager.room_created.connect(_on_lobby_room_created, CONNECT_ONE_SHOT)
+	if not NetworkManager.room_creation_failed.is_connected(_on_lobby_room_failed):
+		NetworkManager.room_creation_failed.connect(_on_lobby_room_failed, CONNECT_ONE_SHOT)
+
+	NetworkManager.host_room(9999)
+
+func _on_lobby_room_created() -> void:
+	# room_creation_failed one-shot may still be connected if room_created fired first.
+	if NetworkManager.room_creation_failed.is_connected(_on_lobby_room_failed):
+		NetworkManager.room_creation_failed.disconnect(_on_lobby_room_failed)
+	host_btn.disabled = false
+	status_label.text = "Waiting for opponent..."
+
+func _on_lobby_room_failed(reason: String) -> void:
+	if NetworkManager.room_created.is_connected(_on_lobby_room_created):
+		NetworkManager.room_created.disconnect(_on_lobby_room_created)
+	host_btn.disabled = false
+	status_label.text = "Failed to host: " + reason
 
 func _on_refresh_pressed() -> void:
 	status_label.text = "Refreshing room list..."
