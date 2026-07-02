@@ -386,9 +386,15 @@ func receive_authoritative_player_snapshot(_player_id: int, _snapshot: Dictionar
 func receive_player_sync(_packet: Dictionary) -> void:
 	pass
 
+# LEGACY — relay_player_snapshot is the old client-authoritative RPC.
+# In authorized server mode this handler is intentionally a no-op: the server
+# ignores any position data pushed by clients and derives world state solely
+# from receive_player_input → _simulate_player → _broadcast_player_sync.
+# Stub kept so the RPC signature stays registered and stray legacy calls do
+# not cause "unknown RPC" errors on the server.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
-	pass
+	pass  # No-op: server does not trust client-supplied position data.
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func server_receive_movement_input(packet: Dictionary) -> void:

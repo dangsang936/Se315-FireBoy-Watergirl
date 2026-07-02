@@ -97,7 +97,9 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_register_push_block_contacts()
 	_update_player_state(false)
-	_send_network_state()
+	# AUTHORIZED SERVER: position snapshots are NOT sent from client.
+	# Server simulates movement from received inputs and broadcasts
+	# authoritative state back. See _send_network_state() below (legacy/debug only).
 	_state_machine.transition_from_player_context()
 
 func reset_to_spawn(spawn_position: Vector2) -> void:
@@ -223,15 +225,26 @@ func play_motion_animation() -> void:
 func set_player_state_from_state_name(state_name: StringName) -> void:
 	_set_player_state(_enum_for_state_name(state_name))
 
-# --- Network Send Optimization (Phase 4: Reduce RPC Spam) ---
-# Thay vì gửi 2 RPC mỗi physics frame (120 RPC/giây), hệ thống mới:
-#   1. Tick-rate limiting: chỉ gửi mỗi NETWORK_SEND_RATE frame
-#   2. Delta compression: bỏ qua nếu position/state không thay đổi
-#   3. Gộp position + state thành 1 snapshot RPC duy nhất
+# ==================================================================
+# LEGACY — CLIENT SNAPSHOT SEND (do NOT call in authorized server mode)
+# ==================================================================
+# _send_network_state() was the old client-authoritative flow where the
+# client pushed its own position/velocity/animation to the server for
+# relay to peers.  In the authorized server model the server is the sole
+# source of truth: it simulates movement from received inputs and
+# broadcasts authoritative state back to all clients.
+#
+# This function is kept here ONLY for offline debugging or listen-server
+# legacy testing.  It is NEVER called from _physics_process.
+# To re-enable for debug purposes, set _LEGACY_SEND_SNAPSHOT_ENABLED = true
+# locally — do NOT commit that change.
+# ==================================================================
 
-const NETWORK_SEND_RATE: int = 3           # Gửi mỗi 3 physics frame → ~20 lần/giây
-const POSITION_SEND_THRESHOLD: float = 0.5 # Chỉ gửi khi di chuyển > 0.5 pixel
-const HEARTBEAT_INTERVAL: int = 60         # Gửi heartbeat mỗi 60 frame (~1 giây) khi đứng yên
+const _LEGACY_SEND_SNAPSHOT_ENABLED: bool = false  # MUST stay false in authorized mode
+
+const NETWORK_SEND_RATE: int = 3           # (legacy) send every 3 physics frames → ~20 Hz
+const POSITION_SEND_THRESHOLD: float = 0.5 # (legacy) only send when moved > 0.5 px
+const HEARTBEAT_INTERVAL: int = 60         # (legacy) heartbeat every ~1 s when idle
 
 var _net_frame_counter: int = 0
 var _frames_since_last_send: int = 0
@@ -242,7 +255,13 @@ var _last_sent_flip_h: bool = false
 func _network_manager() -> Node:
 	return get_node_or_null("/root/" + "Network" + "Manager")
 
+# LEGACY — not called in authorized server flow.
+# Client must NOT send position/snapshot to decide world state.
+# Authoritative data flow: InputReader → send_player_input → server simulate → receive_player_sync → reconcile.
 func _send_network_state() -> void:
+	if not _LEGACY_SEND_SNAPSHOT_ENABLED:
+		return
+
 	var network_manager := _network_manager()
 	if network_manager == null or not bool(network_manager.call("is_connected_to_server")):
 		return
@@ -250,24 +269,20 @@ func _send_network_state() -> void:
 	_net_frame_counter += 1
 	_frames_since_last_send += 1
 
-	# Tick-rate limiting: chỉ xét gửi mỗi NETWORK_SEND_RATE frame
 	if _net_frame_counter % NETWORK_SEND_RATE != 0:
 		return
 
 	var current_anim: String = _animated_sprite.animation if _animated_sprite else "idle"
 	var current_flip_h: bool = _animated_sprite.flip_h if _animated_sprite else false
 
-	# Delta compression: kiểm tra xem có gì thay đổi không
 	var position_changed: bool = _last_sent_position == Vector2.INF or \
 		global_position.distance_to(_last_sent_position) > POSITION_SEND_THRESHOLD
 	var state_changed: bool = current_anim != _last_sent_anim or current_flip_h != _last_sent_flip_h
 	var heartbeat_due: bool = _frames_since_last_send >= HEARTBEAT_INTERVAL
 
-	# Không gửi nếu không có gì thay đổi và chưa đến lúc heartbeat
 	if not position_changed and not state_changed and not heartbeat_due:
 		return
 
-	# Gộp thành 1 snapshot RPC duy nhất (thay vì 2 RPC riêng)
 	var snapshot: Dictionary = {
 		"pos": global_position,
 		"vel": velocity,
@@ -276,7 +291,6 @@ func _send_network_state() -> void:
 	}
 	network_manager.call("send_snapshot", snapshot, int(network_manager.get("current_tick")))
 
-	# Cập nhật tracking state
 	_last_sent_position = global_position
 	_last_sent_anim = current_anim
 	_last_sent_flip_h = current_flip_h

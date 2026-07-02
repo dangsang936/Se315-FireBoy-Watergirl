@@ -126,6 +126,12 @@ func _snapshot_from_player_sync(packet: Dictionary) -> Dictionary:
 		"flip_h": bool(packet.get("flip_h", false)),
 	}
 
+# LEGACY — do NOT call in authorized server mode.
+# In authorized mode the server owns position; clients only send inputs via
+# send_player_input().  send_snapshot() / relay_player_snapshot are kept
+# solely for offline debug or listen-server legacy testing.
+# send_snapshot() is only reachable from _send_network_state() which is
+# itself gated by _LEGACY_SEND_SNAPSHOT_ENABLED = false in player.gd.
 func send_snapshot(snapshot: Dictionary, tick: int) -> void:
 	if not is_connected_to_server():
 		return
@@ -582,6 +588,11 @@ func receive_player_sync(packet: Dictionary) -> void:
 	if player_id == multiplayer.get_unique_id():
 		authoritative_player_snapshot_received.emit(player_id, snapshot)
 
+# LEGACY — relay_player_snapshot is the old client-authoritative RPC where
+# clients pushed their own position to be relayed to peers.  In authorized
+# server mode the server never reads this; it only processes receive_player_input.
+# Kept as a stub so existing RPC signatures remain valid.  No production code
+# path calls this.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
 	pass
