@@ -126,12 +126,6 @@ func _snapshot_from_player_sync(packet: Dictionary) -> Dictionary:
 		"flip_h": bool(packet.get("flip_h", false)),
 	}
 
-# LEGACY — do NOT call in authorized server mode.
-# In authorized mode the server owns position; clients only send inputs via
-# send_player_input().  send_snapshot() / relay_player_snapshot are kept
-# solely for offline debug or listen-server legacy testing.
-# send_snapshot() is only reachable from _send_network_state() which is
-# itself gated by _LEGACY_SEND_SNAPSHOT_ENABLED = false in player.gd.
 func send_snapshot(snapshot: Dictionary, tick: int) -> void:
 	if not is_connected_to_server():
 		return
@@ -140,7 +134,7 @@ func send_snapshot(snapshot: Dictionary, tick: int) -> void:
 func send_player_input(packet: Dictionary) -> void:
 	if not is_connected_to_server():
 		return
-	rpc_id(1, "rpc_submit_input", packet)
+	rpc_id(1, "receive_player_input", multiplayer.get_unique_id(), packet)
 
 func send_stop_movement() -> void:
 	if not is_connected_to_server():
@@ -275,37 +269,8 @@ func fetch_rooms() -> void:
 			rooms_list_received.emit([])
 	)
 
-## Returns the best LAN IPv4 address of this machine.
-## Skips loopback (127.x, ::1) and IPv6 addresses.
-## Prefers private ranges: 192.168.x.x, 10.x.x.x, 172.16-31.x.x.
-## Returns an empty string if no suitable address is found (master server
-## will then fall back to the TCP source address).
-func get_lan_ip() -> String:
-	var addresses: PackedStringArray = IP.get_local_addresses()
-	var best: String = ""
-	for addr in addresses:
-		# Skip IPv6 and loopback addresses
-		if ":" in addr:
-			continue
-		if addr.begins_with("127."):
-			continue
-		# Check for private IPv4 ranges (prefer these)
-		if addr.begins_with("192.168.") or addr.begins_with("10."):
-			return addr  # Best match – return immediately
-		# 172.16.0.0 – 172.31.255.255
-		if addr.begins_with("172."):
-			var parts := addr.split(".")
-			if parts.size() == 4:
-				var second := parts[1].to_int()
-				if second >= 16 and second <= 31:
-					return addr
-		# Keep as fallback (public / other private IP on this machine)
-		if best == "":
-			best = addr
-	return best
-
 func register_room_to_master(room_name: String, port: int, use_lan: bool = false) -> void:
-	var ip_to_send: String = get_lan_ip() if use_lan else ""
+	var ip_to_send = "127.0.0.1" if use_lan else ""
 	var body = {
 		"name": room_name,
 		"port": port,
@@ -359,18 +324,7 @@ func unregister_room() -> void:
 func request_matchmake(callback: Callable) -> void:
 	_send_api_request("/api/rooms/matchmake", HTTPClient.METHOD_POST, {}, callback)
 
-# ==================================================================
-# LEGACY — LISTEN-SERVER MODEL (do NOT call from production UI)
-# ==================================================================
-# host_game_listen_server_legacy() turns the client itself into the
-# ENet server (listen-server).  This conflicts with the team's
-# authorized-server architecture where a dedicated server project is
-# spawned by host_room() and both players connect to it as plain
-# clients.  Keeping this function here only for reference / offline
-# debugging.  No UI should call this in the main flow.
-# Use host_room() instead.
-# ==================================================================
-func host_game_listen_server_legacy(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = false) -> Error:
+func host_game(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = false) -> Error:
 	if peer:
 		_reset_connection_state(true)
 
@@ -380,7 +334,7 @@ func host_game_listen_server_legacy(room_name: String, port: int = DEFAULT_PORT,
 	peer = ENetMultiplayerPeer.new()
 	var error = peer.create_server(port, 2) 
 	if error != OK:
-		printerr("[NetworkManager][LEGACY] Failed to host server on port %d: %s" % [port, error_string(error)])
+		printerr("[NetworkManager] Failed to host server on port %d: %s" % [port, error_string(error)])
 		_reset_connection_state(false)
 		return error
 
@@ -391,7 +345,7 @@ func host_game_listen_server_legacy(room_name: String, port: int = DEFAULT_PORT,
 	if not multiplayer.peer_disconnected.is_connected(_on_client_peer_disconnected):
 		multiplayer.peer_disconnected.connect(_on_client_peer_disconnected)
 
-	print("[NetworkManager][LEGACY] Hosted listen-server on port %d" % port)
+	print("[NetworkManager] Hosted server on port %d" % port)
 	
 	my_role = 0
 	connected_players.append(1)
@@ -518,6 +472,10 @@ func _notification(what: int) -> void:
 # RPC DEFINITIONS
 # ==================================================================
 
+@rpc("any_peer", "call_remote", "reliable")
+func server_request_restart() -> void:
+	pass
+
 @rpc("authority", "call_remote", "reliable")
 func receive_level_restart() -> void:
 	restart_level_received.emit()
@@ -588,35 +546,16 @@ func receive_player_sync(packet: Dictionary) -> void:
 	if player_id == multiplayer.get_unique_id():
 		authoritative_player_snapshot_received.emit(player_id, snapshot)
 
-# Batched world snapshot — sent by the server at SNAPSHOT_SEND_RATE Hz instead
-# of a separate receive_player_sync call per player per frame.
-# packet = { "players": [ { "id", "t", "ack_tick", "pos", "vel", "on_floor",
-#                            "anim", "flip_h" }, … ] }
-@rpc("authority", "call_remote", "unreliable_ordered")
-func receive_world_snapshot(packet: Dictionary) -> void:
-	var my_id := multiplayer.get_unique_id()
-	var entries: Array = packet.get("players", [])
-	for entry in entries:
-		var player_id := int(entry.get("id", 0))
-		if player_id == 0:
-			continue
-		var snapshot := _snapshot_from_player_sync(entry)
-		var tick := int(snapshot.get("ack_tick", entry.get("t", current_tick)))
-		remote_player_snapshot_received.emit(player_id, snapshot, tick)
-		if player_id == my_id:
-			authoritative_player_snapshot_received.emit(player_id, snapshot)
-
-# LEGACY — relay_player_snapshot is the old client-authoritative RPC where
-# clients pushed their own position to be relayed to peers.  In authorized
-# server mode the server never reads this; it only processes receive_player_input.
-# Kept as a stub so existing RPC signatures remain valid.  No production code
-# path calls this.
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func rpc_submit_input(_packet: Dictionary) -> void:
+func server_receive_movement_input(_packet: Dictionary) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func receive_player_input(_player_id: int, _packet: Dictionary) -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "reliable")
