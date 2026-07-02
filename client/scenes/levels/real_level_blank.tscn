@@ -10,12 +10,16 @@
 [ext_resource type="PackedScene" uid="uid://dna1u41hm35q5" path="res://scenes/gameplay/objects/bridge_platform.tscn" id="7_bridge"]
 [ext_resource type="Script" uid="uid://cvmrbef7tkkam" path="res://scripts/core/scene_loader/foreground.gd" id="8_7tvm4"]
 [ext_resource type="PackedScene" uid="uid://dqlxrcj1uh05n" path="res://scenes/gameplay/objects/pressure_button.tscn" id="9_button"]
+[ext_resource type="PackedScene" uid="uid://kldabwapubdb" path="res://scenes/gameplay/objects/push_block.tscn" id="10_push_block"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hazard"]
-size = Vector2(128, 27)
+size = Vector2(48, 18)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
 size = Vector2(34, 62)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_push_platform"]
+size = Vector2(360, 8)
 
 [sub_resource type="Environment" id="Environment_7tvm4"]
 background_mode = 3
@@ -137,6 +141,16 @@ visual_layer_path = NodePath("Visual")
 
 [node name="Objects" type="Node2D" parent="." unique_id=182746803]
 
+[node name="PushBlockPlatform" type="StaticBody2D" parent="Objects" unique_id=114730825]
+position = Vector2(140, 500)
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Objects/PushBlockPlatform" unique_id=233990953]
+shape = SubResource("RectangleShape2D_push_platform")
+
+[node name="PushBlock" parent="Objects" unique_id=758133116 instance=ExtResource("10_push_block")]
+position = Vector2(140, 488)
+
 [node name="tilemap" type="Node2D" parent="." unique_id=1481712616]
 
 [node name="Background" type="TileMapLayer" parent="tilemap" unique_id=1495634537]
@@ -166,7 +180,7 @@ bridge_path = NodePath("../../Puzzles/LavaBridge")
 [node name="SpawnPoints" type="Node2D" parent="." unique_id=1453074696]
 
 [node name="PlayerSpawn" type="Marker2D" parent="SpawnPoints" unique_id=906776050]
-position = Vector2(41, 618)
+position = Vector2(96, 618)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=377752583]
 environment = SubResource("Environment_7tvm4")

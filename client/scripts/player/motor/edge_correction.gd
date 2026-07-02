@@ -25,21 +25,27 @@ func try_apply(delta: float, input_direction: float) -> bool:
 	var motion := owner_player.velocity * delta
 	if motion.y >= 0.0:
 		return false
-	if not owner_player.test_move(owner_player.global_transform, motion):
-		return false
-
 	var correction_step: float = maxf(owner_player.edge_correction_step, 0.5)
 	var correction_distance: float = maxf(owner_player.edge_correction_distance, correction_step)
+	var forward_probe := owner_player.global_transform.translated(Vector2(travel_sign * correction_distance, 0.0))
+	var motion_hits := owner_player.test_move(owner_player.global_transform, motion)
+	var forward_probe_hits := owner_player.test_move(forward_probe, motion)
+	if not motion_hits and not forward_probe_hits:
+		return false
+
 	var offset: float = correction_step
 	while offset <= correction_distance + 0.001:
-		var shifted_transform := owner_player.global_transform.translated(Vector2(travel_sign * offset, 0.0))
-		if owner_player.test_move(shifted_transform, Vector2.ZERO):
-			offset += correction_step
-			continue
-		if not owner_player.test_move(shifted_transform, motion):
-			owner_player.global_position.x += travel_sign * offset
-			correction_applied_this_frame = true
-			return true
+		for correction_sign: float in [travel_sign, -travel_sign]:
+			var correction_offset: float = correction_sign * offset
+			var shifted_transform := owner_player.global_transform.translated(Vector2(correction_offset, 0.0))
+			if owner_player.test_move(shifted_transform, Vector2.ZERO):
+				continue
+			if not owner_player.test_move(shifted_transform, motion):
+				owner_player.global_position.x += correction_offset
+				if not motion_hits and forward_probe_hits:
+					owner_player.global_position.y -= correction_distance
+				correction_applied_this_frame = true
+				return true
 		offset += correction_step
 	return false
 

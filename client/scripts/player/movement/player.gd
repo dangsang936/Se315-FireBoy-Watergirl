@@ -10,7 +10,7 @@ enum PlayerState { IDLE, RUNNING, AIRBORNE, PUSHING, CLIMBING, DISABLED }
 enum Element { FIRE, WATER }
 
 @export var speed: float = 110.0
-@export var jump_velocity: float = -236.0
+@export var jump_velocity: float = -244.0
 @export var acceleration: float = 1500.0
 @export var deceleration: float = 1250.0
 @export var air_acceleration: float = 1000.0
@@ -31,7 +31,7 @@ enum Element { FIRE, WATER }
 @export var jump_cut_gravity_multiplier: float = 12.0
 @export var fast_fall_gravity_multiplier: float = 1.15
 @export var edge_correction_enabled: bool = true
-@export var edge_correction_distance: float = 3.0
+@export var edge_correction_distance: float = 12.0
 @export var edge_correction_step: float = 1.0
 @export var edge_correction_min_rise_speed: float = 30.0
 @export_multiline var edge_correction_collision_documentation: String = "Edge correction reuses the player World and PushBlock collision mask, only while rising into resolvable corners."
@@ -45,7 +45,7 @@ enum Element { FIRE, WATER }
 @export var push_interactor_path: NodePath = ^"PushInteractor"
 @export var ladder_detector_path: NodePath = ^"LadderDetector"
 @export var state_machine_path: NodePath = ^"PlayerStateMachine"
-@export var push_probe_distance: float = 1.0
+@export var push_probe_distance: float = 16.0
 @export var push_probe_vertical_padding: float = 2.0
 @export var ladder_climb_speed: float = 75.0
 @export var element: Element = Element.FIRE

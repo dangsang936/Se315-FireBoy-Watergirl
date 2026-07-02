@@ -4,7 +4,7 @@ extends Area2D
 const LADDER_DETECTOR_LAYER: int = 0
 const LADDER_DETECTOR_MASK: int = 8
 
-@export var detector_size: Vector2 = Vector2(12.0, 24.0):
+@export var detector_size: Vector2 = Vector2(12.0, 32.0):
 	set(value):
 		detector_size = Vector2(maxf(value.x, 4.0), maxf(value.y, 4.0))
 		_sync_collision_shape()
@@ -12,12 +12,14 @@ const LADDER_DETECTOR_MASK: int = 8
 	set(value):
 		detector_offset = value
 		_sync_collision_shape()
+@export_range(0, 6, 1) var exit_grace_frames: int = 2
 @export_multiline var collision_layers_documentation: String = "Default layer/mask: detector monitors ladder Area2D objects and does not block movement."
 
 var owner_player: PrototypePlayer
 
 var _active_ladders: Array[Area2D] = []
 var _collision_shape: CollisionShape2D
+var _exit_grace_frames_remaining: int = 0
 
 func _ready() -> void:
 	collision_layer = LADDER_DETECTOR_LAYER
@@ -29,13 +31,21 @@ func _ready() -> void:
 	monitorable = false
 	area_entered.connect(_on_area_entered)
 	area_exited.connect(_on_area_exited)
+	set_physics_process(true)
+
+func _physics_process(_delta: float) -> void:
+	if _active_ladders.is_empty() and _exit_grace_frames_remaining > 0:
+		if owner_player != null and owner_player.get_player_state_name() == &"climb" and owner_player.has_ladder_climb_input():
+			_exit_grace_frames_remaining = exit_grace_frames
+			return
+		_exit_grace_frames_remaining -= 1
 
 func setup(player: PrototypePlayer) -> void:
 	owner_player = player
 
 func is_on_ladder() -> bool:
 	_prune_invalid_ladders()
-	return not _active_ladders.is_empty()
+	return not _active_ladders.is_empty() or _exit_grace_frames_remaining > 0
 
 func get_current_ladder() -> Area2D:
 	_prune_invalid_ladders()
@@ -51,6 +61,7 @@ func get_current_climb_speed(default_speed: float) -> float:
 
 func clear_ladders() -> void:
 	_active_ladders.clear()
+	_exit_grace_frames_remaining = 0
 
 func _ensure_collision_shape() -> void:
 	if _collision_shape != null:
@@ -74,11 +85,14 @@ func _on_area_entered(area: Area2D) -> void:
 		return
 	if not _active_ladders.has(area):
 		_active_ladders.append(area)
+	_exit_grace_frames_remaining = 0
 
 func _on_area_exited(area: Area2D) -> void:
 	if not area.is_in_group("ladder") and not area.has_method("get_climb_speed"):
 		return
 	_active_ladders.erase(area)
+	if _active_ladders.is_empty():
+		_exit_grace_frames_remaining = exit_grace_frames
 
 func _prune_invalid_ladders() -> void:
 	for index: int in range(_active_ladders.size() - 1, -1, -1):

@@ -59,7 +59,7 @@ func get_spawn_position() -> Vector2:
 func get_spawn_position_2() -> Vector2:
 	if _player_spawn_2:
 		return _player_spawn_2.global_position
-	return get_spawn_position() + Vector2(50, 0)
+	return get_spawn_position()
 
 func _connect_hazards() -> void:
 	if _hazards == null:
@@ -96,7 +96,11 @@ func _configure_gems_for_attached_players(fallback_player: Node2D) -> void:
 		_gem_manager.configure_all()
 
 func _get_required_exit_players() -> int:
-	return maxi(_players.get_child_count(), 1)
+	var player_count: int = 0
+	for child: Node in _players.get_children():
+		if child.is_in_group("player"):
+			player_count += 1
+	return maxi(player_count, 1)
 
 func _complete_level() -> void:
 	if _is_completed:

@@ -17,20 +17,47 @@ var _jump_released_since_update: bool = false
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("jump"):
 		_jump_pressed_since_update = true
+		jump_pressed = true
+		climb_up_pressed = true
+		climb_direction = _read_climb_direction()
 		return
 	if event.is_action_released("jump"):
 		_jump_released_since_update = true
+		jump_pressed = false
+		climb_up_pressed = false
+		climb_direction = _read_climb_direction()
+		return
+	if event.is_action_pressed("move_down"):
+		move_down_pressed = true
+		climb_down_pressed = true
+		climb_direction = _read_climb_direction()
+		return
+	if event.is_action_released("move_down"):
+		move_down_pressed = false
+		climb_down_pressed = false
+		climb_direction = _read_climb_direction()
 		return
 
 	var key_event := event as InputEventKey
 	if key_event == null or key_event.echo:
 		return
+	if key_event.physical_keycode == KEY_S or key_event.keycode == KEY_S:
+		move_down_pressed = key_event.pressed
+		climb_down_pressed = key_event.pressed
+		climb_direction = _read_climb_direction()
+		return
 	if key_event.physical_keycode != KEY_W and key_event.keycode != KEY_W:
 		return
 	if key_event.pressed:
 		_jump_pressed_since_update = true
+		jump_pressed = true
+		climb_up_pressed = true
+		climb_direction = _read_climb_direction()
 		return
 	_jump_released_since_update = true
+	jump_pressed = false
+	climb_up_pressed = false
+	climb_direction = _read_climb_direction()
 
 func update_from_input(control_enabled: bool) -> void:
 	if not control_enabled:
