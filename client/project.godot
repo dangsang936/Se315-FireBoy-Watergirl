@@ -18,7 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 NetworkManager="*res://scripts/network_manager.gd"
-GameplayRpc="*uid://lwcokmjrq16n"
+GameplayRpc="*res://shared/rpc/gameplay_rpc.gd"
 
 [editor_plugins]
 

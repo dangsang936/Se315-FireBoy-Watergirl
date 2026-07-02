@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bmf4aisxn37lg"]
 
-[ext_resource type="Script" path="res://scripts/gameplay/collectibles/water_gem.gd" id="1_water"]
-[ext_resource type="Texture2D" path="res://assets/tilesets/tilesets.png" id="2_fai4k"]
+[ext_resource type="Script" uid="uid://bywqrc87qyhus" path="res://shared/scripts/gameplay/collectibles/water_gem.gd" id="1_water"]
+[ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="2_fai4k"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_6p8f3"]
 atlas = ExtResource("2_fai4k")

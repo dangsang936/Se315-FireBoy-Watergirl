@@ -3,6 +3,13 @@
 [ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://shared/scripts/gameplay/levels/prototype_level.gd" id="1_level"]
 [ext_resource type="Script" uid="uid://f726xissaotg" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
 [ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://shared/scripts/gameplay/doors/exit_door.gd" id="3_exit"]
+[ext_resource type="Texture2D" uid="uid://bktksl4tet7u8" path="res://assets/sprites/environment/background.png" id="4_drtrc"]
+[ext_resource type="TileSet" uid="uid://d4axx7k7dkrm4" path="res://assets/tilesets/tileset.tres" id="4_gkpaa"]
+[ext_resource type="Texture2D" uid="uid://dmrryf0n21bh8" path="res://assets/sprites/environment/midground.png" id="5_7tvm4"]
+[ext_resource type="Texture2D" uid="uid://s31g3j2nk0q" path="res://assets/sprites/environment/foreground.png" id="6_y1y1q"]
+[ext_resource type="PackedScene" uid="uid://dna1u41hm35q5" path="res://scenes/gameplay/objects/bridge_platform.tscn" id="7_bridge"]
+[ext_resource type="Script" uid="uid://cvmrbef7tkkam" path="res://scripts/core/scene_loader/foreground.gd" id="8_7tvm4"]
+[ext_resource type="PackedScene" uid="uid://dqlxrcj1uh05n" path="res://scenes/gameplay/objects/pressure_button.tscn" id="9_button"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(240, 24)

@@ -1,7 +1,7 @@
 [gd_scene format=4 uid="uid://d2ucswgqexi72"]
 
-[ext_resource type="Script" path="res://scripts/gameplay/objects/bridge_platform.gd" id="1_bridge_platform"]
-[ext_resource type="Texture2D" path="res://assets/tilesets/tilesets.png" id="2_4ewbo"]
+[ext_resource type="Script" uid="uid://d4ixieo4p55jg" path="res://shared/scripts/gameplay/objects/bridge_platform.gd" id="1_bridge_platform"]
+[ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="2_4ewbo"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_i7isn"]
 size = Vector2(182, 14)

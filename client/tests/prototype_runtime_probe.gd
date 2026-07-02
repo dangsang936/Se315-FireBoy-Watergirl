@@ -6,7 +6,7 @@ const PLAYER_SCENE: PackedScene = preload("res://scenes/players/fireboy.tscn")
 const WATERGIRL_SCENE: PackedScene = preload("res://scenes/players/watergirl.tscn")
 const PUSH_BLOCK_SCENE: PackedScene = preload("res://scenes/gameplay/objects/push_block.tscn")
 const GEM_SCENE: PackedScene = preload("res://scenes/gameplay/collectibles/collectible_gem.tscn")
-const HAZARD_SCRIPT: Script = preload("res://scripts/gameplay/hazards/hazard_zone.gd")
+const HAZARD_SCRIPT: Script = preload("res://shared/scripts/gameplay/hazards/hazard_zone.gd")
 
 class PushProbePlayer:
 	extends CharacterBody2D

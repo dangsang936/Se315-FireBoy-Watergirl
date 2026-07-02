@@ -156,6 +156,17 @@ func send_state(state: Dictionary) -> void:
 		return
 	rpc_id(1, "relay_player_state", multiplayer.get_unique_id(), state)
 
+func send_stop_movement() -> void:
+	if not is_connected_to_server():
+		return
+	var stop_snapshot := {
+		"pos": Vector2.ZERO,
+		"vel": Vector2.ZERO,
+		"anim": "idle",
+		"flip_h": false,
+	}
+	rpc_id(1, "relay_player_snapshot", multiplayer.get_unique_id(), stop_snapshot, current_tick)
+
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func server_receive_movement_input(_packet: Dictionary) -> void:
 	pass
