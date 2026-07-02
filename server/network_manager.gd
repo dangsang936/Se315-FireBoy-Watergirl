@@ -1,5 +1,4 @@
 # server/network_manager.gd
-# Dedicated server using Godot's built-in ENetMultiplayerPeer
 extends Node
 
 const DEFAULT_PORT: int = 9999
@@ -151,19 +150,16 @@ func _spawn_server_player(peer_id: int, role: int) -> void:
 	var body := CharacterBody2D.new()
 	body.name = "ServerPlayer_%d" % peer_id
 	
-	# ALL layers and masks so it touches gems and boxes
-	body.collision_layer = 1 # Back to default!
+	body.collision_layer = 1
 	body.collision_mask = 1
-
 	body.add_to_group("player")
 	body.set_meta("player_id", peer_id)
 	body.set_meta("element", role)
 
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(10, 10) # BIG shape to hit gem for sure
+	shape.size = Vector2(10, 10)
 	collision.shape = shape
-	# Fix levitate: offset shape to match client feet origin
 	collision.position = Vector2(0, -5)
 	body.add_child(collision) 
 
@@ -255,7 +251,6 @@ func _simulate_player(peer_id: int, delta: float) -> void:
 	body.velocity = velocity
 	body.move_and_slide()
 
-	# NEW PUSH LOGIC FOR SERVER DUMMY
 	if direction != 0.0:
 		var push_dir = signf(direction)
 		for i in body.get_slide_collision_count():
@@ -274,7 +269,6 @@ func _simulate_player(peer_id: int, delta: float) -> void:
 		input["j"] = false
 		latest_inputs[peer_id] = input
 	_authoritative_states[peer_id] = _create_authoritative_snapshot(peer_id)
-		
 		
 func _broadcast_player_sync(peer_id: int) -> void:
 	var state: Dictionary = server_players.get(peer_id, {})
@@ -321,7 +315,6 @@ func _create_authoritative_snapshot(peer_id: int) -> Dictionary:
 		"flip_h": body.velocity.x < 0.0
 	}
 		
-
 func _create_log_ui() -> void:
 	var canvas = CanvasLayer.new()
 	add_child(canvas)
@@ -338,69 +331,41 @@ func s_print(msg: String) -> void:
 	if _log_box:
 		_log_box.text += msg + "\n"
 
-# ------------------------------------------------------------------
-# RPCs called ON clients (defined here so the server script compiles,
-# but the real implementation lives in the client's network_manager).
-# ------------------------------------------------------------------
+# ==================================================================
+# RPC DEFINITIONS
+# ==================================================================
 
 @rpc("any_peer", "call_remote", "reliable")
 func server_request_restart() -> void:
 	s_print("[Server] Restarting world.")
-	
-	# Burn old world
 	if is_instance_valid(_world_root):
 		_world_root.queue_free()
-	
 	server_players.clear()
-	
-	# Build new world
 	_create_movement_world()
-	
-	# Respawn players
 	for pid in connected_players:
 		if player_roles.has(pid):
 			var role = player_roles[pid]
 			latest_inputs[pid] = _neutral_input()
 			_spawn_server_player(pid, role)
-			
-	# Tell clients
 	for pid in connected_players:
 		rpc_id(pid, "receive_level_restart")
+		rpc_id(pid, "sync_restart_level")
+
 @rpc("authority", "call_remote", "reliable")
 func receive_level_restart() -> void:
 	pass
 
 @rpc("authority", "call_remote", "reliable")
 func receive_role_assignment(_role: int) -> void:
-	pass  # Implemented on clients
+	pass
 
 @rpc("authority", "call_remote", "reliable")
 func receive_player_list(_players: Array) -> void:
-	pass  # Implemented on clients
+	pass
 
 @rpc("authority", "call_remote", "reliable")
 func receive_all_roles(_roles: Dictionary) -> void:
 	pass
-
-@rpc("authority", "call_remote", "reliable")
-func notify_game_start() -> void:
-	pass
-
-@rpc("authority", "call_remote", "reliable")
-func notify_peer_disconnected(_peer_id: int) -> void:
-	pass
-
-@rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_sync(_packet: Dictionary) -> void:
-	pass
-
-@rpc("authority", "call_remote", "unreliable_ordered")
-func receive_authoritative_player_snapshot(_player_id: int, _snapshot: Dictionary) -> void:
-	pass
-
-# ------------------------------------------------------------------
-# Movement RPCs. Clients send input only; server owns positions.
-# ------------------------------------------------------------------
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_role(role: int) -> void:
@@ -409,6 +374,10 @@ func request_role(role: int) -> void:
 		return
 	_assign_role(sender_id, role)
 
+@rpc("authority", "call_remote", "reliable")
+func notify_game_start() -> void:
+	pass
+
 @rpc("any_peer", "call_remote", "reliable")
 func request_start_game() -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
@@ -416,6 +385,26 @@ func request_start_game() -> void:
 		return
 	for pid in connected_players:
 		rpc_id(pid, "notify_game_start")
+
+@rpc("authority", "call_remote", "reliable")
+func notify_peer_disconnected(_peer_id: int) -> void:
+	pass
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
+	pass
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_authoritative_player_snapshot(_player_id: int, _snapshot: Dictionary) -> void:
+	pass
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_sync(_packet: Dictionary) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
+	pass
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func server_receive_movement_input(packet: Dictionary) -> void:
@@ -431,12 +420,43 @@ func receive_player_input(player_id: int, packet: Dictionary) -> void:
 		return
 	latest_inputs[sender_id] = _sanitize_input_packet(packet)
 
-# ------------------------------------------------------------------
-# Legacy relay RPCs kept as compatibility stubs during migration.
-# ------------------------------------------------------------------
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_collect_gem(gem_path: String) -> void:
+	for pid in connected_players:
+		rpc_id(pid, "sync_collect_gem", gem_path)
+
+@rpc("authority", "call_local", "reliable")
+func sync_collect_gem(_gem_path: String) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_player_failed() -> void:
+	for pid in connected_players:
+		rpc_id(pid, "sync_player_failed")
+
+@rpc("authority", "call_local", "reliable")
+func sync_player_failed() -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_level_completed() -> void:
+	for pid in connected_players:
+		rpc_id(pid, "sync_level_completed")
+
+@rpc("authority", "call_local", "reliable")
+func sync_level_completed() -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_restart_level() -> void:
+	server_request_restart()
+
+@rpc("authority", "call_local", "reliable")
+func sync_restart_level() -> void:
+	pass
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func relay_player_position(_player_id: int, _position: Vector2) -> void:
+func relay_player_position(_player_id: int, _pos: Vector2) -> void:
 	pass
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
@@ -444,12 +464,13 @@ func relay_player_state(_player_id: int, _state: Dictionary) -> void:
 	pass
 
 @rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_position(_player_id: int, _position: Vector2) -> void:
-	pass  # Implemented on clients
+func receive_player_position(_player_id: int, _pos: Vector2) -> void:
+	pass
 
 @rpc("authority", "call_remote", "unreliable_ordered")
 func receive_player_state(_player_id: int, _state: Dictionary) -> void:
-	pass  # Implemented on clients
+	pass
+
 @rpc("any_peer", "call_remote", "reliable")
 func server_teleport_player(pos: Vector2) -> void:
 	var sender = multiplayer.get_remote_sender_id()
@@ -457,7 +478,8 @@ func server_teleport_player(pos: Vector2) -> void:
 		var body = server_players[sender]["body"]
 		body.global_position = pos
 		body.velocity = Vector2.ZERO
-		latest_inputs[sender] = _neutral_input() # Stop running!
+		latest_inputs[sender] = _neutral_input() 
+
 @rpc("any_peer", "call_remote", "reliable")
 func server_stop_movement() -> void:
 	var sender := multiplayer.get_remote_sender_id()

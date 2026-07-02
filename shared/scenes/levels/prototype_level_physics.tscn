@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://di53oti451a4m"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(560, 24)
@@ -12,40 +12,40 @@ distance = 96.0
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_push_block"]
 size = Vector2(16, 16)
 
-[node name="PrototypeLevelPhysics" type="Node2D"]
+[node name="PrototypeLevelPhysics" type="Node2D" unique_id=4703924]
 
-[node name="Players" type="Node2D" parent="."]
+[node name="Players" type="Node2D" parent="." unique_id=1694439949]
 
-[node name="PlayerSpawn" type="Marker2D" parent="Players"]
+[node name="PlayerSpawn" type="Marker2D" parent="Players" unique_id=1490402122]
 position = Vector2(-218, -31)
 
-[node name="PlayerSpawn2" type="Marker2D" parent="Players"]
+[node name="PlayerSpawn2" type="Marker2D" parent="Players" unique_id=1663537861]
 position = Vector2(-168, -31)
 
-[node name="Terrain" type="Node2D" parent="."]
+[node name="Terrain" type="Node2D" parent="." unique_id=1944808252]
 
-[node name="Floor" type="StaticBody2D" parent="Terrain"]
+[node name="Floor" type="StaticBody2D" parent="Terrain" unique_id=123031962]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/Floor"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/Floor" unique_id=1960399722]
 shape = SubResource("RectangleShape2D_floor")
 
-[node name="UpperPlatform" type="StaticBody2D" parent="Terrain"]
+[node name="UpperPlatform" type="StaticBody2D" parent="Terrain" unique_id=566490273]
 position = Vector2(96, -74)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/UpperPlatform"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/UpperPlatform" unique_id=1126993171]
 position = Vector2(0, 21)
 shape = SubResource("RectangleShape2D_platform")
 
-[node name="FallBoundary" type="StaticBody2D" parent="Terrain"]
+[node name="FallBoundary" type="StaticBody2D" parent="Terrain" unique_id=1570521087]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/FallBoundary"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/FallBoundary" unique_id=1298019983]
 position = Vector2(-3, 85)
 shape = SubResource("WorldBoundaryShape2D_fall")
 
-[node name="Objects" type="Node2D" parent="."]
+[node name="Objects" type="Node2D" parent="." unique_id=1986771706]
 
-[node name="PushBlockCollision" type="StaticBody2D" parent="Objects"]
+[node name="PushBlockCollision" type="StaticBody2D" parent="Objects" unique_id=759006957]
 position = Vector2(129, -85)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Objects/PushBlockCollision"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Objects/PushBlockCollision" unique_id=771636370]
 shape = SubResource("RectangleShape2D_push_block")

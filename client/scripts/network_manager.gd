@@ -1,5 +1,4 @@
 # client/scripts/network_manager.gd
-# Client-side network manager using Godot's built-in ENetMultiplayerPeer
 extends Node
 
 const DEFAULT_SERVER_IP: String = "127.0.0.1"
@@ -29,7 +28,6 @@ var player_roles: Dictionary = {}
 var current_tick: int = 0
 var hosted_server_pid: int = -1
 
-# Master Server & Matchmaking Variables
 const MASTER_SERVER_URL: String = "http://127.0.0.1:8080"
 var is_host: bool = false
 var current_room_id: String = ""
@@ -118,68 +116,6 @@ func _on_connection_failed() -> void:
 	_reset_connection_state(false)
 	connection_failed.emit()
 
-@rpc("authority", "call_remote", "reliable")
-func receive_role_assignment(role: int) -> void:
-	my_role = role
-	var role_name := "Fireboy" if role == 0 else "Watergirl"
-	print("[Client] Role assigned: %s" % role_name)
-	role_assigned.emit(role)
-
-@rpc("authority", "call_remote", "reliable")
-func receive_player_list(players: Array) -> void:
-	var typed: Array[int] = []
-	for p in players:
-		typed.append(p as int)
-	connected_players = typed
-	player_list_updated.emit(typed)
-
-@rpc("authority", "call_remote", "reliable")
-func receive_all_roles(roles: Dictionary) -> void:
-	player_roles = roles
-	player_list_updated.emit(connected_players)
-
-@rpc("any_peer", "call_remote", "reliable")
-func request_role(role: int) -> void:
-	if not is_connected_to_server():
-		return
-	rpc_id(1, "request_role", role)
-
-@rpc("authority", "call_remote", "reliable")
-func notify_game_start() -> void:
-	var current_scene_path := "<none>"
-	if get_tree().current_scene != null:
-		current_scene_path = get_tree().current_scene.scene_file_path
-	print("[Client] Game starting! peer=%d current_scene=%s" % [multiplayer.get_unique_id(), current_scene_path])
-	game_started.emit()
-
-@rpc("authority", "call_remote", "reliable")
-func notify_peer_disconnected(peer_id: int) -> void:
-	print("[Client] Peer disconnected: %d" % peer_id)
-	if peer_id in connected_players:
-		connected_players.erase(peer_id)
-	player_roles.erase(peer_id)
-	peer_disconnected.emit(peer_id)
-	player_list_updated.emit(connected_players)
-
-@rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_snapshot(player_id: int, snapshot: Dictionary, tick: int) -> void:
-	remote_player_snapshot_received.emit(player_id, snapshot, tick)
-
-@rpc("authority", "call_remote", "unreliable_ordered")
-func receive_authoritative_player_snapshot(player_id: int, snapshot: Dictionary) -> void:
-	authoritative_player_snapshot_received.emit(player_id, snapshot)
-
-@rpc("authority", "call_remote", "unreliable_ordered")
-func receive_player_sync(packet: Dictionary) -> void:
-	var player_id := int(packet.get("id", 0))
-	if player_id == 0:
-		return
-	var snapshot := _snapshot_from_player_sync(packet)
-	var tick := int(snapshot.get("ack_tick", packet.get("t", current_tick)))
-	remote_player_snapshot_received.emit(player_id, snapshot, tick)
-	if player_id == multiplayer.get_unique_id():
-		authoritative_player_snapshot_received.emit(player_id, snapshot)
-
 func _snapshot_from_player_sync(packet: Dictionary) -> Dictionary:
 	return {
 		"ack_tick": int(packet.get("ack_tick", packet.get("t", current_tick))),
@@ -211,72 +147,28 @@ func send_stop_movement() -> void:
 	}
 	rpc_id(1, "relay_player_snapshot", multiplayer.get_unique_id(), stop_snapshot, current_tick)
 
-@rpc("any_peer", "call_remote", "unreliable_ordered")
-func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
-	pass
-
-@rpc("any_peer", "call_remote", "unreliable_ordered")
-func receive_player_input(_player_id: int, _packet: Dictionary) -> void:
-	pass
-
-# --- Reliable Gameplay Event RPCs ---
-
 func send_collect_gem(gem_path: String) -> void:
 	if not is_connected_to_server():
 		return
 	rpc_id(1, "rpc_request_collect_gem", gem_path)
-
-@rpc("any_peer", "call_remote", "reliable")
-func rpc_request_collect_gem(_gem_path: String) -> void:
-	pass  # Server stub
-
-@rpc("authority", "call_local", "reliable")
-func sync_collect_gem(gem_path: String) -> void:
-	gem_collected_received.emit(gem_path)
 
 func send_player_failed() -> void:
 	if not is_connected_to_server():
 		return
 	rpc_id(1, "rpc_request_player_failed")
 
-@rpc("any_peer", "call_remote", "reliable")
-func rpc_request_player_failed() -> void:
-	pass  # Server stub
-
-@rpc("authority", "call_local", "reliable")
-func sync_player_failed() -> void:
-	player_failed_received.emit()
-
 func send_level_completed() -> void:
 	if not is_connected_to_server():
 		return
 	rpc_id(1, "rpc_request_level_completed")
-
-@rpc("any_peer", "call_remote", "reliable")
-func rpc_request_level_completed() -> void:
-	pass  # Server stub
-
-@rpc("authority", "call_local", "reliable")
-func sync_level_completed() -> void:
-	level_completed_received.emit()
 
 func send_restart_level() -> void:
 	if not is_connected_to_server():
 		return
 	rpc_id(1, "rpc_request_restart_level")
 
-@rpc("any_peer", "call_remote", "reliable")
-func rpc_request_restart_level() -> void:
-	pass  # Server stub
-
-@rpc("authority", "call_local", "reliable")
-func sync_restart_level() -> void:
-	restart_level_received.emit()
-
 # ============================================================
-# HOST ROOM (Create Room)
-# Starts the sibling Godot server project, then connects this client
-# to localhost as the host player.
+# HOST ROOM
 # ============================================================
 signal room_created
 signal room_creation_failed(reason: String)
@@ -300,10 +192,6 @@ func start_game() -> void:
 	if not is_connected_to_server():
 		return
 	rpc_id(1, "request_start_game")
-
-@rpc("any_peer", "call_remote", "reliable")
-func request_start_game() -> void:
-	pass
 
 func _start_server_process(port: int) -> Error:
 	if hosted_server_pid > 0:
@@ -349,8 +237,6 @@ func _on_host_room_connected() -> void:
 func _on_host_room_connection_failed() -> void:
 	_disconnect_host_room_result_signals()
 	room_creation_failed.emit("Local server did not accept the connection")
-
-# --- Master Server HTTP API Helpers ---
 
 func _send_api_request(endpoint: String, method: int, body: Dictionary, callback: Callable) -> void:
 	var http_request = HTTPRequest.new()
@@ -438,8 +324,6 @@ func unregister_room() -> void:
 func request_matchmake(callback: Callable) -> void:
 	_send_api_request("/api/rooms/matchmake", HTTPClient.METHOD_POST, {}, callback)
 
-# --- ENet Listen Server (Host Mode) ---
-
 func host_game(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = false) -> Error:
 	if peer:
 		_reset_connection_state(true)
@@ -448,7 +332,7 @@ func host_game(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = fals
 		setup_upnp(port)
 
 	peer = ENetMultiplayerPeer.new()
-	var error = peer.create_server(port, 2) # Max 2 players
+	var error = peer.create_server(port, 2) 
 	if error != OK:
 		printerr("[NetworkManager] Failed to host server on port %d: %s" % [port, error_string(error)])
 		_reset_connection_state(false)
@@ -463,16 +347,14 @@ func host_game(room_name: String, port: int = DEFAULT_PORT, use_lan: bool = fals
 
 	print("[NetworkManager] Hosted server on port %d" % port)
 	
-	# Host is Fireboy (role 0) by default in client-hosted lobby
 	my_role = 0
-	connected_players.append(1) # Host ID in multiplayer is always 1
+	connected_players.append(1)
 	player_roles[1] = my_role
 	is_host = true
 
-	# Register on Master Server
 	register_room_to_master(room_name, port, use_lan)
 
-	connected_to_server.emit() # Notify UI we are connected (hosting)
+	connected_to_server.emit()
 	role_assigned.emit(my_role)
 	player_list_updated.emit(connected_players)
 	return OK
@@ -484,18 +366,14 @@ func _on_client_peer_connected(id: int) -> void:
 	if not id in connected_players:
 		connected_players.append(id)
 	
-	# Assign the remaining role (Watergirl = 1)
 	var role = 1
 	player_roles[id] = role
 	
-	# Send assignments to peer
 	rpc_id(id, "receive_role_assignment", role)
 	_broadcast_player_list()
 	
-	# Notify UI
 	player_list_updated.emit(connected_players)
 	
-	# Start game if full
 	if connected_players.size() == 2:
 		print("[NetworkManager] Lobby full! Starting game...")
 		game_started.emit()
@@ -526,14 +404,11 @@ func _broadcast_player_list() -> void:
 			rpc_id(pid, "receive_player_list", connected_players)
 			rpc_id(pid, "receive_all_roles", player_roles)
 
-# --- UPnP Helper ---
-
 var _upnp_thread: Thread = null
 var _upnp_instance: UPNP = null
 var _upnp_mapped_port: int = 0
 
 func setup_upnp(port: int) -> void:
-	# Chạy UPnP trên thread riêng để tránh freeze game
 	if _upnp_thread and _upnp_thread.is_started():
 		_upnp_thread.wait_to_finish()
 	_upnp_mapped_port = port
@@ -555,7 +430,6 @@ func _upnp_thread_func(port: int) -> void:
 		call_deferred("_upnp_completed", false, "", null)
 		return
 
-	# Map cả UDP và TCP cho ENet
 	var map_result_udp = upnp.add_port_mapping(port, port, "FireBoyWaterGirl UDP", "UDP")
 	var map_result_tcp = upnp.add_port_mapping(port, port, "FireBoyWaterGirl TCP", "TCP")
 
@@ -593,3 +467,149 @@ func _notification(what: int) -> void:
 		cleanup_upnp()
 		if _upnp_thread and _upnp_thread.is_started():
 			_upnp_thread.wait_to_finish()
+
+# ==================================================================
+# RPC DEFINITIONS
+# ==================================================================
+
+@rpc("any_peer", "call_remote", "reliable")
+func server_request_restart() -> void:
+	pass
+
+@rpc("authority", "call_remote", "reliable")
+func receive_level_restart() -> void:
+	restart_level_received.emit()
+
+@rpc("authority", "call_remote", "reliable")
+func receive_role_assignment(role: int) -> void:
+	my_role = role
+	var role_name := "Fireboy" if role == 0 else "Watergirl"
+	print("[Client] Role assigned: %s" % role_name)
+	role_assigned.emit(role)
+
+@rpc("authority", "call_remote", "reliable")
+func receive_player_list(players: Array) -> void:
+	var typed: Array[int] = []
+	for p in players:
+		typed.append(p as int)
+	connected_players = typed
+	player_list_updated.emit(typed)
+
+@rpc("authority", "call_remote", "reliable")
+func receive_all_roles(roles: Dictionary) -> void:
+	player_roles = roles
+	player_list_updated.emit(connected_players)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_role(role: int) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "request_role", role)
+
+@rpc("authority", "call_remote", "reliable")
+func notify_game_start() -> void:
+	var current_scene_path := "<none>"
+	if get_tree().current_scene != null:
+		current_scene_path = get_tree().current_scene.scene_file_path
+	print("[Client] Game starting! peer=%d current_scene=%s" % [multiplayer.get_unique_id(), current_scene_path])
+	game_started.emit()
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_start_game() -> void:
+	pass
+
+@rpc("authority", "call_remote", "reliable")
+func notify_peer_disconnected(peer_id: int) -> void:
+	print("[Client] Peer disconnected: %d" % peer_id)
+	if peer_id in connected_players:
+		connected_players.erase(peer_id)
+	player_roles.erase(peer_id)
+	peer_disconnected.emit(peer_id)
+	player_list_updated.emit(connected_players)
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_snapshot(player_id: int, snapshot: Dictionary, tick: int) -> void:
+	remote_player_snapshot_received.emit(player_id, snapshot, tick)
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_authoritative_player_snapshot(player_id: int, snapshot: Dictionary) -> void:
+	authoritative_player_snapshot_received.emit(player_id, snapshot)
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_sync(packet: Dictionary) -> void:
+	var player_id := int(packet.get("id", 0))
+	if player_id == 0:
+		return
+	var snapshot := _snapshot_from_player_sync(packet)
+	var tick := int(snapshot.get("ack_tick", packet.get("t", current_tick)))
+	remote_player_snapshot_received.emit(player_id, snapshot, tick)
+	if player_id == multiplayer.get_unique_id():
+		authoritative_player_snapshot_received.emit(player_id, snapshot)
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func relay_player_snapshot(_player_id: int, _snapshot: Dictionary, _tick: int) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func server_receive_movement_input(_packet: Dictionary) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func receive_player_input(_player_id: int, _packet: Dictionary) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_collect_gem(_gem_path: String) -> void:
+	pass
+
+@rpc("authority", "call_local", "reliable")
+func sync_collect_gem(gem_path: String) -> void:
+	gem_collected_received.emit(gem_path)
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_player_failed() -> void:
+	pass
+
+@rpc("authority", "call_local", "reliable")
+func sync_player_failed() -> void:
+	player_failed_received.emit()
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_level_completed() -> void:
+	pass
+
+@rpc("authority", "call_local", "reliable")
+func sync_level_completed() -> void:
+	level_completed_received.emit()
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_restart_level() -> void:
+	pass
+
+@rpc("authority", "call_local", "reliable")
+func sync_restart_level() -> void:
+	restart_level_received.emit()
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func relay_player_position(_player_id: int, _pos: Vector2) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func relay_player_state(_player_id: int, _state: Dictionary) -> void:
+	pass
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_position(_player_id: int, _pos: Vector2) -> void:
+	pass
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func receive_player_state(_player_id: int, _state: Dictionary) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func server_teleport_player(_pos: Vector2) -> void:
+	pass
+
+@rpc("any_peer", "call_remote", "reliable")
+func server_stop_movement() -> void:
+	pass
