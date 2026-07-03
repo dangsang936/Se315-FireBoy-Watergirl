@@ -588,6 +588,14 @@ func _broadcast_level_completed_rpc() -> void:
 	for pid: int in connected_players:
 		rpc_id(pid, "receive_level_completed_event")
 
+func _broadcast_next_level_rpc(level_index: int) -> void:
+	var rpc_node := get_node_or_null("/root/GameplayRpc")
+	if rpc_node != null and rpc_node.has_method("sync_next_level"):
+		rpc_node.rpc("sync_next_level", level_index)
+		return
+	for pid: int in connected_players:
+		rpc_id(pid, "sync_next_level", level_index)
+
 # Client-side receive stubs for the last-resort path above.
 @rpc("authority", "call_remote", "reliable")
 func receive_player_failed_event(_failed_player_id: int) -> void:
@@ -602,6 +610,13 @@ func rpc_request_restart_level() -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
 	if sender_id == host_peer_id:
 		rpc_request_restart()
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_next_level(level_index: int) -> void:
+	var sender_id := multiplayer.get_remote_sender_id()
+	if sender_id != host_peer_id:
+		return
+	_broadcast_next_level_rpc(level_index)
 
 @rpc("authority", "call_local", "reliable")
 func sync_restart_level() -> void:

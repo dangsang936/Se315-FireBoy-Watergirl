@@ -17,6 +17,7 @@ signal gem_collected_received(gem_path: String)
 signal player_failed_received
 signal level_completed_received
 signal restart_level_received
+signal next_level_received(level_index: int)
 
 var peer: ENetMultiplayerPeer = null
 var my_role: int = -1
@@ -165,6 +166,11 @@ func send_restart_level() -> void:
 	if not is_connected_to_server():
 		return
 	rpc_id(1, "rpc_request_restart_level")
+
+func send_next_level(level_index: int) -> void:
+	if not is_connected_to_server():
+		return
+	rpc_id(1, "rpc_request_next_level", level_index)
 
 # ============================================================
 # HOST ROOM
@@ -660,6 +666,14 @@ func rpc_request_restart_level() -> void:
 @rpc("authority", "call_local", "reliable")
 func sync_restart_level() -> void:
 	restart_level_received.emit()
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_next_level(_level_index: int) -> void:
+	pass
+
+@rpc("authority", "call_local", "reliable")
+func sync_next_level(level_index: int) -> void:
+	next_level_received.emit(level_index)
 
 # LEGACY RPC COMPAT — listen-server/client-authoritative relays.
 # Do not call in authorized server mode; active state arrives via receive_world_snapshot.

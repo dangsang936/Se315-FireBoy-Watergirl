@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://brer2pc214ft8"]
 
 [ext_resource type="Script" uid="uid://dsxxshworx2r8" path="res://shared/scripts/gameplay/objects/push_block.gd" id="1_push_block"]
+[ext_resource type="Texture2D" uid="uid://cplol26pbo630" path="res://assets/tilesets/tilesets.png" id="2_d8x11"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_push_block"]
 friction = 0.55
@@ -12,18 +13,19 @@ size = Vector2(16, 16)
 size = Vector2(16, 16)
 
 [node name="PushBlock" type="RigidBody2D" unique_id=1594158012]
-mass = 3.0
 collision_layer = 4
 collision_mask = 3
+mass = 3.0
 physics_material_override = SubResource("PhysicsMaterial_push_block")
 script = ExtResource("1_push_block")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1932918501]
 shape = SubResource("RectangleShape2D_block")
 
-[node name="Visual" type="Polygon2D" parent="." unique_id=1595261425]
-color = Color(0.43, 0.34, 0.23, 1)
-polygon = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=287345247]
+texture = ExtResource("2_d8x11")
+region_enabled = true
+region_rect = Rect2(304, 144, 16, 16)
 
 [node name="PushDetector" type="Area2D" parent="." unique_id=453118435]
 collision_mask = 2

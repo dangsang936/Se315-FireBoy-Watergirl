@@ -1,185 +1,211 @@
-[gd_scene format=4 uid="uid://c6s76g8r3d4os"]
+[gd_scene format=3 uid="uid://c6s76g8r3d4os"]
 
-[ext_resource type="Script" uid="uid://dkdx4xgwukasl" path="res://shared/scripts/gameplay/levels/prototype_level.gd" id="1_tbdl3"]
-[ext_resource type="Texture2D" uid="uid://bktksl4tet7u8" path="res://assets/sprites/environment/background.png" id="2_yby3h"]
-[ext_resource type="Texture2D" uid="uid://dmrryf0n21bh8" path="res://assets/sprites/environment/midground.png" id="3_xpug2"]
-[ext_resource type="Texture2D" uid="uid://s31g3j2nk0q" path="res://assets/sprites/environment/foreground.png" id="4_sqhcu"]
-[ext_resource type="Script" uid="uid://f726xissaotg" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="5_amp5k"]
-[ext_resource type="Script" uid="uid://twafmnkiwg2k" path="res://shared/scripts/gameplay/doors/exit_door.gd" id="6_v0kbq"]
-[ext_resource type="PackedScene" uid="uid://dna1u41hm35q5" path="res://scenes/gameplay/objects/bridge_platform.tscn" id="7_ml5xf"]
-[ext_resource type="TileSet" uid="uid://d4axx7k7dkrm4" path="res://assets/tilesets/tileset.tres" id="8_j61lg"]
-[ext_resource type="Script" uid="uid://cvmrbef7tkkam" path="res://scripts/core/scene_loader/foreground.gd" id="9_h36x3"]
-[ext_resource type="PackedScene" uid="uid://dqlxrcj1uh05n" path="res://scenes/gameplay/objects/pressure_button.tscn" id="10_orjg7"]
+[ext_resource type="Script" path="res://shared/scripts/gameplay/levels/prototype_level.gd" id="1_level"]
+[ext_resource type="Script" path="res://shared/scripts/gameplay/hazards/hazard_zone.gd" id="2_hazard"]
+[ext_resource type="PackedScene" path="res://shared/scenes/gameplay/doors/goal_door.tscn" id="3_goal_door"]
+[ext_resource type="Script" path="res://shared/scripts/gameplay/collectibles/collectible_gem.gd" id="4_gem"]
+[ext_resource type="Script" path="res://shared/scripts/gameplay/collectibles/gem_manager.gd" id="5_gem_manager"]
+[ext_resource type="Script" path="res://shared/scripts/gameplay/objects/push_block.gd" id="6_push_block"]
+[ext_resource type="Script" path="res://shared/scripts/gameplay/objects/bridge_platform.gd" id="7_bridge_platform"]
+[ext_resource type="Script" path="res://shared/scripts/gameplay/objects/pressure_button.gd" id="8_pressure_button"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor_left"]
+size = Vector2(360, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor_right"]
+size = Vector2(760, 32)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hazard"]
 size = Vector2(128, 27)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
-size = Vector2(34, 62)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fall_death"]
+size = Vector2(4331, 44)
 
-[sub_resource type="Environment" id="Environment_7tvm4"]
-background_mode = 3
-tonemap_mode = 1
-tonemap_white = 1.2
-glow_enabled = true
-glow_intensity = 1.0
-glow_bloom = 0.2
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gem"]
+size = Vector2(20, 20)
 
-[node name="RealLevelBlank" type="Node2D" unique_id=2094822713]
-script = ExtResource("1_tbdl3")
-players_path = NodePath("tilemap/Players")
-player_spawn_path = NodePath("SpawnPoints/PlayerSpawn")
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_block"]
+size = Vector2(16, 16)
 
-[node name="parallaxlayers" type="Node2D" parent="." unique_id=163411141]
-z_index = -15
-position = Vector2(391, 496)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_push_detector"]
+size = Vector2(16, 16)
 
-[node name="background" type="Parallax2D" parent="parallaxlayers" unique_id=1299752094]
-scroll_scale = Vector2(0.15, 1)
-repeat_size = Vector2(320, 0)
-repeat_times = 4
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_bridge"]
+size = Vector2(182, 14)
 
-[node name="Sprite2D" type="Sprite2D" parent="parallaxlayers/background" unique_id=458292250]
-texture_repeat = 2
-scale = Vector2(1, 1.2)
-texture = ExtResource("2_yby3h")
-centered = false
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_button_body"]
+size = Vector2(16, 7)
 
-[node name="midground" type="Parallax2D" parent="parallaxlayers" unique_id=92766918]
-scroll_scale = Vector2(0.35, 1)
-repeat_size = Vector2(320, 0)
-repeat_times = 4
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_button_trigger"]
+size = Vector2(16, 18)
 
-[node name="Sprite2D" type="Sprite2D" parent="parallaxlayers/midground" unique_id=1429356739]
-z_index = 1
-texture_repeat = 2
-scale = Vector2(1, 1.2)
-texture = ExtResource("3_xpug2")
-centered = false
+[sub_resource type="CircleShape2D" id="CircleShape2D_fire_gem"]
+radius = 10.0
 
-[node name="foreground" type="Parallax2D" parent="parallaxlayers" unique_id=272202258]
-scroll_scale = Vector2(0.6, 1)
-repeat_size = Vector2(320, 0)
-repeat_times = 4
+[sub_resource type="CircleShape2D" id="CircleShape2D_water_gem"]
+radius = 10.0
 
-[node name="Sprite2D" type="Sprite2D" parent="parallaxlayers/foreground" unique_id=833692166]
-z_index = 2
-texture_repeat = 2
-scale = Vector2(1, 1.2)
-texture = ExtResource("4_sqhcu")
-centered = false
+[node name="RealLevelBlank" type="Node2D"]
+script = ExtResource("1_level")
+players_path = NodePath("Players")
+player_spawn_path = NodePath("Players/PlayerSpawn")
+player_spawn_2_path = NodePath("Players/PlayerSpawn2")
+collectibles_path = NodePath("Collectibles")
+hazards_path = NodePath("Hazards")
+fire_goal_door_path = NodePath("Goals/FireDoor")
+water_goal_door_path = NodePath("Goals/WaterDoor")
 
-[node name="Hazards" type="Node2D" parent="." unique_id=591894627]
+[node name="Players" type="Node2D" parent="."]
+position = Vector2(26, 618)
 
-[node name="LavaPool" type="Area2D" parent="Hazards" unique_id=1038535333]
+[node name="PlayerSpawn" type="Marker2D" parent="Players"]
+position = Vector2(21, -1)
+
+[node name="PlayerSpawn2" type="Marker2D" parent="Players"]
+position = Vector2(71, -1)
+
+[node name="Terrain" type="Node2D" parent="."]
+
+[node name="LeftFloor" type="StaticBody2D" parent="Terrain"]
+position = Vector2(180, 672)
+collision_layer = 1
+collision_mask = 6
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/LeftFloor"]
+shape = SubResource("RectangleShape2D_floor_left")
+
+[node name="RightFloor" type="StaticBody2D" parent="Terrain"]
+position = Vector2(1040, 672)
+collision_layer = 1
+collision_mask = 6
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Terrain/RightFloor"]
+shape = SubResource("RectangleShape2D_floor_right")
+
+[node name="Hazards" type="Node2D" parent="."]
+
+[node name="LavaPool" type="Area2D" parent="Hazards"]
 position = Vector2(-5, -62)
-collision_layer = 16
-collision_mask = 2
-script = ExtResource("5_amp5k")
+script = ExtResource("2_hazard")
 pool_type = 0
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=1861931717]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/LavaPool"]
 position = Vector2(445, 719)
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="CollisionShape2D2" type="CollisionShape2D" parent="Hazards/LavaPool" unique_id=634877222]
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="Hazards/LavaPool"]
 position = Vector2(629, 736.5)
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="HazardZone" type="Area2D" parent="Hazards" unique_id=993619337]
+[node name="HazardZone" type="Area2D" parent="Hazards"]
 position = Vector2(9, -62)
-collision_layer = 16
-collision_mask = 2
-script = ExtResource("5_amp5k")
+script = ExtResource("2_hazard")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/HazardZone" unique_id=937581071]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/HazardZone"]
 position = Vector2(334, 716)
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="PoisonPool" type="Area2D" parent="Hazards" unique_id=566607842]
+[node name="PoisonPool" type="Area2D" parent="Hazards"]
 position = Vector2(45, -63)
-collision_layer = 16
-collision_mask = 2
-script = ExtResource("5_amp5k")
+script = ExtResource("2_hazard")
 pool_type = 2
 
-[node name="PoisonVisual" type="Polygon2D" parent="Hazards/PoisonPool" unique_id=1385295729]
-color = Color(0.32, 0.85, 0.18, 0.78)
-polygon = PackedVector2Array(-24, -9, 24, -9, 24, 9, -24, 9)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/PoisonPool" unique_id=1984233923]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/PoisonPool"]
 shape = SubResource("RectangleShape2D_hazard")
 
-[node name="Goals" type="Node2D" parent="." unique_id=1090063674]
+[node name="FallDeathZone" type="Area2D" parent="Hazards"]
+position = Vector2(640, 880)
+script = ExtResource("2_hazard")
+pool_type = 2
 
-[node name="ExitDoor" type="Area2D" parent="Goals" unique_id=1861265908]
-position = Vector2(96, -42)
-collision_layer = 64
-collision_mask = 2
-script = ExtResource("6_v0kbq")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hazards/FallDeathZone"]
+position = Vector2(-239, -160)
+shape = SubResource("RectangleShape2D_fall_death")
 
-[node name="DoorVisual" type="Polygon2D" parent="Goals/ExitDoor" unique_id=1758419958]
-color = Color(0.95, 0.72, 0.18, 0.85)
-polygon = PackedVector2Array(-17, -31, 17, -31, 17, 31, -17, 31)
+[node name="Puzzles" type="Node2D" parent="."]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Goals/ExitDoor" unique_id=1751659209]
-shape = SubResource("RectangleShape2D_exit")
-
-[node name="Puzzles" type="Node2D" parent="." unique_id=634451493]
-
-[node name="LavaBridge" parent="Puzzles" unique_id=23184816 instance=ExtResource("7_ml5xf")]
+[node name="LavaBridge" type="StaticBody2D" parent="Puzzles"]
 position = Vector2(640, 656)
+collision_layer = 1
+collision_mask = 6
+script = ExtResource("7_bridge_platform")
 bridge_size = Vector2(182, 14)
-editor_preview_alpha = 0.18
-visual_layer_path = NodePath("Visual")
+visual_layer_path = NodePath("")
 
-[node name="Terrain" type="Node2D" parent="." unique_id=182746802]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Puzzles/LavaBridge"]
+shape = SubResource("RectangleShape2D_bridge")
 
-[node name="Objects" type="Node2D" parent="." unique_id=182746803]
+[node name="Objects" type="Node2D" parent="."]
 
-[node name="tilemap" type="Node2D" parent="." unique_id=1481712616]
+[node name="PushBlock" type="RigidBody2D" parent="Objects"]
+position = Vector2(504, 616)
+collision_layer = 4
+collision_mask = 3
+mass = 3.0
+script = ExtResource("6_push_block")
 
-[node name="Background" type="TileMapLayer" parent="tilemap" unique_id=1495634537]
-z_index = -20
-tile_map_data = PackedByteArray("AAADACQAAAABAAoAAAADACUAAAABAAsAAAADACYAAAABAAwAAAADACcAAAABAA0AAAAEACQAAAACAAoAAAAEACUAAAACAAsAAAAEACYAAAACAAwAAAAEACcAAAACAA0AAAAFACQAAAADAAoAAAAFACUAAAADAAsAAAAFACYAAAADAAwAAAAFACcAAAADAA0AAAACACIAAAAFAAoAAAACACMAAAAFAAsAAAADACIAAAAGAAoAAAADACMAAAAGAAsAAAAEACIAAAAHAAoAAAAEACMAAAAHAAsAAAAFACIAAAAIAAoAAAAFACMAAAAIAAsAAAA=")
-tile_set = ExtResource("8_j61lg")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Objects/PushBlock"]
+shape = SubResource("RectangleShape2D_block")
 
-[node name="Midground" type="TileMapLayer" parent="tilemap" unique_id=367856715]
-tile_map_data = PackedByteArray("AAABACcAAAAbAAoAAAAEACcAAAAdAAoAAAADACcAAAAcAAoAAAACACcAAAAcAAoAAAACACYAAAAbAAoAAAADACYAAAAcAAoAAAAEACYAAAAcAAoAAAAFACYAAAAcAAoAAAAGACYAAAAcAAoAAAAHACYAAAAcAAoAAAAFACcAAAAbAAsAAAAGACcAAAAcAAsAAAAIACcAAAAdAAsAAAAHACcAAAAdAAcAAAAIACYAAAAdAAoAAAAIACgAAAAdAAwAAAAHACgAAAAcAAwAAAAGACgAAAAcAAwAAAAFACgAAAAbAAwAAAApACUAAAAXAAcAAAApACQAAAAcAAsAAAAoACUAAAAcAAsAAAAoACQAAAAcAAoAAAAnACUAAAAYAAcAAAAnACQAAAAcAAoAAAAmACUAAAAcAAwAAAAmACQAAAAcAAoAAAAlACUAAAAbAAwAAAAlACQAAAAbAAoAAAApACYAAAAdAAwAAAAoACYAAAAcAAwAAAAnACYAAAAbAAwAAAAqACQAAAAdAAsAAAAqACMAAAAdAAoAAAApACMAAAAcAAoAAAAqACUAAAAdAAwAAAAjACMAAAAdAAwAAAAjACIAAAAdAAoAAAAiACMAAAAbAAwAAAAiACIAAAAbAAoAAAACACQAAAABAAgAAAACACUAAAABAAgAAAACACMAAAABAAcAAAADACMAAAACAAcAAAAGACIAAAAEAAgAABAFACMAAAADAAcAAAAFACQAAAADAAgAAAAFACUAAAADAAgAAAAEACMAAAACAAcAAAACACIAAAASAAkAAAADACIAAAATAAkAAAACACEAAAATAAkAAAAEACIAAAATAAkAAAAFACIAAAATAAkAAAACACAAAAAUAAkAAAADACEAAAAVAAkAAAAJACMAAAAEAAgAAAAdACIAAAAEAAgAABAgACEAAAAEAAgAAAASACIAAAAEAAgAAAAPACMAAAAEAAgAABAkACkAAAALAAcAAAAlACkAAAALAAcAAAAmACkAAAALAAcAAAAnACkAAAALAAcAAAAoACkAAAALAAcAAAApACkAAAALAAcAAAAqACkAAAALAAcAAAAjACkAAAALAAcAAAAtACAAAwAAAAAABAAtACEAAwAAAAAABAAtACIAAwAAAAAABAAtACMAAwAAAAAABAAtACQAAwAAAAAABAAtACUAAwAAAAAABAAtACYAAwAAAAAABAAtACcAAwAAAAAABAAtACgAAwAAAAAABAAsACgAAAABAAgAAAAsACcAAAABAAgAAAAsACYAAAABAAgAAAAsACEAAAABAAgAAAAsACIAAAABAAgAAAAsACMAAAABAAgAAAAsACQAAAABAAgAAAAsACUAAAABAAgAAAAsACAAAAABAAcAAAA=")
-tile_set = ExtResource("8_j61lg")
+[node name="PushDetector" type="Area2D" parent="Objects/PushBlock"]
+collision_mask = 2
 
-[node name="Foreground" type="TileMapLayer" parent="tilemap" unique_id=691087066]
-z_index = 20
-tile_map_data = PackedByteArray("AAAUACgAAAAGAAcAAAAUACkAAAAGAAgAAAAVACgAAAAGAAcAAAAVACkAAAAGAAgAAAAZACsAAAAHAAUAAAAZACoAAAAVAAMAAAAZACkAAAATAAMAAAAZACgAAAAaAAMAAAAYACsAAAAaAAEAAAAYACoAAAATAAcAAAAYACkAAAACAAIAAAAYACgAAAATAAEAAAAXACoAAAAVAAUAAAAXACkAAAAVAAUAAAAXACgAAAAcAAMAAAATACoAAAAUAAMAAAATACkAAAAVAAMAAAATACgAAAADAAEAAAASACsAAAAaAAEAAAASACoAAAACAAIAAAASACkAAAATAAcAAAASACgAAAATAAEAAAARACsAAAAZAAEAAAARACoAAAACAAIAAAARACkAAAAUAAcAAAARACgAAAAWAAEAAAAQACsAAAAdAAEAAAAQACoAAAATAAcAAAAQACkAAAAUAAcAAAAQACgAAAAXAAEAAAAPACsAAAACAAMAAAAPACoAAAACAAIAAAAPACkAAAACAAIAAAAPACgAAAAHAAIAAAAKACsAAAAZAAUAAAAKACoAAAAVAAMAAAAKACkAAAAVAAMAAAAKACgAAAATAAMAAAAJACsAAAAZAAEAAAAJACoAAAATAAcAAAAJACkAAAACAAIAAAAJACgAAAACAAIAAAAIACsAAAACAAMAAAAIACoAAAACAAIAAAAIACkAAAACAAIAAAAIACgAAAAVAAcAAAAHACsAAAAaAAEAAAAHACoAAAACAAIAAAAHACkAAAACAAIAAAAHACgAAAAIAAIAAAAGACsAAAACAAMAAAAGACoAAAACAAIAAAAGACkAAAACAAIAAAAGACgAAAAXAAEAAAAWACgAAAAGAAcAAAAWACkAAAAGAAgAAAAaACgAAAALAAcAAAAbACgAAAALAAcAAAAcACgAAAALAAcAAAAaACkAAAALAAgAAAAbACkAAAALAAgAAAAcACkAAAALAAgAAAAeACsAAAAbAAEAAAAeACoAAAACAAIAAAAeACkAAAAVAAcAAAAeACgAAAAIAAIAAAAdACsAAAAIAAUAAAAdACoAAAATAAUAAAAdACkAAAAVAAUAAAAdACgAAAAdAAMAAAAFACsAAAAZAAEAAAAFACoAAAACAAIAAAAFACkAAAAVAAcAAAAFACgAAAAUAAEAAAAEACsAAAAbAAEAAAAEACoAAAAUAAcAAAAEACkAAAAVAAcAAAAEACgAAAAWAAEAAAADACsAAAAbAAEAAAADACoAAAACAAIAAAADACkAAAACAAIAAAADACgAAAAWAAEAAAACACsAAAAcAAEAAAACACoAAAACAAIAAAACACkAAAACAAIAAAACACgAAAAVAAEAAAABACsAAAAaAAEAAAABACoAAAAUAAcAAAABACkAAAACAAIAAAABACgAAAAVAAEAAAAAACsAAAAaAAEAAAAAACoAAAACAAIAAAAAACkAAAACAAIAAAAAACgAAAATAAEAAAD//ysAAAAQAAUAAAD//yoAAAATAAUAAAD//ykAAAAWAAUAAAD//ygAAAAdAAMAAAAKACcAAAAZAAMAAAAJACcAAAACAAEAAAAIACcAAAAVAAEAAAAPACcAAAADAAEAAAAHACcAAAAcAAMAAAAOACsAAAAdAAUAAAAOACoAAAABAAIAAAAOACkAAAATAAUAAAAOACgAAAAUAAUAAAAOACcAAAAdAAMAAAAhACsAAAAbAAEAAAAhACoAAAACAAIAAAAhACkAAAAHAAIAAAAhACgAAAAZAAMAAAAgACsAAAAaAAEAAAAgACoAAAACAAIAAAAgACkAAAACAAIAAAAgACgAAAAHAAIAAAAgACcAAAADAAEAAAAfACsAAAAaAAEAAAAfACoAAAAVAAcAAAAfACkAAAACAAIAAAAfACgAAAACAAIAAAAfACcAAAACAAEAAAAUACoAAAAGAAgAAAAVACoAAAAGAAgAAAAWACoAAAAGAAgAAAAaACoAAAALAAgAAAAbACoAAAALAAgAAAAcACoAAAALAAgAAAAcACsAAAACAAUAAAAbACsAAAACAAUAAAAaACsAAAACAAUAAAAXACsAAAAIAAUAAAATACsAAAAHAAUAAAAUACsAAAACAAUAAAAVACsAAAACAAUAAAAWACsAAAACAAUAAAAkACsAAAACAAUAAAAjACsAAAAHAAUAAAAjACoAAAARAAQAAAAiACsAAAAaAAEAAAAiACoAAAAHAAIAAAAiACkAAAAaAAMAAAApACQAAAARAAUAAAApACMAAAAHAAEAAAApACIAAAACAAIAAAApACEAAAACAAIAAAAoACQAAAAdAAEAAAAoACMAAAACAAIAAAAoACIAAAACAAIAAAAoACEAAAACAAIAAAAnACQAAAAcAAEAAAAnACMAAAACAAIAAAAnACIAAAACAAIAAAAnACEAAAAIAAIAAAAmACQAAAAcAAEAAAAmACMAAAACAAIAAAAmACIAAAATAAcAAAAmACEAAAACAAEAAAAlACQAAAAZAAEAAAAlACMAAAACAAIAAAAlACIAAAACAAIAAAAlACEAAAATAAEAAAAkACQAAAAdAAEAAAAkACMAAAAVAAcAAAAkACIAAAATAAcAAAAkACEAAAATAAEAAAAjACQAAAAcAAUAAAAjACMAAAAUAAUAAAAjACIAAAAIAAEAAAAjACEAAAATAAEAAAArACIAAAAVAAMAAAArACEAAAAWAAMAAAArACAAAAAZAAMAAAAqACIAAAATAAcAAAAqACEAAAACAAIAAAAqACAAAAAHAAIAAAArACMAAAAZAAUAAAAqACMAAAAbAAEAAAAqAB8AAAAaAAMAAAApACAAAAACAAIAAAApAB8AAAAXAAEAAAAoACAAAAACAAIAAAAoAB8AAAATAAEAAAAnACAAAAATAAUAAAAnAB8AAAABAAEAAAAiACIAAAAZAAEAAAAiACEAAAAWAAEAAAAhACIAAAABAAMAAAAhACEAAAAQAAQAAAAwACsAAAAZAAUAAAAwACoAAAAVAAMAAAAwACkAAAAZAAMAAAAvACsAAAAaAAEAAAAvACoAAAAUAAcAAAAvACkAAAAXAAEAAAAuACsAAAACAAMAAAAuACoAAAACAAIAAAAuACkAAAAWAAEAAAAtACsAAAAdAAEAAAAtACoAAAACAAIAAAAtACkAAAAVAAEAAAAsACsAAAAaAAEAAAAsACoAAAATAAcAAAAsACkAAAATAAEAAAArACsAAAAdAAEAAAArACoAAAAIAAIAAAAcACQAAAAZAAUAAAAcACMAAAAWAAMAAAAcACIAAAADAAEAAAAbACQAAAAdAAEAAAAbACMAAAATAAcAAAAbACIAAAAWAAEAAAAaACQAAAAcAAEAAAAaACMAAAACAAIAAAAaACIAAAAHAAIAAAAZACQAAAAdAAEAAAAZACMAAAACAAIAAAAZACIAAAACAAIAAAAYACQAAAAcAAEAAAAYACMAAAACAAIAAAAYACIAAAACAAIAAAAXACQAAAAaAAEAAAAXACMAAAACAAIAAAAXACIAAAAIAAIAAAAWACQAAAAZAAEAAAAWACMAAAACAAIAAAAWACIAAAATAAEAAAAVACQAAAAcAAEAAAAVACMAAAAVAAcAAAAVACIAAAACAAEAAAAUACQAAAACAAMAAAAUACMAAAACAAIAAAAUACIAAAAWAAEAAAATACQAAAABAAMAAAATACMAAAABAAIAAAATACIAAAAQAAQAAAAaACEAAAARAAQAAAAZACEAAAAUAAEAAAAYACEAAAACAAEAAAAXACEAAAABAAEAAAABACMAAAATAAMAAAABACIAAAATAAMAAAABACEAAAAUAAMAAAABACAAAAAXAAMAAAABAB8AAAAaAAMAAAAAACMAAAACAAIAAAAAACIAAAACAAIAAAAAACEAAAACAAIAAAAAACAAAAACAAIAAAAAAB8AAAATAAEAAAD//yMAAAAUAAUAAAD//yIAAAAWAAUAAAD//yEAAAABAAIAAAD//yAAAAAWAAUAAAD//x8AAAAcAAMAAAAOACMAAAADAAUAAAANACMAAAACAAUAAAAMACMAAAACAAUAAAALACMAAAACAAUAAAAKACMAAAABAAUAAAABACQAAAAZAAUAAAAAACQAAAAZAAEAAAD//yQAAAABAAMAAAAJACYAAwAAAAAAAgAEACEAAwAAAAAAAQADACAAAwAAAAAAAQAqACsAAAAIAAUAAAApACsAAAACAAUAAAAoACsAAAACAAUAAAAnACsAAAACAAUAAAAmACsAAAACAAUAAAAlACsAAAACAAUAAAArACkAAAAcAAMAAAAqACoAAAAdAAMAAAAeACcAAAAQAAQAAAAqACkAAAAEAAgAAAAjACkAAAAEAAgAABAkACoAAAALAAgAAAAlACoAAAALAAgAAAAmACoAAAALAAgAAAAnACoAAAALAAgAAAAoACoAAAALAAgAAAApACoAAAALAAgAAAALACQAAAAQAAcAACAMACQAAAAQAAcAADANACQAAAAQAAcAADAYACYAAwAAAAAAAQAPACYAAwAAAAAAAwA=")
-tile_set = ExtResource("8_j61lg")
-script = ExtResource("9_h36x3")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Objects/PushBlock/PushDetector"]
+shape = SubResource("RectangleShape2D_push_detector")
 
-[node name="Players" type="Node2D" parent="tilemap" unique_id=496550713]
-position = Vector2(26, 618)
+[node name="GroundDetector" type="RayCast2D" parent="Objects/PushBlock"]
+target_position = Vector2(0, 6)
 
-[node name="PressureButton" parent="tilemap" unique_id=859789714 instance=ExtResource("10_orjg7")]
+[node name="Collectibles" type="Node2D" parent="."]
+script = ExtResource("5_gem_manager")
+
+[node name="FireGem" type="Area2D" parent="Collectibles"]
+position = Vector2(1350, 530)
+script = ExtResource("4_gem")
+gem_element = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Collectibles/FireGem"]
+shape = SubResource("CircleShape2D_fire_gem")
+
+[node name="Visual" type="Polygon2D" parent="Collectibles/FireGem"]
+polygon = PackedVector2Array(0, -10, 8, 0, 0, 10, -8, 0)
+
+[node name="WaterGem" type="Area2D" parent="Collectibles"]
+position = Vector2(1400, 575)
+script = ExtResource("4_gem")
+gem_element = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Collectibles/WaterGem"]
+shape = SubResource("CircleShape2D_water_gem")
+
+[node name="Visual" type="Polygon2D" parent="Collectibles/WaterGem"]
+polygon = PackedVector2Array(0, -10, 8, 0, 0, 10, -8, 0)
+
+[node name="Goals" type="Node2D" parent="."]
+
+[node name="FireDoor" parent="Goals" instance=ExtResource("3_goal_door")]
+position = Vector2(933, 628)
+
+[node name="WaterDoor" parent="Goals" instance=ExtResource("3_goal_door")]
+position = Vector2(984, 628)
+required_element = 1
+
+[node name="PressureButton" type="StaticBody2D" parent="."]
 position = Vector2(765, 656)
+collision_mask = 6
+script = ExtResource("8_pressure_button")
+bridge_path = NodePath("../Puzzles/LavaBridge")
+required_element = 2
+visual_path = NodePath("")
+
+[node name="BodyCollisionShape2D" type="CollisionShape2D" parent="PressureButton"]
+position = Vector2(0, -3.5)
+shape = SubResource("RectangleShape2D_button_body")
+
+[node name="TriggerArea" type="Area2D" parent="PressureButton"]
 collision_layer = 128
 collision_mask = 2
-bridge_path = NodePath("../../Puzzles/LavaBridge")
 
-[node name="SpawnPoints" type="Node2D" parent="." unique_id=1453074696]
-
-[node name="PlayerSpawn" type="Marker2D" parent="SpawnPoints" unique_id=906776050]
-position = Vector2(41, 618)
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=377752583]
-environment = SubResource("Environment_7tvm4")
-
-[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=120806549]
-position = Vector2(16, 4)
-color = Color(0.28162947, 0.51476526, 0.53207594, 1)
-
-[node name="DirectionalLight2D" type="DirectionalLight2D" parent="." unique_id=757165895]
-position = Vector2(-5.722046e-06, -7.6293945e-06)
-rotation = -0.31205624
-color = Color(0.71040076, 0.7216921, 0.41666624, 1)
-energy = 1.8
-shadow_enabled = true
-shadow_filter = 2
-shadow_filter_smooth = 7.0
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PressureButton/TriggerArea"]
+position = Vector2(0, -9)
+shape = SubResource("RectangleShape2D_button_trigger")

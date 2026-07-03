@@ -4,6 +4,7 @@ extends Node2D
 enum ManagerState { BOOT, LOADING_LEVEL, PLAYING, PAUSED, WON, LOST, RESTARTING, DISCONNECTED }
 
 @export var level_scene: PackedScene
+@export var level_scenes: Array[PackedScene] = []
 @export var fireboy_scene: PackedScene
 @export var watergirl_scene: PackedScene
 @export var level_root_path: NodePath = ^"LevelRoot"
@@ -11,6 +12,7 @@ enum ManagerState { BOOT, LOADING_LEVEL, PLAYING, PAUSED, WON, LOST, RESTARTING,
 
 const RemotePlayerScript: Script = preload("res://scripts/multiplayer/remote_player.gd")
 const DEFAULT_LEVEL_SCENE: PackedScene = preload("res://scenes/levels/real_level_blank.tscn")
+const DEFAULT_LEVEL_SCENE_2: PackedScene = preload("res://scenes/levels/real_level_blank_2.tscn")
 const DEFAULT_FIREBOY_SCENE: PackedScene = preload("res://scenes/players/fireboy.tscn")
 const DEFAULT_WATERGIRL_SCENE: PackedScene = preload("res://scenes/players/watergirl.tscn")
 
@@ -19,6 +21,7 @@ var _current_level: Node2D
 var _player: CharacterBody2D
 var _remote_player: CharacterBody2D
 var _is_reloading: bool = false
+var _current_level_index: int = 0
 var player_nodes: Dictionary = {}
 
 @onready var _level_root: Node2D = get_node(level_root_path) as Node2D
@@ -29,14 +32,18 @@ func _network_manager() -> Node:
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if level_scenes.is_empty():
+		level_scenes = [DEFAULT_LEVEL_SCENE, DEFAULT_LEVEL_SCENE_2]
 	if level_scene == null:
-		level_scene = DEFAULT_LEVEL_SCENE
+		level_scene = level_scenes[_current_level_index]
 	if fireboy_scene == null:
 		fireboy_scene = DEFAULT_FIREBOY_SCENE
 	if watergirl_scene == null:
 		watergirl_scene = DEFAULT_WATERGIRL_SCENE
 	_hud.restart_requested.connect(_on_restart_requested)
 	_hud.resume_requested.connect(_resume_game)
+	if _hud.has_signal("next_level_requested"):
+		_hud.next_level_requested.connect(_on_next_level_requested)
 
 	var network_manager := _network_manager()
 	if network_manager != null:
@@ -48,6 +55,8 @@ func _ready() -> void:
 		network_manager.player_failed_received.connect(_on_player_failed_received)
 		network_manager.level_completed_received.connect(_on_level_completed_received)
 		network_manager.restart_level_received.connect(_on_restart_level_received)
+		if network_manager.has_signal("next_level_received"):
+			network_manager.next_level_received.connect(_on_next_level_received)
 
 		network_manager.role_assigned.connect(_on_role_assigned)
 		network_manager.player_list_updated.connect(_on_player_list_updated)
@@ -235,6 +244,38 @@ func _restart_level() -> void:
 	_set_state(ManagerState.RESTARTING)
 	call_deferred("_load_level")
 
+func _on_next_level_requested() -> void:
+	if _state != ManagerState.WON:
+		return
+	_load_next_level(true)
+
+func _load_next_level(should_relay: bool = false) -> void:
+	if _current_level_index >= level_scenes.size() - 1:
+		return
+	_load_level_by_index(_current_level_index + 1, should_relay)
+
+func _on_next_level_received(level_index: int) -> void:
+	if _state == ManagerState.LOADING_LEVEL or _state == ManagerState.RESTARTING or _is_reloading:
+		return
+	_load_level_by_index(level_index, false)
+
+func _load_level_by_index(level_index: int, should_relay: bool = false) -> void:
+	if level_index < 0 or level_index >= level_scenes.size():
+		push_warning("Invalid level index requested: %s" % level_index)
+		return
+	_current_level_index = level_index
+	level_scene = level_scenes[level_index]
+	var network_manager := _network_manager()
+	if should_relay and network_manager != null and bool(network_manager.call("is_connected_to_server")):
+		network_manager.call("send_next_level", level_index)
+	get_tree().paused = false
+	_set_player_control_enabled(false)
+	_set_state(ManagerState.RESTARTING)
+	call_deferred("_load_level")
+
+func _has_next_level() -> bool:
+	return _current_level_index < level_scenes.size() - 1
+
 func _on_level_completed() -> void:
 	if _state != ManagerState.PLAYING:
 		return
@@ -347,12 +388,16 @@ func _set_state(next_state: ManagerState) -> void:
 			get_tree().paused = false
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
+			if _hud.has_method("hide_level_complete"):
+				_hud.hide_level_complete()
 			_hud.set_gem_progress(0, 0)
 			_hud.show_status("Loading prototype...", false)
 		ManagerState.PLAYING:
 			get_tree().paused = false
 			_set_player_control_enabled(true)
 			_hud.set_paused(false)
+			if _hud.has_method("hide_level_complete"):
+				_hud.hide_level_complete()
 			_hud.show_status("Reach the exit. Collect matching gems.", false)
 		ManagerState.PAUSED:
 			_hud.show_status("Paused", false)
@@ -362,21 +407,29 @@ func _set_state(next_state: ManagerState) -> void:
 			get_tree().paused = false
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
-			_hud.show_status("Level complete! Press R to restart.", true)
+			_hud.show_status("Level complete!", false)
+			if _hud.has_method("show_level_complete"):
+				_hud.show_level_complete(_has_next_level())
 		ManagerState.LOST:
 			get_tree().paused = false
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
+			if _hud.has_method("hide_level_complete"):
+				_hud.hide_level_complete()
 			_hud.show_status("You fell into danger. Press R to restart.", true)
 		ManagerState.RESTARTING:
 			get_tree().paused = false
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
+			if _hud.has_method("hide_level_complete"):
+				_hud.hide_level_complete()
 			_hud.show_status("Restarting...", false)
 		ManagerState.DISCONNECTED:
 			get_tree().paused = true
 			_set_player_control_enabled(false)
 			_hud.set_paused(false)
+			if _hud.has_method("hide_level_complete"):
+				_hud.hide_level_complete()
 			_hud.show_status("Peer disconnected. Waiting to reconnect...", true)
 		_:
 			pass
