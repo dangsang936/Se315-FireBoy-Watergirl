@@ -6,6 +6,9 @@ signal player_failed(player: Node2D)
 signal exit_locked(remaining: int, gem_element: int)
 signal gem_progress_changed(collected: int, required: int)
 
+const ELEMENT_FIRE: int = 0
+const ELEMENT_WATER: int = 1
+
 @export var players_path: NodePath = ^"Players"
 @export var player_spawn_path: NodePath = ^"Players/PlayerSpawn"
 @export var player_spawn_2_path: NodePath = ^"Players/PlayerSpawn2"
@@ -13,9 +16,13 @@ signal gem_progress_changed(collected: int, required: int)
 @export var hazards_path: NodePath = ^"Hazards"
 @export var hazard_zone_path: NodePath = ^"Hazards/HazardZone"
 @export var exit_door_path: NodePath = ^"Goals/ExitDoor"
+@export var fire_goal_door_path: NodePath = ^""
+@export var water_goal_door_path: NodePath = ^""
 
 var _is_completed: bool = false
 var _safe_frames: int = 5 # Prevents instant-death from spawn overlaps during load
+var _fire_door_ready: bool = false
+var _water_door_ready: bool = false
 
 @onready var _players: Node2D = get_node(players_path) as Node2D
 @onready var _player_spawn: Marker2D = get_node(player_spawn_path) as Marker2D
@@ -23,13 +30,18 @@ var _safe_frames: int = 5 # Prevents instant-death from spawn overlaps during lo
 @onready var _gem_manager: GemManager = get_node_or_null(collectibles_path) as GemManager
 @onready var _hazards: Node2D = get_node_or_null(hazards_path) as Node2D
 @onready var _hazard_zone: HazardZone = get_node_or_null(hazard_zone_path) as HazardZone
-@onready var _exit_door: ExitDoor = get_node(exit_door_path) as ExitDoor
+@onready var _exit_door: ExitDoor = get_node_or_null(exit_door_path) as ExitDoor
+@onready var _fire_goal_door: Node = get_node_or_null(fire_goal_door_path)
+@onready var _water_goal_door: Node = get_node_or_null(water_goal_door_path)
 
 func _ready() -> void:
 	if multiplayer.is_server() or not multiplayer.has_multiplayer_peer():
 		_connect_hazards()
-		_exit_door.player_entered.connect(_on_exit_door_player_entered)
-		_exit_door.both_players_entered.connect(_on_exit_door_both_players_entered)
+		if _uses_goal_doors():
+			_connect_goal_doors()
+		elif _exit_door != null:
+			_exit_door.player_entered.connect(_on_exit_door_player_entered)
+			_exit_door.both_players_entered.connect(_on_exit_door_both_players_entered)
 	_connect_collectibles()
 
 func _physics_process(_delta: float) -> void:
@@ -45,6 +57,42 @@ func _on_exit_door_player_entered(_player: Node2D) -> void:
 
 func _on_exit_door_both_players_entered() -> void:
 	if _gem_manager != null and not _gem_manager.is_unlocked():
+		return
+	_complete_level()
+
+func _connect_goal_doors() -> void:
+	if _fire_goal_door != null and not _fire_goal_door.occupancy_changed.is_connected(_on_goal_door_occupancy_changed):
+		_fire_goal_door.occupancy_changed.connect(_on_goal_door_occupancy_changed)
+	if _water_goal_door != null and not _water_goal_door.occupancy_changed.is_connected(_on_goal_door_occupancy_changed):
+		_water_goal_door.occupancy_changed.connect(_on_goal_door_occupancy_changed)
+	if _fire_goal_door != null and not _fire_goal_door.wrong_player_entered.is_connected(_on_wrong_goal_door_entered):
+		_fire_goal_door.wrong_player_entered.connect(_on_wrong_goal_door_entered)
+	if _water_goal_door != null and not _water_goal_door.wrong_player_entered.is_connected(_on_wrong_goal_door_entered):
+		_water_goal_door.wrong_player_entered.connect(_on_wrong_goal_door_entered)
+
+func _on_goal_door_occupancy_changed(required_element: int, is_occupied: bool, _player: Node2D) -> void:
+	match required_element:
+		ELEMENT_FIRE:
+			_fire_door_ready = is_occupied
+		ELEMENT_WATER:
+			_water_door_ready = is_occupied
+		_:
+			push_warning("Unknown goal door element: %s" % required_element)
+			return
+	_try_complete_goal_door_level()
+
+func _on_wrong_goal_door_entered(required_element: int, _player_element: int, _player: Node2D) -> void:
+	exit_locked.emit(_gem_manager.get_remaining_count() if _gem_manager != null else 0, required_element)
+
+func _try_complete_goal_door_level() -> void:
+	if _is_completed:
+		return
+	if not _uses_goal_doors():
+		return
+	if not _fire_door_ready or not _water_door_ready:
+		return
+	if _gem_manager != null and not _gem_manager.is_unlocked():
+		exit_locked.emit(_gem_manager.get_remaining_count(), _gem_manager.get_active_gem_element())
 		return
 	_complete_level()
 
@@ -94,6 +142,7 @@ func _on_hazard_zone_player_entered(player: Node2D) -> void:
 
 func _on_gem_progress_changed(collected: int, required: int) -> void:
 	gem_progress_changed.emit(collected, required)
+	_try_complete_goal_door_level()
 
 func _configure_gems_for_attached_players(fallback_player: Node2D) -> void:
 	if _gem_manager == null:
@@ -107,6 +156,9 @@ func _configure_gems_for_attached_players(fallback_player: Node2D) -> void:
 
 func _get_required_exit_players() -> int:
 	return maxi(_players.get_child_count(), 1)
+
+func _uses_goal_doors() -> bool:
+	return _fire_goal_door != null or _water_goal_door != null
 
 func _complete_level() -> void:
 	if _is_completed:

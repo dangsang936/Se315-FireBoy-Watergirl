@@ -52,6 +52,13 @@ func sync_level_completed() -> void:
 		nm.emit_signal("level_completed_received")
 	print("[Client] Level completed (server-authoritative).")
 
+@rpc("authority", "call_remote", "reliable")
+func sync_next_level(level_index: int) -> void:
+	var nm := get_node_or_null("/root/NetworkManager")
+	if nm != null and nm.has_signal("next_level_received"):
+		nm.emit_signal("next_level_received", level_index)
+	print("[Client] Loading next level index %d (server-authoritative)." % level_index)
+
 @rpc("authority", "call_remote", "unreliable_ordered")
 func sync_push_block(block_name: String, pos: Vector2, rot: float) -> void:
 	var blocks := get_tree().get_nodes_in_group("push_block")

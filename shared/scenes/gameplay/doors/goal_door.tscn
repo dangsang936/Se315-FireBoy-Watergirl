@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://dl2mkf1uydml3"]
+
+[ext_resource type="Script" path="res://shared/scripts/gameplay/doors/goal_door.gd" id="1_goal_door"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_goal_door"]
+size = Vector2(14, 22)
+
+[node name="GoalDoor" type="Area2D" unique_id=457597072]
+collision_layer = 64
+collision_mask = 2
+script = ExtResource("1_goal_door")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=899802895]
+position = Vector2(0, -8)
+region_enabled = true
+region_rect = Rect2(480, 216, 32, 40)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1810467975]
+position = Vector2(0, 1)
+shape = SubResource("RectangleShape2D_goal_door")
