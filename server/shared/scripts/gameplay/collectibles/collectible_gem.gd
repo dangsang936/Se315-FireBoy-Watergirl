@@ -64,15 +64,13 @@ func _find_level_root() -> Node:
 func _collect_locally(player: PrototypePlayer) -> void:
 	if _is_collected:
 		return
-	_is_collected = true
-	set_deferred("monitoring", false)
-	set_deferred("monitorable", false)
-	visible = false
+	_apply_collected_state()
 	collected.emit(self, player)
 
 func collect_remotely() -> void:
-	if _is_collected:
-		return
+	_apply_collected_state()
+
+func _apply_collected_state() -> void:
 	_is_collected = true
 	set_deferred("monitoring", false)
 	set_deferred("monitorable", false)

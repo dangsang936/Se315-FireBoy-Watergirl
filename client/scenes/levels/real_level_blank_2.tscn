@@ -33,8 +33,8 @@ glow_bloom = 0.2
 script = ExtResource("1_etded")
 players_path = NodePath("tilemap/Players")
 player_spawn_path = NodePath("tilemap/Players/PlayerSpawn")
-fire_goal_door_path = NodePath("")
-water_goal_door_path = NodePath("")
+fire_goal_door_path = NodePath("tilemap/Goals/FireDoor")
+water_goal_door_path = NodePath("tilemap/Goals/WaterDoor")
 
 [node name="parallaxlayers" type="Node2D" parent="." unique_id=163411141]
 z_index = -15
@@ -157,6 +157,7 @@ position = Vector2(78, -12)
 
 [node name="FireDoor" parent="tilemap/Goals" unique_id=457597072 instance=ExtResource("6_goal_door")]
 position = Vector2(1054, 624)
+required_element = 0
 
 [node name="Sprite2D2" type="Sprite2D" parent="tilemap/Goals/FireDoor" unique_id=314783987]
 position = Vector2(0, -8)

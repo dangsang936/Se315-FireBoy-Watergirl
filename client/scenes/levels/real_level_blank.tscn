@@ -173,6 +173,9 @@ script = ExtResource("8_7tvm4")
 
 [node name="FireDoor" parent="tilemap/Goals" unique_id=74108369 instance=ExtResource("3_goal_door")]
 position = Vector2(933, 628)
+collision_layer = 64
+collision_mask = 2
+required_element = 0
 
 [node name="Sprite2D2" type="Sprite2D" parent="tilemap/Goals/FireDoor" unique_id=1150907620]
 position = Vector2(0, -8)

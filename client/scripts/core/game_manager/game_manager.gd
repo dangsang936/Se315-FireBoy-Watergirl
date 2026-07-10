@@ -22,6 +22,7 @@ var _player: CharacterBody2D
 var _remote_player: CharacterBody2D
 var _is_reloading: bool = false
 var _current_level_index: int = 0
+var _pending_collected_gem_paths: Dictionary = {}
 var player_nodes: Dictionary = {}
 
 @onready var _level_root: Node2D = get_node(level_root_path) as Node2D
@@ -164,6 +165,8 @@ func _load_level() -> void:
 		_current_level.call("get_spawn_position") if _current_level.has_method("get_spawn_position") else Vector2.INF,
 	])
 	_spawn_players()
+	await get_tree().process_frame
+	_replay_pending_collected_gems()
 	_is_reloading = false
 	_set_state(ManagerState.PLAYING)
 
@@ -345,14 +348,27 @@ func _on_authoritative_player_snapshot_received(player_id: int, snapshot: Dictio
 # --- Reliable Gameplay Event RPC Listeners ---
 
 func _on_gem_collected_received(gem_path: String) -> void:
-	if not is_instance_valid(_current_level):
+	if gem_path == "":
 		return
+	if not is_instance_valid(_current_level):
+		_pending_collected_gem_paths[gem_path] = true
+		return
+	_apply_collected_gem_path(gem_path)
+
+func _apply_collected_gem_path(gem_path: String) -> void:
+	var manager := _current_level.get_node_or_null("Collectibles") as GemManager
+	if manager != null and manager.has_method("client_mark_collected_by_path"):
+		manager.call("client_mark_collected_by_path", gem_path)
 	var gem_node = _current_level.get_node_or_null(NodePath(gem_path))
 	if gem_node and gem_node.has_method("collect_remotely"):
 		gem_node.collect_remotely()
-		var manager := _current_level.get_node_or_null("Collectibles") as GemManager
-		if manager != null and manager.has_method("client_mark_collected_by_path"):
-			manager.call("client_mark_collected_by_path", gem_path)
+
+func _replay_pending_collected_gems() -> void:
+	if not is_instance_valid(_current_level):
+		return
+	for gem_path in _pending_collected_gem_paths.keys():
+		_apply_collected_gem_path(str(gem_path))
+	_pending_collected_gem_paths.clear()
 
 func _on_player_failed_received() -> void:
 	if _state != ManagerState.PLAYING:

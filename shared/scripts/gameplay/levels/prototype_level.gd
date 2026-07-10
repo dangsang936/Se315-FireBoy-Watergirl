@@ -39,11 +39,15 @@ func _connect_goal_doors() -> void:
 			_fire_goal_door.connect("occupancy_changed", Callable(self, "_on_goal_door_occupancy_changed"))
 		if _fire_goal_door.has_signal("wrong_player_entered") and not _fire_goal_door.is_connected("wrong_player_entered", Callable(self, "_on_wrong_goal_door_entered")):
 			_fire_goal_door.connect("wrong_player_entered", Callable(self, "_on_wrong_goal_door_entered"))
+		if _fire_goal_door.has_method("refresh_occupancy"):
+			_fire_goal_door.call_deferred("refresh_occupancy")
 	if _water_goal_door != null:
 		if _water_goal_door.has_signal("occupancy_changed") and not _water_goal_door.is_connected("occupancy_changed", Callable(self, "_on_goal_door_occupancy_changed")):
 			_water_goal_door.connect("occupancy_changed", Callable(self, "_on_goal_door_occupancy_changed"))
 		if _water_goal_door.has_signal("wrong_player_entered") and not _water_goal_door.is_connected("wrong_player_entered", Callable(self, "_on_wrong_goal_door_entered")):
 			_water_goal_door.connect("wrong_player_entered", Callable(self, "_on_wrong_goal_door_entered"))
+		if _water_goal_door.has_method("refresh_occupancy"):
+			_water_goal_door.call_deferred("refresh_occupancy")
 
 func _on_goal_door_occupancy_changed(required_element: int, is_occupied: bool, _player: Node2D) -> void:
 	match required_element:
@@ -62,12 +66,21 @@ func _try_complete_level() -> void:
 	if _level_completed:
 		return
 	if not _fire_door_ready or not _water_door_ready:
-		return
+		_refresh_goal_door_occupancy()
+		if not _fire_door_ready or not _water_door_ready:
+			return
 	if _gem_manager != null and not _gem_manager.is_unlocked():
 		exit_locked.emit(_gem_manager.get_remaining_count(), _gem_manager.get_active_gem_element())
 		return
 	_level_completed = true
 	level_completed.emit()
+
+func _refresh_goal_door_occupancy() -> void:
+	if _fire_goal_door != null and _fire_goal_door.has_method("refresh_occupancy"):
+		_fire_goal_door.call("refresh_occupancy")
+	if _water_goal_door != null and _water_goal_door.has_method("refresh_occupancy"):
+		_water_goal_door.call("refresh_occupancy")
+
 func attach_player(player: Node2D, spawn_idx: int = 1) -> void:
 	var spawn_position: Vector2 = get_spawn_position() if spawn_idx == 1 else get_spawn_position_2()
 	player.position = _players.to_local(spawn_position)

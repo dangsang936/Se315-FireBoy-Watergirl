@@ -18,9 +18,22 @@ func _ready() -> void:
 		body_entered.connect(_on_body_entered)
 	if not body_exited.is_connected(_on_body_exited):
 		body_exited.connect(_on_body_exited)
+	call_deferred("refresh_occupancy")
 
 func is_occupied_by_required_player() -> bool:
 	return is_instance_valid(_occupying_player)
+
+func refresh_occupancy() -> void:
+	if is_instance_valid(_occupying_player) and get_overlapping_bodies().has(_occupying_player):
+		return
+	var previous_player := _occupying_player
+	_occupying_player = null
+	for body in get_overlapping_bodies():
+		_on_body_entered(body)
+		if is_instance_valid(_occupying_player):
+			return
+	if is_instance_valid(previous_player):
+		occupancy_changed.emit(required_element, false, previous_player)
 
 func _on_body_entered(body: Node2D) -> void:
 	if not body.is_in_group("player"):
